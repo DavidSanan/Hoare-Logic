@@ -160,8 +160,13 @@
       }
       if (t.startsWith('>> ')) {
         let block = '';
-        while (i < lines.length && lines[i].trim().startsWith('>> ')) block += displayLine(lines[i++].trim().slice(3));
-        html += '<div class="display">' + block + '</div>';
+        let figures = false;
+        while (i < lines.length && lines[i].trim().startsWith('>> ')) {
+          const src = lines[i++].trim().slice(3);
+          if (/\s---\s/.test(src)) figures = true;
+          block += displayLine(src);
+        }
+        html += '<div class="display' + (figures ? '' : ' stack') + '">' + block + '</div>';
         continue;
       }
       if (t.startsWith('!! ')) {

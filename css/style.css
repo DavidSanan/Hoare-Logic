@@ -258,6 +258,8 @@ i.fn { font-style: italic; }
 .prog-inline { white-space: normal; }
 .display { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px 40px; padding: 6px 0; overflow-x: auto; }
 .disp { text-align: center; max-width: 100%; }
+/* Consecutive displayed lines are steps of one derivation: one per line. */
+.display.stack { flex-direction: column; align-items: center; gap: 6px; }
 
 .rulefig { display: inline-flex; align-items: center; gap: 10px; max-width: 100%; }
 .rf-body { display: inline-flex; flex-direction: column; align-items: center; min-width: 0; }
@@ -289,11 +291,14 @@ i.fn { font-style: italic; }
   scroll-margin-top: 64px;
   display: grid;
   gap: 16px;
+  max-width: 900px;
 }
 .rule-card > header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .rule-id { font-family: var(--f-mono); font-size: var(--fs-small); color: var(--muted); }
 .rule-card > .display { background: var(--surface-2); border-radius: var(--radius); padding: 16px; font-size: 1.1rem; }
-.rule-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 18px 32px; }
+/* One column: the blocks have very different lengths, and side by side
+   the short ones leave large empty areas. */
+.rule-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; max-width: 78ch; }
 .rg-block { display: grid; gap: 8px; align-content: start; min-width: 0; }
 .rg-block h4 { font-size: .78rem; text-transform: uppercase; letter-spacing: .07em; color: var(--accent); }
 
