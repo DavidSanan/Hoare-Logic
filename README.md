@@ -9,7 +9,7 @@ document HoareLogic.pdf.
 ## Opening the site
 
 The site is published with GitHub Pages at
-https://davidsanan.github.io/hoare-logic/
+https://davidsanan.github.io/Hoare-Logic/
 
 You can also open `index.html` in a browser. No server and no build step
 are needed. The empty file `.nojekyll` tells GitHub Pages to serve the files
