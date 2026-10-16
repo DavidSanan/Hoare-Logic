@@ -1,0 +1,71 @@
+# Source: Exercise list "ICT3101 Exercises - Deductive Verification", problem 4 b), with its solution sheet.
+id: prove-sequence-b
+title: Prove a triple with logical variables (b)
+topic: Sequential composition
+level: 2
+source: Exercise list "HoareLogic Exercises", problem 4 b
+tags: assignment, sequence, logical variables, signs
+
+task:
+  Prove the following Hoare triple.
+
+pre: x = x' && y = y'
+post: x = -m && y = x' + n + y'
+
+program:
+  {P}
+  {R3}
+  x := x + y;            // i1
+  {R2}
+  y := x + n;            // i2
+  {R1}
+  x := x - y + n - m     // i3
+  {Q}
+
+verdict: valid
+
+step: The last statement, `x := x - y + n - m`
+rule: ASSIGN, WP
+focus: i3
+calc:
+  wp(x := x - y + n - m, Q)
+  = (x = -m && y = x' + n + y')[x <- x - y + n - m]
+  = x - y + n - m = -m && y = x' + n + y'
+set: R1 = x - y + n - m = -m && y = x' + n + y'
+
+step: The second statement, `y := x + n`
+rule: ASSIGN, WP
+focus: i2
+text:
+  The variable $y$ occurs twice in $R1$, so it is replaced twice. The
+  parentheses matter: the minus sign in front of $y$ applies to the whole
+  expression $x + n$.
+calc:
+  wp(y := x + n, R1)
+  = x - (x + n) + n - m = -m && x + n = x' + n + y'
+  = x - x - n + n - m = -m && x + n = x' + n + y'    // open the parentheses: the minus changes both signs
+  = -m = -m && x = x' + y'
+  = x = x' + y'                                       // -m = -m is true, and true && A is A
+set: R2 = x = x' + y'
+
+step: The first statement, `x := x + y`
+rule: ASSIGN, WP
+focus: i1
+calc:
+  wp(x := x + y, R2)
+  = (x = x' + y')[x <- x + y]
+  = x + y = x' + y'
+set: R3 = x + y = x' + y'
+
+step: Compare with the precondition
+rule: CONSEQUENCE, LOGIC
+vc: x = x' && y = y' ==> x + y = x' + y'
+why:
+  Replace $x$ by $x'$ and $y$ by $y'$ using the assumption: the right-hand
+  side becomes $x' + y' = x' + y'$, which is true.
+result: The triple is valid.
+
+summary:
+  The most frequent mistake in this exercise is the sign error
+  $x - (x + n) = x - x + n$. The correct expansion is $x - x - n$, and
+  this is what makes the terms $n$ cancel.

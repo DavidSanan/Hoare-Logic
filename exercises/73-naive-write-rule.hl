@@ -1,0 +1,74 @@
+# Source: HoareLogic.pdf, section "Arrays", "Aliasing" and "Back to the counterexample".
+id: naive-write-rule
+title: Why the naive array rule is wrong
+topic: Arrays
+level: 3
+source: HoareLogic.pdf, Arrays, "Aliasing" and "Back to the counterexample"
+tags: arrays, aliasing, soundness, counterexample
+
+task:
+  The naive rule treats the cell $a[I]$ as a variable and gives
+  $\{Q[a[I] <- E] && def(a[I])\}$ `a[I] := E` $\{Q\}$. Find values that
+  break the triple that this rule gives for `a[i] := 1` with the
+  postcondition $a[j] = 0$. Then compute the correct precondition with
+  ARRAY-ASSIGN.
+
+pre: j != i && a[j] = 0 && 0 <= i < sizeof(a)
+post: a[j] = 0
+
+program:
+  {P}
+  {R1}
+  a[i] := 1
+  {Q}
+
+verdict: valid
+
+step: What the naive rule gives
+rule: LOGIC
+text:
+  The naive rule replaces the text $a[i]$ in the postcondition. The
+  postcondition is written with $a[j]$, so there is nothing to replace:
+vc: {a[j] = 0 && def(a[i])} a[i] := 1 {a[j] = 0}
+status: fails
+counterexample: a = [4, 0, 9], i = 1, j = 1
+why:
+  Take the array $4, 0, 9$ and $i = j = 1$. The precondition holds:
+  $a[1] = 0$ and position $1$ exists. The write sets $a[1]$ to $1$, so
+  $a[j] = 0$ is false afterwards. When $i = j$, $a[i]$ and $a[j]$ name the
+  same cell: they are aliases, and substitution on the text of the
+  formula cannot see it.
+
+step: Substitution with ARRAY-ASSIGN
+rule: ARRAY-ASSIGN
+focus: a[i] :=
+calc:
+  (a[j] = 0)[a <- a[i |-> 1]]
+  = a[i |-> 1][j] = 0
+
+step: Select-store
+rule: ARRAY-ASSIGN, LOGIC
+calc:
+  a[i |-> 1][j] = 0
+  = (j = i && 1 = 0) || (j != i && a[j] = 0)
+  = (j = i && false) || (j != i && a[j] = 0)
+  = j != i && a[j] = 0
+text:
+  In the case $j = i$, the read gives the written value $1$, and $1 = 0$
+  is false. In the case $j != i$, the read gives the old value $a[j]$.
+
+step: Definedness
+rule: ARRAY-ASSIGN
+calc:
+  wp(a[i] := 1, Q)
+  = a[i |-> 1][j] = 0 && def(a[i])
+  = j != i && a[j] = 0 && 0 <= i < sizeof(a)
+set: R1 = j != i && a[j] = 0 && 0 <= i < sizeof(a)
+vc: j != i && a[j] = 0 && 0 <= i < sizeof(a) ==> R1
+result: The correct precondition contains $j != i$, which is exactly the condition that the naive rule misses.
+
+summary:
+  The two rules differ only by the condition $j != i$. In the
+  counterexample $i = j = 1$ this condition is false, so the correct rule
+  makes no promise about that execution, which is right, since the
+  postcondition fails there.

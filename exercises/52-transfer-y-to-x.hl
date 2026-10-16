@@ -1,0 +1,70 @@
+# Source: Exercise list "ICT3101 Exercises - Deductive Verification", problem 5 a), with its solution sheet.
+id: transfer-y-to-x
+title: Moving the value of y into x
+topic: Loops
+level: 2
+source: Exercise list "HoareLogic Exercises", problem 5 a
+tags: while, invariant, logical variables
+
+task:
+  Give a proof outline and a loop invariant.
+
+pre: x = x' && y = y' && y >= 0
+post: x = x' + y'
+
+program:
+  {P}
+  {I}
+  while (y > 0) do {
+    {I && y > 0}
+    {R2}
+    x := x + 1;      // b1
+    {R1}
+    y := y - 1       // b2
+    {I}
+  }
+  {I && !(y > 0)}
+  {Q}
+
+verdict: valid
+
+step: Find a candidate invariant
+rule: WHILE-CONSEQUENCE
+focus: while
+text:
+  Each iteration adds one to $x$ and removes one from $y$, so the sum
+  $x + y$ does not change. At the start it is $x' + y'$. The variable $y$
+  goes down from $y'$ to $0$, which gives the bounds.
+set: I = 0 <= y <= y' && x + y = x' + y'
+
+step: Establishment
+rule: CONSEQUENCE, LOGIC
+vc: x = x' && y = y' && y >= 0 ==> 0 <= y <= y' && x + y = x' + y'
+why:
+  From $y = y'$ we get $y <= y'$, and $0 <= y$ is in the precondition.
+  Replacing $x$ by $x'$ and $y$ by $y'$ in $x + y = x' + y'$ gives a true
+  equation.
+
+step: Preservation
+rule: ASSIGN, SEQ, CONSEQUENCE
+focus: b1, b2
+calc:
+  wp(y := y - 1, I)
+  = 0 <= y - 1 <= y' && x + (y - 1) = x' + y'
+set: R1 = 0 <= y - 1 <= y' && x + (y - 1) = x' + y'
+calc:
+  wp(x := x + 1, R1)
+  = 0 <= y - 1 <= y' && (x + 1) + (y - 1) = x' + y'
+  = 1 <= y <= y' + 1 && x + y = x' + y'      // add 1 to the bounds; +1 and -1 cancel
+set: R2 = 1 <= y <= y' + 1 && x + y = x' + y'
+vc: 0 <= y <= y' && x + y = x' + y' && y > 0 ==> 1 <= y <= y' + 1 && x + y = x' + y'
+why:
+  $y > 0$ gives $1 <= y$, and $y <= y'$ gives $y <= y' + 1$. The equation
+  is the same on both sides.
+
+step: The postcondition at the exit
+rule: CONSEQUENCE, LOGIC
+vc: 0 <= y <= y' && x + y = x' + y' && !(y > 0) ==> x = x' + y'
+why:
+  $0 <= y$ and $y <= 0$ give $y = 0$, so $x + 0 = x' + y'$.
+result: The triple is valid. A variant for termination is $y$.

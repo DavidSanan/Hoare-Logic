@@ -1,0 +1,116 @@
+# Source: Exercise list "ICT3101 Exercises - Deductive Verification", problem 5 c), with its solution sheet
+# ("egypcian multiplication solved").
+id: egyptian-multiplication
+title: Egyptian multiplication
+topic: Loop invariants
+level: 3
+source: Exercise list "HoareLogic Exercises", problem 5 c
+tags: while, conditional, skip, div, mod, invariant
+
+task:
+  Give a proof outline for the loop, with the invariant
+  $x' * y' = x * y + z$.
+
+  Hint from the exercise list: $x = (x div 2) + (x div 2) + (x mod 2)$.
+
+  On this website $div$ and $mod$ are the mathematical integer division
+  and remainder, so $x mod 2$ is always $0$ or $1$ and the hint holds for
+  every integer $x$.
+
+pre: x = x' && y = y' && y' > 0
+post: z = x' * y'
+
+program:
+  {P}
+  {R5}
+  z := 0;                  // i1
+  {I}
+  while (!(x = 0)) do {
+    {I && !(x = 0)}
+    {R3}
+    if (x mod 2 = 1) then {
+      z := z + y           // then
+    } else {
+      skip                 // else
+    }
+    {R2}
+    y := y * 2;            // b2
+    {R1}
+    x := x div 2           // b3
+    {I}
+  }
+  {I && x = 0}
+  {Q}
+
+verdict: valid
+
+step: The invariant
+rule: WHILE-CONSEQUENCE
+focus: while
+text:
+  The product that is still to be computed is $x * y$, and the part
+  already computed is $z$. Halving $x$ and doubling $y$ keeps $x * y$ when
+  $x$ is even. When $x$ is odd, one copy of $y$ is lost by the division,
+  and the then branch adds it to $z$ first.
+set: I = x' * y' = x * y + z
+
+step: Establishment
+rule: ASSIGN, WP
+focus: i1
+calc:
+  wp(z := 0, I)
+  = x' * y' = x * y + 0
+set: R5 = x' * y' = x * y + 0
+vc: x = x' && y = y' && y' > 0 ==> x' * y' = x * y + 0
+
+step: Preservation, the last two statements
+rule: ASSIGN, SEQ, WP
+focus: b2, b3
+calc:
+  wp(x := x div 2, I)
+  = x' * y' = (x div 2) * y + z
+set: R1 = x' * y' = (x div 2) * y + z
+calc:
+  wp(y := y * 2, R1)
+  = x' * y' = (x div 2) * (y * 2) + z
+set: R2 = x' * y' = (x div 2) * (y * 2) + z
+
+step: Preservation, the conditional
+rule: IF, ASSIGN, SKIP, WP
+focus: then, else
+calc:
+  wp(z := z + y, R2)
+  = x' * y' = (x div 2) * (y * 2) + (z + y)
+calc:
+  wp(if (x mod 2 = 1) then z := z + y else skip, R2)
+  = (x mod 2 = 1 ==> x' * y' = (x div 2) * (y * 2) + (z + y)) && (!(x mod 2 = 1) ==> x' * y' = (x div 2) * (y * 2) + z)
+set: R3 = (x mod 2 = 1 ==> x' * y' = (x div 2) * (y * 2) + (z + y)) && (!(x mod 2 = 1) ==> x' * y' = (x div 2) * (y * 2) + z)
+
+step: Preservation, the verification condition
+rule: CONSEQUENCE, LOGIC
+vc: I && !(x = 0) ==> R3
+why:
+  We use $x = 2 * (x div 2) + (x mod 2)$.
+
+  If $x mod 2 = 1$, then $x * y = (x div 2) * (y * 2) + y$, so
+  $x * y + z = (x div 2) * (y * 2) + (z + y)$.
+
+  Otherwise $x mod 2 = 0$, then $x * y = (x div 2) * (y * 2)$, so
+  $x * y + z = (x div 2) * (y * 2) + z$.
+
+  In both cases the invariant $x' * y' = x * y + z$ gives the formula of
+  the branch.
+
+step: The postcondition at the exit
+rule: CONSEQUENCE, LOGIC
+vc: I && x = 0 ==> z = x' * y'
+why:
+  With $x = 0$ the invariant becomes $x' * y' = 0 * y + z = z$.
+result: The triple is valid (partial correctness).
+
+summary:
+  The proof is about partial correctness. For termination we need
+  $x' >= 0$: then $x$ is a variant, since $x div 2 < x$ when $x > 0$. With
+  the mathematical division, $-1 div 2 = -1$, so a negative initial $x$
+  makes the loop run for ever. The tests of this exercise skip those
+  states, since they do not terminate.

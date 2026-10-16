@@ -1,0 +1,81 @@
+# Source: Exercise list "ICT3101 Exercises - Deductive Verification", problem 3 b).
+id: fill-precondition-false
+title: Fill in the precondition (b)
+topic: Sequential composition
+level: 2
+source: Exercise list "HoareLogic Exercises", problem 3 b
+tags: assignment, sequence, wp, false
+
+task:
+  Fill in the weakest precondition of the following program.
+
+pre: false
+post: x > z && y = 3
+
+program:
+  {R3}
+  z := x + 2;      // i1
+  {R2}
+  y := z + z;      // i2
+  {R1}
+  x := z + y       // i3
+  {Q}
+
+verdict: valid
+
+step: The last statement, `x := z + y`
+rule: ASSIGN, WP
+focus: i3
+calc:
+  wp(x := z + y, Q)
+  = (x > z && y = 3)[x <- z + y]
+  = z + y > z && y = 3
+set: R1 = z + y > z && y = 3
+
+step: The second statement, `y := z + z`
+rule: ASSIGN, WP
+focus: i2
+text:
+  The variable $y$ occurs twice in $R1$, and both occurrences are replaced.
+calc:
+  wp(y := z + z, R1)
+  = (z + y > z && y = 3)[y <- z + z]
+  = z + (z + z) > z && z + z = 3
+set: R2 = z + (z + z) > z && z + z = 3
+
+step: The first statement, `z := x + 2`
+rule: ASSIGN, WP
+focus: i1
+calc:
+  wp(z := x + 2, R2)
+  = (x + 2) + ((x + 2) + (x + 2)) > x + 2 && (x + 2) + (x + 2) = 3
+  = 3 * x + 6 > x + 2 && 2 * x + 4 = 3
+  = x > -2 && 2 * x = -1
+set: R3 = x > -2 && 2 * x = -1
+
+step: Simplify over the integers
+rule: LOGIC
+text:
+  The conjunct $2 * x = -1$ asks for an even number equal to $-1$. Over
+  the rationals the only solution is $x = -1/2$, which is the answer of the
+  original solution sheet. The program variables are integers, so no
+  value of $x$ satisfies it.
+calc:
+  x > -2 && 2 * x = -1
+  = false
+set: R3 = false
+note:
+  A weakest precondition equal to $false$ means that there is no start
+  state from which the program reaches the postcondition. The only valid
+  triple with this program and this postcondition has the precondition
+  $false$, which makes the triple trivially valid and says nothing useful.
+result: The weakest precondition is $false$ over the integers ($x = -1/2$ over the rationals).
+
+summary:
+  At the end $y = z + z$ is even, so it can never be $3$. The weakest
+  precondition calculus finds this without running the program: the
+  conjunct $y = 3$ turns into $2 * x + 4 = 3$, which has no integer
+  solution.
+
+  The tests of this exercise are not conclusive on the specification: no
+  state satisfies the precondition $false$, so there is nothing to run.

@@ -1,0 +1,88 @@
+# Source: Slides "ICT3112 - 7 - Recepy for Loop Invariants - exercises", Exercise 4, and "tips a".
+id: array-sum
+title: Sum of an array
+topic: Arrays
+level: 3
+source: Slides 7, Recipe exercises, Exercise 4
+tags: arrays, loop, invariant, sum, definedness
+
+task:
+  Generalise the postcondition: $s$ is the sum of the first $i$ elements.
+  What are the bounds? What is the variant? The loop reads $a[i]$, so the
+  rule ARRAY-READ adds a definedness condition.
+
+pre: n = sizeof(a)
+post: s = sum(k, 0, n - 1, a[k])
+
+program:
+  {P}
+  {R4}
+  i := 0;              // i1
+  {R3}
+  s := 0;              // i2
+  {I}
+  while (i < n) do {
+    {I && i < n}
+    {R2}
+    s := s + a[i];     // b1
+    {R1}
+    i := i + 1         // b2
+    {I}
+  }
+  {I && !(i < n)}
+  {Q}
+
+verdict: valid
+
+step: The invariant from a picture of the array
+rule: WHILE-CONSEQUENCE
+focus: while
+text:
+  The positions $0$ to $i - 1$ have been visited, and $s$ is their sum.
+  The positions from $i$ to $n - 1$ have not been visited, and the loop
+  only reads the array, so there is nothing to say about them. When
+  $i = 0$ the sum is empty and its value is $0$. We also keep
+  $n = sizeof(a)$, which the definedness condition will need.
+set: I = s = sum(k, 0, i - 1, a[k]) && 0 <= i <= n && n = sizeof(a)
+
+step: Establishment
+rule: ASSIGN, SEQ, WP
+focus: i1, i2
+calc:
+  wp(s := 0, I)
+  = 0 = sum(k, 0, i - 1, a[k]) && 0 <= i <= n && n = sizeof(a)
+set: R3 = 0 = sum(k, 0, i - 1, a[k]) && 0 <= i <= n && n = sizeof(a)
+calc:
+  wp(i := 0, R3)
+  = 0 = sum(k, 0, 0 - 1, a[k]) && 0 <= 0 <= n && n = sizeof(a)
+  = 0 <= n && n = sizeof(a)             // an empty sum is 0
+set: R4 = 0 <= n && n = sizeof(a)
+vc: n = sizeof(a) ==> 0 <= n && n = sizeof(a)
+why:
+  The size of an array is never negative.
+
+step: Preservation
+rule: ARRAY-READ, ASSIGN, SEQ, CONSEQUENCE
+focus: b1, b2
+calc:
+  wp(i := i + 1, I)
+  = s = sum(k, 0, i + 1 - 1, a[k]) && 0 <= i + 1 <= n && n = sizeof(a)
+set: R1 = s = sum(k, 0, i, a[k]) && 0 <= i + 1 <= n && n = sizeof(a)
+text:
+  The next statement reads $a[i]$, so ARRAY-READ adds $def(a[i])$.
+calc:
+  wp(s := s + a[i], R1)
+  = s + a[i] = sum(k, 0, i, a[k]) && 0 <= i + 1 <= n && n = sizeof(a) && def(a[i])
+set: R2 = s + a[i] = sum(k, 0, i, a[k]) && 0 <= i + 1 <= n && n = sizeof(a) && def(a[i])
+vc: I && i < n ==> R2
+why:
+  $sum(k, 0, i, a[k]) = sum(k, 0, i - 1, a[k]) + a[i] = s + a[i]$. The
+  bounds follow from $0 <= i < n$. The read is defined, since
+  $0 <= i < n = sizeof(a)$.
+
+step: The postcondition at the exit
+rule: CONSEQUENCE, LOGIC
+vc: I && !(i < n) ==> s = sum(k, 0, n - 1, a[k])
+why:
+  $i >= n$ and $i <= n$ give $i = n$.
+result: The triple is valid. A variant for termination is $n - i$.

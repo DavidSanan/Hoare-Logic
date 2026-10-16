@@ -1,0 +1,81 @@
+# Source: Exercise list "ICT3101 Exercises - Deductive Verification", problem 5 b), with its solution sheet.
+id: multiply-by-adding
+title: Multiplication by repeated addition
+topic: Loops
+level: 2
+source: Exercise list "HoareLogic Exercises", problem 5 b
+tags: while, invariant, bounds
+
+task:
+  Give a proof outline and a loop invariant.
+
+pre: x = x' && y = y' && y >= 0
+post: z = x * y
+
+program:
+  {P}
+  {R4}
+  z := 0;            // i1
+  {R3}
+  a := 1;            // i2
+  {I}
+  while (a <= y) do {
+    {I && a <= y}
+    {R2}
+    z := z + x;      // b1
+    {R1}
+    a := a + 1       // b2
+    {I}
+  }
+  {I && !(a <= y)}
+  {Q}
+
+verdict: valid
+
+step: Find a candidate invariant
+rule: WHILE-CONSEQUENCE
+focus: while
+text:
+  The counter $a$ starts at $1$, so after $a - 1$ iterations $z$ holds
+  $a - 1$ copies of $x$. The loop stops when $a = y + 1$. The solution
+  sheet also keeps $x = x'$, which is true but not needed, since $x$ is
+  never assigned.
+set: I = z = x * (a - 1) && 1 <= a <= y + 1
+
+step: Establishment
+rule: ASSIGN, SEQ, WP
+focus: i1, i2
+calc:
+  wp(a := 1, I)
+  = z = x * (1 - 1) && 1 <= 1 <= y + 1
+set: R3 = z = x * (1 - 1) && 1 <= 1 <= y + 1
+calc:
+  wp(z := 0, R3)
+  = 0 = x * (1 - 1) && 1 <= 1 <= y + 1
+  = 0 <= y
+set: R4 = 0 <= y
+vc: x = x' && y = y' && y >= 0 ==> 0 <= y
+
+step: Preservation
+rule: ASSIGN, SEQ, CONSEQUENCE
+focus: b1, b2
+calc:
+  wp(a := a + 1, I)
+  = z = x * (a + 1 - 1) && 1 <= a + 1 <= y + 1
+  = z = x * a && 0 <= a <= y
+set: R1 = z = x * a && 0 <= a <= y
+calc:
+  wp(z := z + x, R1)
+  = z + x = x * a && 0 <= a <= y
+set: R2 = z + x = x * a && 0 <= a <= y
+vc: z = x * (a - 1) && 1 <= a <= y + 1 && a <= y ==> z + x = x * a && 0 <= a <= y
+why:
+  $z + x = x * (a - 1) + x = x * a$. The bounds $1 <= a$ and $a <= y$ give
+  $0 <= a <= y$.
+
+step: The postcondition at the exit
+rule: CONSEQUENCE, LOGIC
+vc: z = x * (a - 1) && 1 <= a <= y + 1 && !(a <= y) ==> z = x * y
+why:
+  $a > y$ and $a <= y + 1$ give $a = y + 1$, so $z = x * (y + 1 - 1) = x * y$.
+result: The triple is valid. A variant for termination is $y + 1 - a$.

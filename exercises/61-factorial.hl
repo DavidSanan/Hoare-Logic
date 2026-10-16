@@ -1,0 +1,92 @@
+# Source: Slides "ICT3112 - 7 - Recepy for Loop Invariants - exercises", Exercise 2; exercise sheet "Hoare Logic 2", 3 a).
+id: factorial
+title: Factorial, with the recipe
+topic: Loop invariants
+level: 2
+source: Slides 7, Recipe exercises, Exercise 2; exercise sheet "Hoare Logic 2", 3 a
+tags: recipe, invariant, factorial
+
+task:
+  Use the recipe to find the invariant $I$. Check establishment and
+  preservation, show that $Q$ holds at the exit, and give a variant.
+
+  Hint: look at the order of the two statements in the body. The variable
+  $i$ is increased before it is used.
+
+pre: n >= 0
+post: f = fact(n)
+
+program:
+  {P}
+  {R4}
+  i := 0;            // i1
+  {R3}
+  f := 1;            // i2
+  {I}
+  while (i < n) do {
+    {I && i < n}
+    {R2}
+    i := i + 1;      // b1
+    {R1}
+    f := f * i       // b2
+    {I}
+  }
+  {I && !(i < n)}
+  {Q}
+
+verdict: valid
+
+step: Trace and generalise
+rule: WHILE-CONSEQUENCE
+focus: while
+text:
+  | At the loop head | $i$ | $f$ |
+  |---|---|---|
+  | before iteration 1 | $0$ | $1$ |
+  | before iteration 2 | $1$ | $1$ |
+  | before iteration 3 | $2$ | $2$ |
+  | before iteration 4 | $3$ | $6$ |
+
+  The values are $f = i!$. Replacing $n$ by $i$ in $f = n!$ gives the same
+  formula. With the bounds of $i$:
+set: I = f = fact(i) && 0 <= i <= n
+note:
+  If you wrote $f = (i + 1)!$ or $f = (i - 1)!$, check the trace: at the
+  first loop head $i = 0$ and $f = 1 = 0!$.
+
+step: Establishment
+rule: ASSIGN, SEQ, WP
+focus: i1, i2
+calc:
+  wp(f := 1, I)
+  = 1 = fact(i) && 0 <= i <= n
+set: R3 = 1 = fact(i) && 0 <= i <= n
+calc:
+  wp(i := 0, R3)
+  = 1 = fact(0) && 0 <= 0 <= n
+  = 0 <= n                         // 0! = 1
+set: R4 = 0 <= n
+vc: n >= 0 ==> 0 <= n
+
+step: Preservation
+rule: ASSIGN, SEQ, CONSEQUENCE
+focus: b1, b2
+calc:
+  wp(f := f * i, I)
+  = f * i = fact(i) && 0 <= i <= n
+set: R1 = f * i = fact(i) && 0 <= i <= n
+calc:
+  wp(i := i + 1, R1)
+  = f * (i + 1) = fact(i + 1) && 0 <= i + 1 <= n
+set: R2 = f * (i + 1) = fact(i + 1) && 0 <= i + 1 <= n
+vc: f = fact(i) && 0 <= i <= n && i < n ==> f * (i + 1) = fact(i + 1) && 0 <= i + 1 <= n
+why:
+  $(i + 1)! = i! * (i + 1)$, and $f = i!$, so $f * (i + 1) = (i + 1)!$. The
+  bounds follow from $0 <= i$ and $i < n$.
+
+step: The postcondition at the exit
+rule: CONSEQUENCE, LOGIC
+vc: f = fact(i) && 0 <= i <= n && !(i < n) ==> f = fact(n)
+why:
+  $i >= n$ and $i <= n$ give $i = n$, so $f = n!$.
+result: The triple is valid. A variant for termination is $n - i$.

@@ -1,0 +1,66 @@
+# Source: Lecture Quiz 1 (solutions) and exercise sheet "Hoare Logic 2", 1 c).
+id: swap-arithmetic
+title: Swapping with additions and subtractions
+topic: Sequential composition
+level: 2
+source: Lecture Quiz 1; exercise sheet "Hoare Logic 2" 1 c
+tags: assignment, sequence, logical variables, signs
+
+task:
+  Show that the following program swaps $x$ and $y$ without a temporary
+  variable.
+
+pre: x = x' && y = y'
+post: x = y' && y = x'
+
+program:
+  {P}
+  {R3}
+  x := x + y;      // i1
+  {R2}
+  y := x - y;      // i2
+  {R1}
+  x := x - y       // i3
+  {Q}
+
+verdict: valid
+
+step: The last statement, `x := x - y`
+rule: ASSIGN, WP
+focus: i3
+calc:
+  wp(x := x - y, Q)
+  = (x = y' && y = x')[x <- x - y]
+  = x - y = y' && y = x'
+set: R1 = x - y = y' && y = x'
+note:
+  Only $x$ is replaced. $x'$ is another variable, so $y = x'$ does not
+  change.
+
+step: The second statement, `y := x - y`
+rule: ASSIGN, WP
+focus: i2
+calc:
+  wp(y := x - y, R1)
+  = (x - y = y' && y = x')[y <- x - y]
+  = x - (x - y) = y' && x - y = x'
+  = y = y' && x - y = x'          // x - (x - y) = x - x + y = y
+set: R2 = y = y' && x - y = x'
+
+step: The first statement, `x := x + y`
+rule: ASSIGN, WP
+focus: i1
+calc:
+  wp(x := x + y, R2)
+  = (y = y' && x - y = x')[x <- x + y]
+  = y = y' && (x + y) - y = x'
+  = y = y' && x = x'
+set: R3 = y = y' && x = x'
+
+step: Compare with the precondition
+rule: CONSEQUENCE, LOGIC
+vc: x = x' && y = y' ==> y = y' && x = x'
+why:
+  The two sides are the same conjunction with the conjuncts in a
+  different order.
+result: The triple is valid.

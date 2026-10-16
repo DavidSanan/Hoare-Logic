@@ -1,0 +1,92 @@
+# Source: Exercise list "ICT3101 Exercises - Deductive Verification", problem 5 d), and Lecture Quiz 2.
+id: minus-two
+title: A loop that subtracts two
+topic: Loops
+level: 2
+source: Exercise list "HoareLogic Exercises", problem 5 d; Lecture Quiz 2
+tags: while, invariant, failed candidate, variant
+
+task:
+  Give a proof outline and a loop invariant. Give a variant for the loop.
+
+pre: x = n && n > 0
+post: x <= 0
+
+program:
+  {P}
+  {I}
+  while (x > 0) do {
+    {I && x > 0}
+    {R1}
+    x := x - 2
+    {I}
+  }
+  {I && !(x > 0)}
+  {Q}
+
+verdict: valid
+
+step: A first candidate that fails
+rule: ASSIGN, LOGIC
+text:
+  The values of $x$ stay positive inside the loop, so a first idea is
+  $x >= 0$. We check preservation.
+calc:
+  wp(x := x - 2, x >= 0)
+  = x - 2 >= 0
+  = x >= 2
+vc: x >= 0 && x > 0 ==> x >= 2
+status: fails
+counterexample: x = 1
+why:
+  From $x = 1$ the body gives $x = -1$, which is outside the candidate.
+  An odd initial value makes the loop stop at $-1$, so the candidate is too
+  strong.
+
+step: The corrected invariant
+rule: WHILE-CONSEQUENCE
+focus: while
+text:
+  If $x$ starts even, the loop stops at $0$. If $x$ starts odd, the last
+  iteration goes from $1$ to $-1$. So every value of $x$ at a loop head is
+  at least $-1$.
+set: I = x >= -1
+
+step: Establishment
+rule: CONSEQUENCE, LOGIC
+vc: x = n && n > 0 ==> x >= -1
+
+step: Preservation
+rule: ASSIGN, CONSEQUENCE
+focus: x := x - 2
+calc:
+  wp(x := x - 2, I)
+  = x - 2 >= -1
+  = x >= 1
+set: R1 = x >= 1
+vc: x >= -1 && x > 0 ==> x >= 1
+why:
+  For integers, $x > 0$ is $x >= 1$.
+
+step: The postcondition at the exit
+rule: CONSEQUENCE, LOGIC
+vc: x >= -1 && !(x > 0) ==> x <= 0
+why:
+  $!(x > 0)$ is $x <= 0$ itself.
+
+step: Termination
+rule: WHILE-TOTAL
+text:
+  The variable $x$ decreases by two, and it is positive whenever the body
+  runs. So $x$ is a variant.
+vc: x >= -1 && x > 0 ==> x >= 0
+vc: {x >= -1 && x > 0 && x = E0} x := x - 2 {x < E0}
+result: The triple is valid, and the loop terminates.
+
+summary:
+  The proof shows a weaker property than what the loop really does. The
+  precise behaviour is: the loop ends with $x = 0$ when $n$ is even and
+  with $x = -1$ when $n$ is odd. To prove it, the invariant also has to
+  record that $x$ keeps the parity of $n$, for example with
+  $x >= -1 && even(x - n)$, and the postcondition becomes
+  $(even(n) ==> x = 0) && (odd(n) ==> x = -1)$.

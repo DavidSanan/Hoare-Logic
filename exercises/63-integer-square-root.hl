@@ -1,0 +1,90 @@
+# Source: Exercise sheet "Hoare Logic 2" (solved), 3 c).
+id: integer-square-root
+title: Integer square root: refining a candidate
+topic: Loop invariants
+level: 3
+source: Exercise sheet "Hoare Logic 2", 3 c
+tags: invariant, failed candidate, refine, disjunction
+
+task:
+  The loop finds the smallest $i$ whose square is larger than $n$. The
+  solution sheet proposes the invariant
+  $s = i * i && i >= 0 && (i - 1) * (i - 1) <= n$. Check it, and repair it
+  if a check fails.
+
+pre: n >= 0 && s = 0 && i = 0
+post: i >= 0 && (i - 1) * (i - 1) <= n < i * i
+
+program:
+  {P}
+  {I}
+  while (s <= n) do {
+    {I && s <= n}
+    {R2}
+    i := i + 1;      // b1
+    {R1}
+    s := i * i       // b2
+    {I}
+  }
+  {I && !(s <= n)}
+  {Q}
+
+verdict: valid
+
+step: Check establishment of the proposed candidate
+rule: LOGIC
+vc: n >= 0 && s = 0 && i = 0 ==> s = i * i && i >= 0 && (i - 1) * (i - 1) <= n
+status: fails
+counterexample: n = 0, s = 0, i = 0
+why:
+  At the start $i = 0$, so $(i - 1) * (i - 1) = 1$. With $n = 0$ the
+  conjunct $1 <= 0$ is false. The candidate rejects a real start state, so
+  it is too strong.
+
+step: Repair the candidate
+rule: WHILE-CONSEQUENCE
+focus: while
+text:
+  The conjunct $(i - 1)^2 <= n$ says that the previous value of $i$ was
+  small enough. Before the first iteration there is no previous value, so
+  we only require it when $i != 0$. We also keep $n >= 0$, which the exit
+  check will need.
+set: I = s = i * i && 0 <= i && 0 <= n && (i = 0 || (i - 1) * (i - 1) <= n)
+vc: n >= 0 && s = 0 && i = 0 ==> I
+why:
+  $s = 0 = 0 * 0$, $0 <= 0$, $0 <= n$, and the disjunction holds by its
+  first part $i = 0$.
+
+step: Preservation
+rule: ASSIGN, SEQ, CONSEQUENCE
+focus: b1, b2
+calc:
+  wp(s := i * i, I)
+  = i * i = i * i && 0 <= i && 0 <= n && (i = 0 || (i - 1) * (i - 1) <= n)
+  = 0 <= i && 0 <= n && (i = 0 || (i - 1) * (i - 1) <= n)
+set: R1 = 0 <= i && 0 <= n && (i = 0 || (i - 1) * (i - 1) <= n)
+calc:
+  wp(i := i + 1, R1)
+  = 0 <= i + 1 && 0 <= n && (i + 1 = 0 || (i + 1 - 1) * (i + 1 - 1) <= n)
+  = 0 <= i + 1 && 0 <= n && (i = -1 || i * i <= n)
+set: R2 = 0 <= i + 1 && 0 <= n && (i = -1 || i * i <= n)
+vc: I && s <= n ==> R2
+why:
+  From $0 <= i$ we get $0 <= i + 1$. The second disjunct holds:
+  $i * i = s$ by the invariant, and $s <= n$ by the condition of the loop.
+
+step: The postcondition at the exit
+rule: CONSEQUENCE, LOGIC
+vc: I && !(s <= n) ==> i >= 0 && (i - 1) * (i - 1) <= n < i * i
+why:
+  $!(s <= n)$ gives $n < s = i * i$. For $(i - 1)^2 <= n$, we look at the
+  disjunction of the invariant. If $i = 0$ then $s = 0$, and $n < 0$
+  contradicts $0 <= n$; so this case cannot happen at the exit, and the
+  other disjunct $(i - 1)^2 <= n$ holds.
+result: The triple is valid.
+
+summary:
+  The failed establishment check gave a concrete state, $n = 0$, $i = 0$,
+  $s = 0$, that the candidate wrongly rejected. The repair weakens the
+  candidate exactly on that state, with the disjunct $i = 0$. A variant for
+  termination is $n - i$: inside the loop $i <= i * i = s <= n$.

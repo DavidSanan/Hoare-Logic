@@ -1,0 +1,70 @@
+# Source: Exercise list "ICT3101 Exercises - Deductive Verification", problem 4 a), with its solution sheet.
+id: prove-sequence-a
+title: Prove a triple with logical variables (a)
+topic: Sequential composition
+level: 2
+source: Exercise list "HoareLogic Exercises", problem 4 a
+tags: assignment, sequence, logical variables, primes
+
+task:
+  Prove the following Hoare triple. The variables $x'$ and $y'$ are
+  logical variables that record the initial values of $x$ and $y$. The
+  variables $n$ and $m$ are not assigned by the program.
+
+pre: x = x' && y = y'
+post: x = y' - m && y = x' + n + y'
+
+program:
+  {P}
+  {R3}
+  k := x + n;      // i1
+  {R2}
+  x := y - m;      // i2
+  {R1}
+  y := k + y       // i3
+  {Q}
+
+verdict: valid
+
+step: The last statement, `y := k + y`
+rule: ASSIGN, WP
+focus: i3
+text:
+  We always start from the postcondition. Only $y$ is replaced; $y'$ is a
+  different variable and stays as it is.
+calc:
+  wp(y := k + y, Q)
+  = (x = y' - m && y = x' + n + y')[y <- k + y]
+  = x = y' - m && k + y = x' + n + y'
+set: R1 = x = y' - m && k + y = x' + n + y'
+
+step: The second statement, `x := y - m`
+rule: ASSIGN, WP
+focus: i2
+calc:
+  wp(x := y - m, R1)
+  = (x = y' - m && k + y = x' + n + y')[x <- y - m]
+  = y - m = y' - m && k + y = x' + n + y'
+set: R2 = y - m = y' - m && k + y = x' + n + y'
+note:
+  A common mistake here is to also change $x'$ into $y' - m$, or to
+  rewrite $y'$. The substitution only touches the variable $x$.
+
+step: The first statement, `k := x + n`
+rule: ASSIGN, WP
+focus: i1
+calc:
+  wp(k := x + n, R2)
+  = (y - m = y' - m && k + y = x' + n + y')[k <- x + n]
+  = y - m = y' - m && (x + n) + y = x' + n + y'
+  = y = y' && x + y = x' + y'       // cancel m on the left and n on the right
+set: R3 = y = y' && x + y = x' + y'
+
+step: Compare with the precondition
+rule: CONSEQUENCE, LOGIC
+vc: x = x' && y = y' ==> y = y' && x + y = x' + y'
+why:
+  Assume $x = x'$ and $y = y'$. The first conjunct $y = y'$ is one of the
+  assumptions. For the second, replace $x$ by $x'$ and $y$ by $y'$:
+  $x' + y' = x' + y'$, which is true.
+result: The triple is valid.

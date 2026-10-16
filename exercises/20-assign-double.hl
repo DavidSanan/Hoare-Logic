@@ -1,0 +1,47 @@
+# Source: HoareLogic.pdf, section "Exercises", "Single assignments", item 1.
+id: assign-double
+title: Doubling a variable
+topic: Assignment
+level: 1
+source: HoareLogic.pdf, Exercises, "Single assignments" 1
+tags: assignment, wp, consequence
+
+task:
+  Compute the weakest precondition with the assignment rule. Then check
+  whether the given precondition implies it, and decide whether the
+  triple is valid.
+
+pre: x > 5
+post: x > 10
+
+program:
+  {P}
+  {R1}
+  x := x * 2
+  {Q}
+
+verdict: valid
+
+step: Apply the assignment rule
+rule: ASSIGN, WP
+focus: x := x * 2
+text:
+  The assignment rule replaces every occurrence of the assigned variable
+  $x$ in the postcondition by the expression $x * 2$.
+calc:
+  wp(x := x * 2, Q)
+  = (x > 10)[x <- x * 2]
+  = x * 2 > 10
+  = x > 5                 // divide both sides by 2
+set: R1 = x > 5
+text:
+  The last line is an equivalence for integers: $2 * x > 10$ holds exactly
+  when $x > 5$.
+
+step: Compare with the precondition
+rule: CONSEQUENCE, LOGIC
+vc: x > 5 ==> x > 5
+why:
+  The weakest precondition is the precondition itself, and every formula
+  implies itself.
+result: The triple is valid.

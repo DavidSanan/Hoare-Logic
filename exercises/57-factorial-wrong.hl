@@ -1,0 +1,103 @@
+# Source: Lecture Quiz 2 (solutions), third question.
+id: factorial-wrong
+title: A factorial loop with a bug
+topic: Loops
+level: 3
+source: Lecture Quiz 2, factorial
+tags: while, invariant, counterexample, product
+
+task:
+  The quiz asks to show that the triple below is correct, using the
+  invariant $1 <= i <= n && f = prod(k, 1, i, k)$, where
+  $prod(k, 1, i, k) = 1 * 2 * ... * i$. The quiz calls the variable $f$
+  "fact"; we rename it to avoid a clash with the factorial function.
+
+  Check the invariant, and decide whether the triple is valid.
+
+pre: i = 1 && f = 1 && n >= 1
+post: f = prod(k, 1, n, k)
+
+program:
+  {P}
+  {I}
+  while (i < n) do {
+    {I && i < n}
+    {R2}
+    f := f * i;      // b1
+    {R1}
+    i := i + 1       // b2
+    {I}
+  }
+  {I && !(i < n)}
+  {Q}
+
+verdict: invalid
+
+step: Check the invariant of the quiz
+rule: ASSIGN, SEQ, CONSEQUENCE
+focus: b1, b2
+calc:
+  wp(i := i + 1, 1 <= i <= n && f = prod(k, 1, i, k))
+  = 1 <= i + 1 <= n && f = prod(k, 1, i + 1, k)
+calc:
+  wp(f := f * i, 1 <= i + 1 <= n && f = prod(k, 1, i + 1, k))
+  = 1 <= i + 1 <= n && f * i = prod(k, 1, i + 1, k)
+vc: 1 <= i <= n && f = prod(k, 1, i, k) && i < n ==> 1 <= i + 1 <= n && f * i = prod(k, 1, i + 1, k)
+status: fails
+counterexample: i = 1, f = 1, n = 2
+why:
+  With $f = 1 * ... * i$, the body computes $f * i = 1 * ... * i * i$,
+  while the invariant after the iteration needs $1 * ... * i * (i + 1)$.
+  In the state $i = 1$, $f = 1$, $n = 2$: $f * i = 1$ but
+  $prod(k, 1, 2, k) = 2$. The candidate is not preserved.
+
+step: Find the real invariant
+rule: WHILE-CONSEQUENCE
+focus: while
+text:
+  We trace the loop from $i = 1$, $f = 1$:
+
+  | Loop head | $i$ | $f$ |
+  |---|---|---|
+  | before iteration 1 | $1$ | $1$ |
+  | before iteration 2 | $2$ | $1$ |
+  | before iteration 3 | $3$ | $2$ |
+  | before iteration 4 | $4$ | $6$ |
+
+  The body multiplies by the old value of $i$ before increasing it, so $f$
+  is the product of the numbers below $i$: $f = 1 * 2 * ... * (i - 1)$.
+set: I = 1 <= i <= n && f = prod(k, 1, i - 1, k)
+vc: i = 1 && f = 1 && n >= 1 ==> I
+why:
+  With $i = 1$ the product $prod(k, 1, 0, k)$ has no term, so it is $1$.
+calc:
+  wp(i := i + 1, I)
+  = 1 <= i + 1 <= n && f = prod(k, 1, i + 1 - 1, k)
+set: R1 = 1 <= i + 1 <= n && f = prod(k, 1, i + 1 - 1, k)
+calc:
+  wp(f := f * i, R1)
+  = 1 <= i + 1 <= n && f * i = prod(k, 1, i, k)
+set: R2 = 1 <= i + 1 <= n && f * i = prod(k, 1, i, k)
+vc: I && i < n ==> R2
+why:
+  $f * i = (1 * ... * (i - 1)) * i = prod(k, 1, i, k)$.
+
+step: The postcondition at the exit
+rule: CONSEQUENCE, LOGIC
+vc: I && !(i < n) ==> f = prod(k, 1, n, k)
+status: fails
+counterexample: i = 2, f = 1, n = 2
+why:
+  At the exit $i = n$, so the invariant gives $f = 1 * ... * (n - 1)$,
+  which is $(n - 1)!$ and not $n!$.
+vc: {i = 1 && f = 1 && n >= 1} while (i < n) do { f := f * i; i := i + 1 } {f = prod(k, 1, n, k)}
+status: fails
+counterexample: i = 1, f = 1, n = 2
+result: The triple is not valid: the program computes $(n - 1)!$. For $n = 2$ it ends with $f = 1$ instead of $2$.
+
+summary:
+  The failed preservation check in the quiz was not a mistake in the proof
+  but a symptom of a bug in the program. Swapping the two statements of
+  the body, `i := i + 1; f := f * i`, gives a correct program, with
+  invariant $f = prod(k, 1, i, k)$, as in the factorial exercise of the
+  recipe.

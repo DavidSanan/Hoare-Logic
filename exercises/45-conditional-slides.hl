@@ -1,0 +1,76 @@
+# Source: Slides "ICT3112 - 5 - Conditional Rule", worked example.
+id: conditional-slides
+title: The conditional rule with a precondition
+topic: Conditional
+level: 2
+source: Slides 5, Conditional Rule
+tags: conditional, wp, consequence
+
+task:
+  Prove the following triple, first with the rule IF and then with the
+  weakest precondition of the conditional.
+
+pre: x + y = 0
+post: x = y + 1
+
+program:
+  {P}
+  {R3}
+  if (x = y) then {
+    {R1}
+    x := y + 1        // then
+  } else {
+    {R2}
+    x := 1 - x        // else
+  }
+  {Q}
+
+verdict: valid
+
+step: The two premises of the rule IF
+rule: IF
+instance: IF
+  {x + y = 0 && x = y} x := y + 1 {x = y + 1}
+  {x + y = 0 && !(x = y)} x := 1 - x {x = y + 1}
+  ---
+  {x + y = 0} if x = y then x := y + 1 else x := 1 - x {x = y + 1}
+text:
+  $P$ is $x + y = 0$ and $B$ is $x = y$. We now prove each premise.
+
+step: The then branch
+rule: ASSIGN, WP
+focus: then
+calc:
+  wp(x := y + 1, Q)
+  = (x = y + 1)[x <- y + 1]
+  = y + 1 = y + 1
+  = true
+set: R1 = true
+text:
+  Whatever the state, assigning $y + 1$ to $x$ makes $x = y + 1$ true.
+
+step: The else branch
+rule: ASSIGN, WP
+focus: else
+calc:
+  wp(x := 1 - x, Q)
+  = (x = y + 1)[x <- 1 - x]
+  = 1 - x = y + 1
+  = x = -y                    // subtract 1 and change the signs
+set: R2 = x = -y
+vc: x + y = 0 && !(x = y) ==> x = -y
+why:
+  $x + y = 0$ is the same as $x = -y$, so the implication holds.
+
+step: The weakest precondition of the conditional
+rule: WP, CONSEQUENCE
+calc:
+  wp(if (x = y) then x := y + 1 else x := 1 - x, Q)
+  = (x = y ==> true) && (!(x = y) ==> 1 - x = y + 1)
+set: R3 = (x = y ==> true) && (x != y ==> 1 - x = y + 1)
+vc: x + y = 0 ==> (x = y ==> true) && (x != y ==> 1 - x = y + 1)
+why:
+  The first implication is true since its right side is $true$. For the
+  second, assume $x + y = 0$ and $x != y$. From $x = -y$ we get
+  $1 - x = 1 + y$, which is $y + 1$.
+result: The triple is valid.

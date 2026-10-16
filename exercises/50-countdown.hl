@@ -1,0 +1,89 @@
+# Source: HoareLogic.pdf, section "Exercises", "A loop that counts down"; slides "ICT3112 - 6 - Loops".
+id: countdown
+title: A loop that counts down
+topic: Loops
+level: 1
+source: HoareLogic.pdf, Exercises, "A loop that counts down"; Slides 6, Loops
+tags: while, invariant, variant, termination
+
+task:
+  Find a loop invariant, and use the loop rule with consequence to prove
+  that the triple is valid. Then give a variant for the loop, and show that
+  the loop terminates.
+
+pre: x = N && N >= 0
+post: x = 0
+
+program:
+  {P}
+  {I}
+  while x > 0 do {
+    {I && x > 0}
+    {R1}
+    x := x - 1
+    {I}
+  }
+  {I && !(x > 0)}
+  {Q}
+
+verdict: valid
+
+step: Find a candidate invariant
+rule: WHILE-CONSEQUENCE
+focus: while
+text:
+  The invariant must hold every time the condition $x > 0$ is evaluated.
+  From $x = N$ the loop takes the values $N$, $N - 1$, ..., $1$, $0$, and it
+  stops at $0$. Every one of these values is at least $0$, including the
+  last one, which is reached after the final iteration.
+set: I = x >= 0
+text:
+  The rule WHILE-CONSEQUENCE needs three checks: establishment,
+  preservation, and the postcondition at the exit.
+instance: WHILE-CONSEQUENCE
+  P ==> I
+  {I && x > 0} x := x - 1 {I}
+  I && !(x > 0) ==> Q
+  ---
+  {P} while x > 0 do x := x - 1 {Q}
+
+step: Establishment
+rule: CONSEQUENCE, LOGIC
+vc: x = N && N >= 0 ==> x >= 0
+why:
+  Replace $x$ by $N$: we need $N >= 0$, which is part of the precondition.
+
+step: Preservation
+rule: ASSIGN, CONSEQUENCE
+focus: x := x - 1
+calc:
+  wp(x := x - 1, I)
+  = (x >= 0)[x <- x - 1]
+  = x - 1 >= 0
+  = x >= 1
+set: R1 = x >= 1
+vc: x >= 0 && x > 0 ==> x >= 1
+why:
+  For integers, $x > 0$ is the same as $x >= 1$.
+
+step: The postcondition at the exit
+rule: CONSEQUENCE, LOGIC
+vc: x >= 0 && !(x > 0) ==> x = 0
+why:
+  $!(x > 0)$ is $x <= 0$. Together with $x >= 0$ it gives $x = 0$.
+
+step: Termination
+rule: WHILE-TOTAL
+text:
+  The loop decreases $x$ by one in every iteration, so we take the variant
+  $E = x$. $E0$ is a logical variable for the value of $E$ at the start of
+  an iteration.
+vc: x >= 0 && x > 0 ==> x >= 0
+why:
+  The variant is not negative when an iteration starts.
+vc: {x >= 0 && x > 0 && x = E0} x := x - 1 {x >= 0 && x < E0}
+why:
+  The weakest precondition of the postcondition is $x - 1 >= 0 && x - 1 < E0$.
+  From $x > 0$ we get $x - 1 >= 0$, and from $x = E0$ we get
+  $x - 1 = E0 - 1 < E0$.
+result: The triple is valid, and the loop terminates.

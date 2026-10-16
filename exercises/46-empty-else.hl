@@ -1,0 +1,80 @@
+# Source: Exercise sheet "Hoare Logic 2" (solved), 2 d), and HoareLogic.pdf, "Empty else-branch".
+id: empty-else
+title: A conditional with a skip branch
+topic: Conditional
+level: 2
+source: Exercise sheet "Hoare Logic 2", 2 d; HoareLogic.pdf, "Empty else-branch"
+tags: conditional, skip, sequence
+
+task:
+  Prove that the program sets $z$ to $0$ when $x = 0$, and to $1$
+  otherwise.
+
+pre: true
+post: (x = 0 && z = 0) || (x != 0 && z = 1)
+
+program:
+  {P}
+  {R2}
+  z := 1;             // i1
+  {R1}
+  if (x = 0) then {
+    z := 0            // then
+  } else {
+    skip              // else
+  }
+  {Q}
+
+verdict: valid
+
+step: The then branch, `z := 0`
+rule: ASSIGN, WP
+focus: then
+calc:
+  wp(z := 0, Q)
+  = (x = 0 && 0 = 0) || (x != 0 && 0 = 1)
+  = x = 0 || false
+  = x = 0
+
+step: The else branch, `skip`
+rule: SKIP, WP
+focus: else
+calc:
+  wp(skip, Q)
+  = Q
+text:
+  The branch does nothing, so whatever must hold after the conditional
+  must already hold before it.
+
+step: Combine the branches
+rule: IF, WP
+focus: if
+calc:
+  wp(if (x = 0) then z := 0 else skip, Q)
+  = (x = 0 ==> x = 0) && (!(x = 0) ==> (x = 0 && z = 0) || (x != 0 && z = 1))
+  = true && (x != 0 ==> z = 1)       // when x != 0, only the second disjunct can hold
+  = x != 0 ==> z = 1
+set: R1 = x != 0 ==> z = 1
+text:
+  This is the condition of the empty branch that the reference document
+  writes as $P && !B ==> Q$: when the condition is false, the
+  postcondition must already be true.
+
+step: The first statement, `z := 1`
+rule: ASSIGN, WP
+focus: i1
+calc:
+  wp(z := 1, R1)
+  = (x != 0 ==> z = 1)[z <- 1]
+  = x != 0 ==> 1 = 1
+  = true
+set: R2 = true
+vc: true ==> true
+why:
+  The precondition is $true$ and the weakest precondition is $true$.
+result: The triple is valid.
+
+summary:
+  The assignment `z := 1` before the conditional is what the empty else
+  branch relies on: when $x != 0$ nothing changes $z$ any more, so it must
+  already be $1$.
