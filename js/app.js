@@ -81,6 +81,12 @@
     for (let i = 0; i < t.length; i++) {
       const c = t[i];
       if (c === '\\' && t[i + 1] === '|') { cur += '\\|'; i++; continue; }
+      // A literal code span ``...`` is copied whole, so that the pipes in
+      // it, as in ``||``, do not split the row.
+      if (!inMath && !inCode && t.startsWith('``', i)) {
+        const j = t.indexOf('``', i + 2);
+        if (j > i) { cur += t.slice(i, j + 2); i = j + 1; continue; }
+      }
       if (c === '$' && !inCode) inMath = !inMath;
       if (c === '`' && !inMath) inCode = !inCode;
       if (c === '|' && !inMath && !inCode) { cells.push(cur.trim()); cur = ''; continue; }
