@@ -1,0 +1,100 @@
+# Source: HoareLogic.pdf, section "Exercises", "A larger program".
+id: two-conditionals
+title: A larger program with two conditionals
+topic: Conditional
+level: 3
+source: HoareLogic.pdf, Exercises, "A larger program"
+tags: conditional, sequence, empty else, case analysis
+
+task:
+  The reference document gives this exercise as a C function that
+  returns `res`. We write it in the language of the course. The first
+  conditional has no else branch, so it means `if x < 0 then x := 0 else skip`.
+
+  Compute by hand the weakest precondition of the program and deduce that
+  it is correct with respect to its contract.
+
+pre: -5 <= y <= 5 && -5 <= x <= 5
+post: -15 <= res <= 25
+
+program:
+  {P}
+  {R3}
+  if x < 0 then {
+    x := 0             // i1
+  }
+  {R2}
+  if y < 0 then {
+    x := x + 5         // i2
+  } else {
+    x := x - 5         // i3
+  }
+  {R1}
+  res := x - y         // i4
+  {Q}
+
+verdict: valid
+
+step: The last statement, `res := x - y`
+rule: ASSIGN, WP
+focus: i4
+calc:
+  wp(res := x - y, Q)
+  = (-15 <= res <= 25)[res <- x - y]
+  = -15 <= x - y <= 25
+set: R1 = -15 <= x - y <= 25
+
+step: The second conditional
+rule: IF, ASSIGN, WP
+focus: i2, i3
+text:
+  We compute the weakest precondition of each branch, then combine them
+  with the rule for the conditional.
+calc:
+  wp(x := x + 5, R1)
+  = -15 <= (x + 5) - y <= 25
+  = -20 <= x - y <= 20          // subtract 5
+calc:
+  wp(x := x - 5, R1)
+  = -15 <= (x - 5) - y <= 25
+  = -10 <= x - y <= 30          // add 5
+calc:
+  wp(if y < 0 then x := x + 5 else x := x - 5, R1)
+  = (y < 0 ==> -20 <= x - y <= 20) && (!(y < 0) ==> -10 <= x - y <= 30)
+set: R2 = (y < 0 ==> -20 <= x - y <= 20) && (y >= 0 ==> -10 <= x - y <= 30)
+
+step: The first conditional
+rule: IF, ASSIGN, SKIP, WP
+focus: i1
+text:
+  The then branch sets $x$ to $0$, so we replace $x$ by $0$ in $R2$. The
+  missing else branch is `skip`, whose weakest precondition is $R2$
+  itself.
+calc:
+  wp(x := 0, R2)
+  = (y < 0 ==> -20 <= 0 - y <= 20) && (y >= 0 ==> -10 <= 0 - y <= 30)
+calc:
+  wp(if x < 0 then x := 0, R2)
+  = (x < 0 ==> wp(x := 0, R2)) && (!(x < 0) ==> R2)
+set: R3 = (x < 0 ==> (y < 0 ==> -20 <= 0 - y <= 20) && (y >= 0 ==> -10 <= 0 - y <= 30)) && (x >= 0 ==> (y < 0 ==> -20 <= x - y <= 20) && (y >= 0 ==> -10 <= x - y <= 30))
+
+step: Compare with the precondition, case by case
+rule: CONSEQUENCE, LOGIC
+text:
+  The weakest precondition $R3$ is a conjunction of implications, so we
+  prove it by cases on the signs of $x$ and $y$. In each case we use the
+  bounds $-5 <= x <= 5$ and $-5 <= y <= 5$ of the precondition.
+
+  - $x < 0$ and $y < 0$: we need $-20 <= -y <= 20$. Since $-5 <= y < 0$, we have $0 < -y <= 5$.
+  - $x < 0$ and $y >= 0$: we need $-10 <= -y <= 30$. Since $0 <= y <= 5$, we have $-5 <= -y <= 0$.
+  - $x >= 0$ and $y < 0$: we need $-20 <= x - y <= 20$. Here $x$ is between $0$ and $5$, and $-y$ between $1$ and $5$, so $x - y$ is between $1$ and $10$.
+  - $x >= 0$ and $y >= 0$: we need $-10 <= x - y <= 30$. Here $x - y$ is between $0 - 5 = -5$ and $5 - 0 = 5$.
+
+  Every case holds, so the implication holds.
+vc: -5 <= y <= 5 && -5 <= x <= 5 ==> R3
+result: The triple is valid.
+
+summary:
+  A conditional splits the weakest precondition into cases. With two
+  conditionals in sequence the cases multiply, and the final check is a
+  case analysis over the four combinations of the two conditions.

@@ -1,0 +1,59 @@
+# Source: HoareLogic.pdf, section "Exercises", "Single assignments", item 2.
+id: assign-minus-three
+title: A subtraction that can go negative
+topic: Assignment
+level: 1
+source: HoareLogic.pdf, Exercises, "Single assignments" 2
+tags: assignment, wp, counterexample
+
+task:
+  Compute the weakest precondition with the assignment rule. Then check
+  whether the given precondition implies it, and decide whether the
+  triple is valid. If it is not valid, give values of the variables that
+  show it.
+
+pre: x >= 0
+post: y >= 0
+
+program:
+  {P}
+  {R1}
+  y := x - 3
+  {Q}
+
+verdict: invalid
+
+step: Apply the assignment rule
+rule: ASSIGN, WP
+focus: y := x - 3
+text:
+  The assigned variable is $y$, so we replace $y$ by $x - 3$ in the
+  postcondition. The variable $x$ is not assigned.
+calc:
+  wp(y := x - 3, Q)
+  = (y >= 0)[y <- x - 3]
+  = x - 3 >= 0
+  = x >= 3                // add 3 to both sides
+set: R1 = x >= 3
+
+step: Compare with the precondition
+rule: CONSEQUENCE, LOGIC
+vc: x >= 0 ==> x >= 3
+status: fails
+counterexample: x = 0
+why:
+  The implication is false: the values $0$, $1$ and $2$ satisfy $x >= 0$
+  but not $x >= 3$. So the consequence rule cannot be used.
+text:
+  A failed verification condition is a strong hint, and here it gives a
+  real counterexample. From the state $x = 0$ the program sets $y$ to
+  $0 - 3 = -3$, and the postcondition $y >= 0$ is false.
+vc: {x >= 0} y := x - 3 {y >= 0}
+status: fails
+counterexample: x = 0, y = 7
+result: The triple is not valid. The state $x = 0$ is a counterexample, whatever the initial value of $y$.
+
+summary:
+  The weakest precondition $x >= 3$ is the exact set of start states from
+  which the assignment reaches $y >= 0$. The precondition $x >= 0$ allows
+  three more values, and each of them is a counterexample.

@@ -1,0 +1,61 @@
+# Source: Exercise list "ICT3101 Exercises - Deductive Verification", problem 3 d), with its solution sheet.
+id: conditional-even
+title: Fill in the precondition of a conditional (d)
+topic: Conditional
+level: 2
+source: Exercise list "HoareLogic Exercises", problem 3 d
+tags: conditional, wp, even, odd
+
+task:
+  Fill in the weakest precondition of the following program.
+
+pre: (x > 0 ==> odd(x)) && (x <= 0 ==> even(z))
+post: even(x)
+
+program:
+  {R3}
+  if (x > 0) then {
+    {R1}
+    x := x + 1        // then
+  } else {
+    {R2}
+    x := z            // else
+  }
+  {Q}
+
+verdict: valid
+
+step: The then branch
+rule: ASSIGN, WP
+focus: then
+calc:
+  wp(x := x + 1, Q)
+  = even(x)[x <- x + 1]
+  = even(x + 1)
+  = odd(x)              // x + 1 is even exactly when x is odd
+set: R1 = odd(x)
+
+step: The else branch
+rule: ASSIGN, WP
+focus: else
+calc:
+  wp(x := z, Q)
+  = even(x)[x <- z]
+  = even(z)
+set: R2 = even(z)
+
+step: Combine the branches
+rule: IF, WP
+focus: if
+calc:
+  wp(if (x > 0) then x := x + 1 else x := z, Q)
+  = (x > 0 ==> odd(x)) && (!(x > 0) ==> even(z))
+  = (x > 0 ==> odd(x)) && (x <= 0 ==> even(z))
+set: R3 = (x > 0 ==> odd(x)) && (x <= 0 ==> even(z))
+result: The weakest precondition is $(x > 0 ==> odd(x)) && (x <= 0 ==> even(z))$.
+
+summary:
+  The formula reads as a case analysis: if $x$ is positive it must be odd,
+  so that adding one makes it even; otherwise $z$ must be even, since its
+  value is copied into $x$. It could be rewritten with the distributive
+  laws, but the case analysis is the clearest form.

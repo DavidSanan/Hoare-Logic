@@ -1,0 +1,94 @@
+# Source: Exercise list "ICT3101 Exercises - Deductive Verification", problem 5 e), with its solution sheet.
+id: sum-up-to-n
+title: The sum 0 + 1 + ... + n
+topic: Loops
+level: 3
+source: Exercise list "HoareLogic Exercises", problem 5 e
+tags: while, invariant, sum, case analysis
+
+task:
+  Give a proof outline and a loop invariant. The postcondition
+  $x = 0 + 1 + ... + n$ is written $x = sum(k, 0, n, k)$. When $n$ is
+  negative the sum has no term, and its value is $0$.
+
+  Hint from the exercise list: fill a table with the values of $x$ and $y$
+  after each iteration, without evaluating the additions.
+
+pre: x = 0 && y = 0
+post: x = sum(k, 0, n, k)
+
+program:
+  {P}
+  {I}
+  while (y < n) do {
+    {I && y < n}
+    {R2}
+    y := y + 1;      // b1
+    {R1}
+    x := x + y       // b2
+    {I}
+  }
+  {I && !(y < n)}
+  {Q}
+
+verdict: valid
+
+step: Trace the loop
+rule: LOGIC
+text:
+  | Iteration | $y$ | $x$ |
+  |---|---|---|
+  | 0 | $0$ | $0$ |
+  | 1 | $1$ | $0 + 1$ |
+  | 2 | $2$ | $0 + 1 + 2$ |
+  | 3 | $3$ | $0 + 1 + 2 + 3$ |
+
+  At every loop head $x = 0 + 1 + ... + y$, that is $x = sum(k, 0, y, k)$.
+  When $n > 0$ the variable $y$ goes from $0$ up to $n$. When $n <= 0$ the
+  loop does not run, and $x$ and $y$ stay $0$.
+
+step: The invariant
+rule: WHILE-CONSEQUENCE
+focus: while
+text:
+  The solution sheet separates the two cases of $n$. We add the bound
+  $0 <= y$ in the case $n > 0$: without it, preservation fails on states
+  with a negative $y$, such as $y = -5$, $x = 0$, $n = 3$, which satisfy
+  $x = sum(k, 0, y, k)$ because the sum is empty.
+set: I = (n > 0 ==> 0 <= y <= n && x = sum(k, 0, y, k)) && (n <= 0 ==> x = 0 && y = 0)
+
+step: Establishment
+rule: CONSEQUENCE, LOGIC
+vc: x = 0 && y = 0 ==> I
+why:
+  If $n > 0$: $0 <= 0 <= n$, and $sum(k, 0, 0, k) = 0$. If $n <= 0$: the
+  precondition gives $x = 0 && y = 0$ directly.
+
+step: Preservation
+rule: ASSIGN, SEQ, CONSEQUENCE
+focus: b1, b2
+calc:
+  wp(x := x + y, I)
+  = (n > 0 ==> 0 <= y <= n && x + y = sum(k, 0, y, k)) && (n <= 0 ==> x + y = 0 && y = 0)
+set: R1 = (n > 0 ==> 0 <= y <= n && x + y = sum(k, 0, y, k)) && (n <= 0 ==> x + y = 0 && y = 0)
+calc:
+  wp(y := y + 1, R1)
+  = (n > 0 ==> 0 <= y + 1 <= n && x + (y + 1) = sum(k, 0, y + 1, k)) && (n <= 0 ==> x + (y + 1) = 0 && y + 1 = 0)
+set: R2 = (n > 0 ==> 0 <= y + 1 <= n && x + (y + 1) = sum(k, 0, y + 1, k)) && (n <= 0 ==> x + (y + 1) = 0 && y + 1 = 0)
+vc: I && y < n ==> R2
+why:
+  Case $n > 0$: from $0 <= y < n$ we get $0 <= y + 1 <= n$. Since $y >= 0$,
+  $sum(k, 0, y + 1, k) = sum(k, 0, y, k) + (y + 1)$, which is $x + (y + 1)$.
+
+  Case $n <= 0$: the invariant gives $y = 0$, and the condition gives
+  $y < n <= 0$. These contradict each other, so the case is impossible and
+  the implication holds.
+
+step: The postcondition at the exit
+rule: CONSEQUENCE, LOGIC
+vc: I && !(y < n) ==> x = sum(k, 0, n, k)
+why:
+  Case $n > 0$: $y <= n$ and $y >= n$ give $y = n$. Case $n <= 0$: $x = 0$,
+  and $sum(k, 0, n, k) = 0$, since for $n = 0$ the only term is $0$ and for
+  $n < 0$ there is no term.
+result: The triple is valid. A variant for termination is $n - y$.

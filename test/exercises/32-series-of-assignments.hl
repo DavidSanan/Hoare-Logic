@@ -1,0 +1,74 @@
+# Source: HoareLogic.pdf, section "Exercises", "A Series of Assignments".
+id: series-of-assignments
+title: A series of assignments
+topic: Sequential composition
+level: 1
+source: HoareLogic.pdf, Exercises, "A Series of Assignments"
+tags: assignment, sequence, wp, intervals
+
+task:
+  The reference document gives this exercise as a C function that
+  returns `res`. We write it in the language of the course: the result is
+  the value of the variable $res$ at the end.
+
+  Compute by hand the weakest precondition of the program and deduce that
+  it is correct with respect to its contract.
+
+pre: -10 <= x <= 0 && 0 <= y <= 5
+post: -10 <= res <= 10
+
+program:
+  {P}
+  {R3}
+  y := y + 10;     // i1
+  {R2}
+  x := x - 5;      // i2
+  {R1}
+  res := x + y     // i3
+  {Q}
+
+verdict: valid
+
+step: The last statement, `res := x + y`
+rule: ASSIGN, WP
+focus: i3
+calc:
+  wp(res := x + y, Q)
+  = (-10 <= res <= 10)[res <- x + y]
+  = -10 <= x + y <= 10
+set: R1 = -10 <= x + y <= 10
+
+step: The second statement, `x := x - 5`
+rule: ASSIGN, WP
+focus: i2
+calc:
+  wp(x := x - 5, R1)
+  = (-10 <= x + y <= 10)[x <- x - 5]
+  = -10 <= (x - 5) + y <= 10
+  = -5 <= x + y <= 15          // add 5 to the three parts
+set: R2 = -5 <= x + y <= 15
+
+step: The first statement, `y := y + 10`
+rule: ASSIGN, WP
+focus: i1
+calc:
+  wp(y := y + 10, R2)
+  = (-5 <= x + y <= 15)[y <- y + 10]
+  = -5 <= x + (y + 10) <= 15
+  = -15 <= x + y <= 5          // subtract 10 from the three parts
+set: R3 = -15 <= x + y <= 5
+
+step: Compare with the precondition
+rule: CONSEQUENCE, LOGIC
+vc: -10 <= x <= 0 && 0 <= y <= 5 ==> -15 <= x + y <= 5
+why:
+  We add the bounds of $x$ and $y$. The smallest possible value of
+  $x + y$ is $-10 + 0 = -10$ and the largest is $0 + 5 = 5$. So
+  $-10 <= x + y <= 5$, which is inside the interval from $-15$ to $5$.
+result: The triple is valid.
+
+summary:
+  The three assignments shift the interval of $x + y$. Going backwards, we
+  undo each shift: $res = x + y$ must be in $[-10, 10]$ at the end, so
+  $x + y$ must be in $[-15, 5]$ at the start. The precondition gives
+  $x + y$ in $[-10, 5]$.

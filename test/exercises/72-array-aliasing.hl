@@ -1,0 +1,80 @@
+# Source: HoareLogic.pdf, section "Arrays", worked example "Writing at one position and reading at another".
+id: array-aliasing
+title: Writing at one position and reading at another
+topic: Arrays
+level: 3
+source: HoareLogic.pdf, Arrays, "Writing at one position and reading at another"
+tags: arrays, array assignment, aliasing, select-store
+
+task:
+  Find the weakest precondition with the rule ARRAY-ASSIGN. Before
+  computing: is there a situation in which the postcondition holds for
+  free? What happens if $i = j$? And if $i != j$, what must be true about
+  $a[j]$?
+
+pre: (j = i || a[j] = 0) && 0 <= i < sizeof(a) && 0 <= j < sizeof(a)
+post: a[i] = a[j]
+
+program:
+  {P}
+  {R1}
+  a[i] := 2 * a[j]
+  {Q}
+
+verdict: valid
+
+step: Substitution
+rule: ARRAY-ASSIGN
+focus: a[i] :=
+text:
+  $I$ is $i$ and $E$ is $2 * a[j]$. The postcondition reads the array
+  twice, and both reads now refer to the updated array.
+calc:
+  (a[i] = a[j])[a <- a[i |-> 2 * a[j]]]
+  = a[i |-> 2 * a[j]][i] = a[i |-> 2 * a[j]][j]
+note:
+  The naive rule would only rewrite the cell $a[i]$ and leave $a[j]$
+  unchanged. That is wrong whenever $i = j$.
+
+step: Select-store
+rule: ARRAY-ASSIGN, LOGIC
+text:
+  The left read is at $i$, the written position, so it gives $2 * a[j]$.
+  The right read is at $j$, which may or may not be equal to $i$, so we
+  keep both cases.
+calc:
+  a[i |-> 2 * a[j]][i] = a[i |-> 2 * a[j]][j]
+  = (j = i && 2 * a[j] = 2 * a[j]) || (j != i && 2 * a[j] = a[j])
+  = j = i || (j != i && 2 * a[j] = a[j])      // A && true is A
+  = j = i || (j != i && a[j] = 0)             // only 0 is equal to its double
+  = j = i || a[j] = 0                         // A || (!A && B) is A || B
+
+step: Definedness
+rule: ARRAY-ASSIGN
+text:
+  The write is at $i$, and $E$ reads $a[j]$. The brackets matter: the
+  definedness conditions must hold in both cases of the disjunction.
+calc:
+  wp(a[i] := 2 * a[j], Q)
+  = (j = i || a[j] = 0) && def(a[i]) && def(a[j])
+  = (j = i || a[j] = 0) && 0 <= i < sizeof(a) && 0 <= j < sizeof(a)
+set: R1 = (j = i || a[j] = 0) && 0 <= i < sizeof(a) && 0 <= j < sizeof(a)
+vc: P ==> R1
+
+step: Test with concrete values
+rule: LOGIC
+text:
+  We start each time from the array $4, 0, 9$.
+
+  | $i$ | $j$ | $j = i || a[j] = 0$ | value written | array after | $a[i] = a[j]$ |
+  |---|---|---|---|---|---|
+  | $0$ | $0$ | true, since $j = i$ | $8$ | $8, 0, 9$ | $8 = 8$, true |
+  | $0$ | $1$ | true, since $a[1] = 0$ | $0$ | $0, 0, 9$ | $0 = 0$, true |
+  | $0$ | $2$ | false | $18$ | $18, 0, 9$ | $18 = 9$, false |
+text:
+  The third row shows that the condition $j = i || a[j] = 0$ cannot be
+  dropped: with only the definedness conditions, the triple fails.
+vc: {0 <= i < sizeof(a) && 0 <= j < sizeof(a)} a[i] := 2 * a[j] {a[i] = a[j]}
+status: fails
+counterexample: a = [4, 0, 9], i = 0, j = 2
+result: The weakest precondition is $(j = i || a[j] = 0) && 0 <= i < sizeof(a) && 0 <= j < sizeof(a)$.

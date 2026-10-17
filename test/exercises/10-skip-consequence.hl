@@ -1,0 +1,61 @@
+# Source: HoareLogic.pdf, section "Exercises", "Skip and the consequence rule" (first part).
+id: skip-consequence
+title: Skip and the consequence rule
+topic: Skip and consequence
+level: 1
+source: HoareLogic.pdf, Exercises, "Skip and the consequence rule"
+tags: skip, consequence, implication
+
+task:
+  Using the Skip rule and the consequence rule, show that the following
+  triple is valid.
+
+pre: x > 5
+post: x > 0
+
+program:
+  {P}
+  {P'}
+  skip
+  {Q}
+
+verdict: valid
+
+step: Apply the Skip rule to the postcondition
+rule: SKIP
+focus: skip
+text:
+  The Skip rule only produces triples whose precondition and
+  postcondition are the same formula. We apply it backwards, starting from
+  the postcondition $x > 0$. It gives the precondition $P'$ below.
+calc:
+  wp(skip, Q)
+  = x > 0
+set: P' = x > 0
+instance: SKIP
+  ---
+  {x > 0} skip {x > 0}
+
+step: Link the precondition with the consequence rule
+rule: CONSEQUENCE, LOGIC
+text:
+  The precondition of the specification, $x > 5$, is not the formula that
+  the Skip rule gave us. The consequence rule accepts it if it implies
+  that formula.
+vc: x > 5 ==> x > 0
+why:
+  Every integer greater than $5$ is greater than $0$. In terms of sets of
+  states, $\{6, 7, 8, ...\}$ is included in $\{1, 2, 3, ...\}$, so the
+  precondition is stronger than the formula given by the Skip rule.
+instance: CONSEQUENCE
+  x > 5 ==> x > 0
+  {x > 0} skip {x > 0}
+  ---
+  {x > 5} skip {x > 0}
+result: The triple is valid.
+
+summary:
+  The Skip rule alone cannot prove this triple, because its two
+  assertions differ. The consequence rule bridges the difference with the
+  implication $x > 5 ==> x > 0$. In general, $\{P\}$ `skip` $\{Q\}$ is
+  valid exactly when $P ==> Q$.

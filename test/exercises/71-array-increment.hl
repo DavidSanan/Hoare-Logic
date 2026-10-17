@@ -1,0 +1,63 @@
+# Source: HoareLogic.pdf, section "Arrays", worked example "Incrementing a cell".
+id: array-increment
+title: Incrementing a cell
+topic: Arrays
+level: 2
+source: HoareLogic.pdf, Arrays, "Incrementing a cell"
+tags: arrays, array assignment, select-store
+
+task:
+  Find the weakest precondition with the rule ARRAY-ASSIGN, following the
+  three steps: substitution, select-store, and definedness.
+
+pre: a[i] >= 0 && 0 <= i < sizeof(a)
+post: a[i] > 0
+
+program:
+  {P}
+  {R1}
+  a[i] := a[i] + 1
+  {Q}
+
+verdict: valid
+
+step: Substitution
+rule: ARRAY-ASSIGN
+focus: a[i] :=
+text:
+  The statement has the shape $a[I] := E$ with $I = i$ and
+  $E = a[i] + 1$. We replace the array $a$ in the postcondition by the
+  updated array $a[i |-> a[i] + 1]$. The $a$ inside $E$ is not replaced: it
+  is the array before the write.
+calc:
+  (a[i] > 0)[a <- a[i |-> a[i] + 1]]
+  = a[i |-> a[i] + 1][i] > 0
+
+step: Select-store
+rule: ARRAY-ASSIGN, LOGIC
+text:
+  The read position is $i$ and the written position is also $i$. They are
+  literally the same expression, so we know that $J = I$, and the first
+  select-store axiom gives the written value.
+calc:
+  a[i |-> a[i] + 1][i] > 0
+  = a[i] + 1 > 0
+  = a[i] >= 0              // for integers
+
+step: Definedness
+rule: ARRAY-ASSIGN
+text:
+  The write is at $i$, and $E$ reads $a[i]$. Both give $def(a[i])$, which
+  we write once.
+calc:
+  wp(a[i] := a[i] + 1, Q)
+  = a[i |-> a[i] + 1][i] > 0 && def(a[i])
+  = a[i] >= 0 && 0 <= i < sizeof(a)
+set: R1 = a[i] >= 0 && 0 <= i < sizeof(a)
+vc: a[i] >= 0 && 0 <= i < sizeof(a) ==> R1
+result: The weakest precondition is $a[i] >= 0 && 0 <= i < sizeof(a)$.
+
+summary:
+  Test it with the array $4, 0, 9$ and $i = 1$: position $1$ exists and
+  $a[1] = 0$ is not negative, so the precondition holds. The statement
+  sets $a[1]$ to $1$, and $1 > 0$.

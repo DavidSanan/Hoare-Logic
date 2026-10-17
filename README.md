@@ -11,6 +11,12 @@ document HoareLogic.pdf.
 The site is published with GitHub Pages at
 https://davidsanan.github.io/Hoare-Logic/
 
+The folder `test/` holds the version under test, published at
+https://davidsanan.github.io/Hoare-Logic/test/
+Changes go to `test/` first. When they are approved, the files of `test/`
+(`index.html`, `css`, `js`, `exercises`) are copied to the root, which
+updates the stable site.
+
 You can also open `index.html` in a browser. No server and no build step
 are needed. The empty file `.nojekyll` tells GitHub Pages to serve the files
 as they are.

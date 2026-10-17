@@ -1,0 +1,92 @@
+# Source: Exercise list "ICT3101 Exercises - Deductive Verification", problem 5 f), with its solution sheet.
+id: fibonacci
+title: Fibonacci numbers
+topic: Loops
+level: 3
+source: Exercise list "HoareLogic Exercises", problem 5 f
+tags: while, invariant, fibonacci
+
+task:
+  Give a proof outline and a loop invariant. The function $fib$ is defined
+  by $fib(0) = 0$, $fib(1) = 1$ and $fib(n) = fib(n - 1) + fib(n - 2)$ for
+  $n > 1$.
+
+pre: x = 0 && y = 1 && z = 1 && 1 <= n
+post: y = fib(n)
+
+program:
+  {P}
+  {I}
+  while (z < n) do {
+    {I && z < n}
+    {R3}
+    y := x + y;      // b1
+    {R2}
+    x := y - x;      // b2
+    {R1}
+    z := z + 1       // b3
+    {I}
+  }
+  {I && !(z < n)}
+  {Q}
+
+verdict: valid
+
+step: Trace the loop
+rule: LOGIC
+text:
+  | Iteration | $x$ | $y$ | $z$ |
+  |---|---|---|---|
+  | 0 | $0$ | $1$ | $1$ |
+  | 1 | $1$ | $1$ | $2$ |
+  | 2 | $1$ | $2$ | $3$ |
+  | 3 | $2$ | $3$ | $4$ |
+  | 4 | $3$ | $5$ | $5$ |
+
+  The values are consecutive Fibonacci numbers: $y = fib(z)$ and
+  $x = fib(z - 1)$.
+
+step: The invariant
+rule: WHILE-CONSEQUENCE
+focus: while
+text:
+  The solution sheet uses $x = fib(z - 1) && y = fib(z) && z <= n && 1 <= n$.
+  We write the bounds of $z$ as $1 <= z <= n$. The lower bound matters:
+  $fib(z - 1)$ is only defined when $z >= 1$, and the step
+  $fib(z + 1) = fib(z) + fib(z - 1)$ needs it.
+set: I = x = fib(z - 1) && y = fib(z) && 1 <= z <= n
+
+step: Establishment
+rule: CONSEQUENCE, LOGIC
+vc: x = 0 && y = 1 && z = 1 && 1 <= n ==> x = fib(z - 1) && y = fib(z) && 1 <= z <= n
+why:
+  With $z = 1$: $fib(0) = 0 = x$ and $fib(1) = 1 = y$, and $1 <= 1 <= n$.
+
+step: Preservation
+rule: ASSIGN, SEQ, CONSEQUENCE
+focus: b1, b2, b3
+calc:
+  wp(z := z + 1, I)
+  = x = fib(z + 1 - 1) && y = fib(z + 1) && 1 <= z + 1 <= n
+set: R1 = x = fib(z + 1 - 1) && y = fib(z + 1) && 1 <= z + 1 <= n
+calc:
+  wp(x := y - x, R1)
+  = y - x = fib(z + 1 - 1) && y = fib(z + 1) && 1 <= z + 1 <= n
+set: R2 = y - x = fib(z + 1 - 1) && y = fib(z + 1) && 1 <= z + 1 <= n
+calc:
+  wp(y := x + y, R2)
+  = (x + y) - x = fib(z + 1 - 1) && x + y = fib(z + 1) && 1 <= z + 1 <= n
+  = y = fib(z) && x + y = fib(z + 1) && 0 <= z <= n - 1
+set: R3 = y = fib(z) && x + y = fib(z + 1) && 0 <= z <= n - 1
+vc: x = fib(z - 1) && y = fib(z) && 1 <= z <= n && z < n ==> y = fib(z) && x + y = fib(z + 1) && 0 <= z <= n - 1
+why:
+  The first conjunct is in the invariant. For the second, since $z >= 1$,
+  $fib(z + 1) = fib(z) + fib(z - 1) = y + x$. The bounds follow from
+  $1 <= z$ and $z < n$.
+
+step: The postcondition at the exit
+rule: CONSEQUENCE, LOGIC
+vc: x = fib(z - 1) && y = fib(z) && 1 <= z <= n && !(z < n) ==> y = fib(n)
+why:
+  $z <= n$ and $z >= n$ give $z = n$, so $y = fib(n)$.
+result: The triple is valid. A variant for termination is $n - z$.

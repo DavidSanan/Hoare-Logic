@@ -1,0 +1,58 @@
+# Source: Exercise list "ICT3101 Exercises - Deductive Verification", problem 3 a).
+id: fill-precondition-true
+title: Fill in the precondition (a)
+topic: Sequential composition
+level: 1
+source: Exercise list "HoareLogic Exercises", problem 3 a
+tags: assignment, sequence, wp
+
+task:
+  Fill in the weakest precondition of the following program.
+
+pre: true
+post: y = 3 * x
+
+program:
+  {R2}
+  y := x;            // i1
+  {R1}
+  y := x + x + y     // i2
+  {Q}
+
+verdict: valid
+
+step: Always start from the postcondition
+rule: SEQ
+text:
+  We do not know the precondition yet: it is what we must find. So the
+  only starting point is the postcondition, and we compute backwards.
+
+step: The last statement, `y := x + x + y`
+rule: ASSIGN, WP
+focus: i2
+calc:
+  wp(y := x + x + y, Q)
+  = (y = 3 * x)[y <- x + x + y]
+  = x + x + y = 3 * x
+  = y = x                  // subtract 2 * x from both sides
+set: R1 = y = x
+text:
+  Only the $y$ of the postcondition is replaced. The $y$ inside the
+  expression $x + x + y$ is the old value of $y$, which is the value in
+  the state before the assignment.
+
+step: The first statement, `y := x`
+rule: ASSIGN, WP
+focus: i1
+calc:
+  wp(y := x, R1)
+  = (y = x)[y <- x]
+  = x = x
+  = true
+set: R2 = true
+result: The weakest precondition is $true$: the program establishes $y = 3 * x$ from any initial state.
+
+summary:
+  The first assignment makes $y$ equal to $x$, and the second one then
+  computes $x + x + x$. The weakest precondition $true$ confirms that no
+  assumption about the initial state is needed.

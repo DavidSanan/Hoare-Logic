@@ -1,0 +1,81 @@
+# Source: Exercise sheet "hoare logic 3", division loop; slides "Recipe for Loop Invariants - tips" (integer division).
+id: integer-division
+title: Integer division by repeated subtraction
+topic: Loops
+level: 2
+source: Exercise sheet "hoare logic 3"; Slides 7, tips
+tags: while, invariant, division, variant
+
+task:
+  Prove that the loop computes the quotient $q$ and the remainder $r$ of
+  the division of $x'$ by $y'$.
+
+  The exercise sheet does not require $x' >= 0$. Without it the triple is
+  not valid: from $x' = -1$ the loop does not run, and $r = -1$ breaks
+  $0 <= r$. We add $x' >= 0$ to the precondition.
+
+pre: x = x' && y = y' && y' > 0 && x' >= 0 && q = 0 && r = x
+post: x' = q * y' + r && 0 <= r < y'
+
+program:
+  {P}
+  {I}
+  while (r >= y) do {
+    {I && r >= y}
+    {R2}
+    r := r - y;      // b1
+    {R1}
+    q := q + 1       // b2
+    {I}
+  }
+  {I && !(r >= y)}
+  {Q}
+
+verdict: valid
+
+step: The invariant
+rule: WHILE-CONSEQUENCE
+focus: while
+text:
+  Every iteration moves one copy of $y$ from $r$ into the quotient, so
+  $q * y' + r$ keeps the value $x'$. The remainder never becomes negative,
+  since the body only runs when $r >= y$. The variable $y$ is never
+  assigned, and we record $y = y'$ to use it in the calculations.
+set: I = x' = q * y' + r && 0 <= r && y = y'
+
+step: Establishment
+rule: CONSEQUENCE, LOGIC
+vc: x = x' && y = y' && y' > 0 && x' >= 0 && q = 0 && r = x ==> I
+why:
+  With $q = 0$ and $r = x = x'$: $0 * y' + x' = x'$, and $0 <= x'$.
+
+step: Preservation
+rule: ASSIGN, SEQ, CONSEQUENCE
+focus: b1, b2
+calc:
+  wp(q := q + 1, I)
+  = x' = (q + 1) * y' + r && 0 <= r && y = y'
+set: R1 = x' = (q + 1) * y' + r && 0 <= r && y = y'
+calc:
+  wp(r := r - y, R1)
+  = x' = (q + 1) * y' + (r - y) && 0 <= r - y && y = y'
+set: R2 = x' = (q + 1) * y' + (r - y) && 0 <= r - y && y = y'
+vc: I && r >= y ==> R2
+why:
+  Since $y = y'$, $(q + 1) * y' + (r - y) = q * y' + r$, which is $x'$. The
+  condition $r >= y$ gives $0 <= r - y$.
+
+step: The postcondition at the exit
+rule: CONSEQUENCE, LOGIC
+vc: I && !(r >= y) ==> x' = q * y' + r && 0 <= r < y'
+why:
+  $!(r >= y)$ is $r < y$, and $y = y'$. The rest is in the invariant.
+
+step: Termination
+rule: WHILE-TOTAL
+text:
+  The remainder $r$ decreases by $y >= 1$ in every iteration, and it is not
+  negative. So $r$ is a variant.
+vc: I && r >= y ==> r >= 0
+vc: {I && r >= y && y' > 0 && r = E0} r := r - y; q := q + 1 {r < E0}
+result: The triple is valid, and the loop terminates.

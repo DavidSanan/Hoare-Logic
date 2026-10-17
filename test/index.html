@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Hoare Logic Workbench</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="claude:viewport-fit-sides" content="cover">
+  <meta name="description" content="Hoare logic for ICT3112: the rules, the weakest precondition calculus, loop invariants, and solved exercises shown step by step.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=STIX+Two+Text:ital,wght@0,400;0,600;1,400&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to the content</a>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="#intro">
+        <span class="brand-mark" aria-hidden="true">{P}&thinsp;C&thinsp;{Q}</span>
+        <span class="brand-text"><span class="brand-name">Hoare Logic Workbench</span><span class="brand-sub">ICT3112 Formal Verification of Programs</span></span>
+      </a>
+      <button type="button" id="theme-btn" class="btn ghost small">Auto</button>
+    </div>
+    <nav class="site-nav" aria-label="Sections">
+      <div class="nav-inner">
+        <a href="#intro">Introduction</a>
+        <a href="#language">Language</a>
+        <a href="#rules">Rules</a>
+        <a href="#invariants">Loop invariants</a>
+        <a href="#exercises">Exercises</a>
+        <a href="#wp">wp calculator</a>
+        <a href="#author">Write an exercise</a>
+      </div>
+    </nav>
+  </header>
+
+  <main id="main">
+    <section class="page" id="page-intro">
+      <div class="page-head"><h1>How Hoare logic works</h1>
+        <p class="lede">Hoare logic proves that a program meets its specification, without running it. This page explains what a specification says, how the rules of the logic are used, and how the weakest precondition calculus organises a proof.</p></div>
+      <div class="page-body"></div>
+    </section>
+
+    <section class="page" id="page-language" hidden>
+      <div class="page-head"><h1>The language and the notation</h1>
+        <p class="lede">The commands of the programs, the formulas of the specifications, and how to type them on this website.</p></div>
+      <div class="page-body"></div>
+    </section>
+
+    <section class="page" id="page-rules" hidden>
+      <div class="page-head"><h1>The rules of Hoare logic</h1></div>
+      <div class="page-body"></div>
+    </section>
+
+    <section class="page" id="page-invariants" hidden>
+      <div class="page-head"><h1>Loop invariants</h1>
+        <p class="lede">How to find an invariant, how to check it, and what to do when a check fails. The method follows the recipe of the lectures.</p></div>
+      <div class="page-body"></div>
+    </section>
+
+    <section class="page" id="page-exercises" hidden>
+      <div class="ex-layout">
+        <details class="ex-list" id="ex-list" open>
+          <summary><span>All exercises</span> <span class="muted small" id="ex-count"></span></summary>
+          <div class="ex-filters">
+            <label class="sr-only" for="ex-search">Search the exercises</label>
+            <input type="search" id="ex-search" placeholder="Search: loop, array, swap…" autocomplete="off">
+            <label class="sr-only" for="ex-topic">Topic</label>
+            <select id="ex-topic"></select>
+          </div>
+          <div id="ex-list-items"></div>
+        </details>
+        <div class="ex-view" id="ex-view"></div>
+      </div>
+    </section>
+
+    <section class="page" id="page-wp" hidden>
+      <div class="page-head"><h1>Weakest precondition calculator</h1>
+        <p class="lede">Type a loop-free program and a postcondition. The calculator applies the rules backwards, one statement at a time, and shows every intermediate assertion. If you also give a precondition, it tests the verification condition <i>P</i> ⇒ <i>wp</i> on sample states.</p></div>
+      <div class="page-body">
+        <form id="wp-form" class="wp-form">
+          <div class="field">
+            <label for="wp-example">Example</label>
+            <select id="wp-example"></select>
+          </div>
+          <div class="field">
+            <label for="wp-prog">Program</label>
+            <textarea id="wp-prog" rows="6" spellcheck="false"></textarea>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="wp-pre">Precondition (optional)</label>
+              <input id="wp-pre" type="text" spellcheck="false" autocomplete="off">
+            </div>
+            <div class="field">
+              <label for="wp-post">Postcondition</label>
+              <input id="wp-post" type="text" spellcheck="false" autocomplete="off">
+            </div>
+          </div>
+          <div><button type="submit" class="btn">Compute the weakest precondition</button></div>
+        </form>
+        <div id="wp-out" class="wp-out" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section class="page" id="page-author" hidden>
+      <div class="page-head"><h1>Write an exercise</h1>
+        <p class="lede">Exercises are plain text files in a small format. Write one in the editor below. The preview shows it exactly as students will see it, and the tests check the assertions of your solution.</p></div>
+      <div class="page-body">
+        <div class="author-tools">
+          <label class="sr-only" for="author-open">Open an existing exercise</label>
+          <select id="author-open"></select>
+          <label class="btn ghost file-btn" for="author-file">Load a .hl file</label>
+          <input type="file" id="author-file" accept=".hl,.txt" class="sr-only">
+          <button type="button" class="btn ghost" id="author-template">Start from the template</button>
+          <button type="button" class="btn ghost" id="author-test">Test</button>
+          <button type="button" class="btn" id="author-download">Save as .hl file</button>
+        </div>
+        <div class="author-grid">
+          <div class="author-edit">
+            <label for="author-src" class="kicker">Source of the exercise</label>
+            <textarea id="author-src" spellcheck="false" rows="28"></textarea>
+            <div id="author-msgs" class="author-msgs" aria-live="polite"></div>
+            <div id="author-report" class="test-report"></div>
+          </div>
+          <div class="author-preview-wrap">
+            <span class="kicker">Preview</span>
+            <div id="author-preview" class="author-preview"></div>
+          </div>
+        </div>
+        <details class="author-doc-wrap" open>
+          <summary>Reference of the format</summary>
+          <div id="author-doc"></div>
+        </details>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>Notation and rules follow the slides of ICT3112 and the reference <em>Hoare Logic for the Verification of Software</em> (HoareLogic.pdf) by David Sanan. Exercises come from the exercise lists, quizzes and slides of the module.</p>
+  </footer>
+
+  <dialog id="rule-dialog" aria-label="Rule">
+    <div class="dlg-inner">
+      <button type="button" class="dlg-close btn ghost small" aria-label="Close">Close</button>
+      <div class="dlg-content"></div>
+    </div>
+  </dialog>
+
+  <script src="js/logic.js"></script>
+  <script src="js/format.js"></script>
+  <script src="js/checker.js"></script>
+  <script src="js/content.js"></script>
+  <script src="js/rule-examples.js"></script>
+  <script src="exercises/bundle.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

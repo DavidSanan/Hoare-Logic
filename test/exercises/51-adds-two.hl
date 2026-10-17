@@ -1,0 +1,110 @@
+# Source: HoareLogic.pdf, section "Exercises", "A loop that adds two in each iteration".
+id: adds-two
+title: A loop that adds two in each iteration
+topic: Loops
+level: 2
+source: HoareLogic.pdf, Exercises, "A loop that adds two in each iteration"
+tags: while, invariant, bounds, sequence
+
+task:
+  Find a loop invariant, and prove that the triple is valid using the rule
+  for sequential composition, the assignment rule and the loop rule with
+  consequence. Hint: the invariant has to relate the value of $s$ with the
+  value of $i$.
+
+pre: n >= 0
+post: s = 2 * n
+
+program:
+  {P}
+  {R4}
+  i := 0;            // i1
+  {R3}
+  s := 0;            // i2
+  {I}
+  while i < n do {
+    {I && i < n}
+    {R2}
+    i := i + 1;      // b1
+    {R1}
+    s := s + 2       // b2
+    {I}
+  }
+  {I && !(i < n)}
+  {Q}
+
+verdict: valid
+
+step: Find a candidate invariant
+rule: WHILE-CONSEQUENCE
+focus: while
+text:
+  At the loop head the values are $(i, s) = (0, 0), (1, 2), (2, 4), ...$,
+  so $s = 2 * i$. We obtain the same formula by replacing $n$ by the
+  progress variable $i$ in the postcondition. We also add the bounds of
+  $i$, which go from $0$ to $n$.
+set: I = s = 2 * i && 0 <= i <= n
+
+step: Establishment, through the initialisation
+rule: ASSIGN, SEQ, WP
+focus: i1, i2
+text:
+  The loop is preceded by two assignments, so establishment is the triple
+  $\{P\}$ `i := 0; s := 0` $\{I\}$. We compute its weakest precondition.
+calc:
+  wp(s := 0, I)
+  = 0 = 2 * i && 0 <= i <= n
+set: R3 = 0 = 2 * i && 0 <= i <= n
+calc:
+  wp(i := 0, R3)
+  = 0 = 2 * 0 && 0 <= 0 <= n
+  = 0 <= n
+set: R4 = 0 <= n
+vc: n >= 0 ==> 0 <= n
+
+step: Preservation
+rule: ASSIGN, SEQ, CONSEQUENCE
+focus: b1, b2
+calc:
+  wp(s := s + 2, I)
+  = s + 2 = 2 * i && 0 <= i <= n
+set: R1 = s + 2 = 2 * i && 0 <= i <= n
+calc:
+  wp(i := i + 1, R1)
+  = s + 2 = 2 * (i + 1) && 0 <= i + 1 <= n
+set: R2 = s + 2 = 2 * (i + 1) && 0 <= i + 1 <= n
+vc: s = 2 * i && 0 <= i <= n && i < n ==> s + 2 = 2 * (i + 1) && 0 <= i + 1 <= n
+why:
+  From $s = 2 * i$ we get $s + 2 = 2 * i + 2 = 2 * (i + 1)$. From
+  $0 <= i$ we get $0 <= i + 1$, and from $i < n$ we get $i + 1 <= n$.
+
+step: The postcondition at the exit
+rule: CONSEQUENCE, LOGIC
+vc: s = 2 * i && 0 <= i <= n && !(i < n) ==> s = 2 * n
+why:
+  $!(i < n)$ is $i >= n$. Together with $i <= n$ it gives $i = n$, and
+  then $s = 2 * i$ becomes $s = 2 * n$.
+result: The triple is valid.
+
+step: Why the bounds are needed
+rule: LOGIC
+text:
+  The reference document asks why $s = 2 * i$ alone is not enough. It is
+  an invariant: it holds at the start and it is preserved. But it fails the
+  exit check, since without $i <= n$ the negated condition only gives
+  $i >= n$.
+vc: s = 2 * i && !(i < n) ==> s = 2 * n
+status: fails
+counterexample: n = 1, i = 2, s = 4
+why:
+  The state $n = 1$, $i = 2$, $s = 4$ satisfies $s = 2 * i$ and $i >= n$,
+  but $s != 2 * n$. The bound $i <= n$ rules this state out.
+
+step: Termination
+rule: WHILE-TOTAL
+text:
+  The variable $i$ increases towards $n$, so we take the variant $n - i$.
+vc: s = 2 * i && 0 <= i <= n && i < n ==> n - i >= 0
+vc: {s = 2 * i && 0 <= i <= n && i < n && n - i = E0} i := i + 1; s := s + 2 {n - i < E0}
+why:
+  After the body, $n - (i + 1) = E0 - 1 < E0$.

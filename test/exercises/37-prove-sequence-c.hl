@@ -1,0 +1,67 @@
+# Source: Exercise list "ICT3101 Exercises - Deductive Verification", problem 4 c), with its solution sheet.
+id: prove-sequence-c
+title: A triple that turns out to be invalid
+topic: Sequential composition
+level: 2
+source: Exercise list "HoareLogic Exercises", problem 4 c
+tags: assignment, sequence, counterexample
+
+task:
+  Prove the following Hoare triple, or show that it is not valid.
+
+pre: y >= z && z >= y
+post: x = 4 * y
+
+program:
+  {P}
+  {R2}
+  z := z + y;        // i1
+  {R1}
+  x := 3 * z + y     // i2
+  {Q}
+
+verdict: invalid
+
+step: The last statement, `x := 3 * z + y`
+rule: ASSIGN, WP
+focus: i2
+calc:
+  wp(x := 3 * z + y, Q)
+  = (x = 4 * y)[x <- 3 * z + y]
+  = 3 * z + y = 4 * y
+set: R1 = 3 * z + y = 4 * y
+
+step: The first statement, `z := z + y`
+rule: ASSIGN, WP
+focus: i1
+calc:
+  wp(z := z + y, R1)
+  = (3 * z + y = 4 * y)[z <- z + y]
+  = 3 * (z + y) + y = 4 * y
+  = 3 * z + 4 * y = 4 * y      // multiply out and add 3 * y + y
+  = z = 0                      // subtract 4 * y and divide by 3
+set: R2 = z = 0
+
+step: Compare with the precondition
+rule: CONSEQUENCE, LOGIC
+calc:
+  y >= z && z >= y
+  = y = z
+vc: y >= z && z >= y ==> z = 0
+status: fails
+counterexample: y = 1, z = 1
+why:
+  The precondition says that $y = z$, which allows any common value. The
+  weakest precondition needs $z = 0$. The state $y = z = 1$ satisfies the
+  first but not the second, so the precondition is weaker than the
+  weakest precondition, and the consequence rule cannot be applied.
+
+step: Confirm with an execution
+rule: LOGIC
+text:
+  From $y = 1$, $z = 1$, the program computes $z = 2$ and then
+  $x = 3 * 2 + 1 = 7$. The postcondition asks for $x = 4 * 1 = 4$.
+vc: {y >= z && z >= y} z := z + y; x := 3 * z + y {x = 4 * y}
+status: fails
+counterexample: x = 0, y = 1, z = 1
+result: The triple is not valid. It only holds from states with $y = z = 0$.

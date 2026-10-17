@@ -1,0 +1,68 @@
+# Source: Exercise list "ICT3101 Exercises - Deductive Verification", problem 3 c), with its solution sheet.
+id: conditional-min
+title: Fill in the precondition of a conditional (c)
+topic: Conditional
+level: 2
+source: Exercise list "HoareLogic Exercises", problem 3 c
+tags: conditional, wp
+
+task:
+  Fill in the weakest precondition of the following program.
+
+pre: x = y
+post: z <= y && z <= x
+
+program:
+  {R3}
+  if (x - y > 0) then {
+    {R1}
+    z := x            // then
+  } else {
+    {R2}
+    z := y            // else
+  }
+  {Q}
+
+verdict: valid
+
+step: The then branch
+rule: ASSIGN, WP
+focus: then
+calc:
+  wp(z := x, Q)
+  = (z <= y && z <= x)[z <- x]
+  = x <= y && x <= x
+  = x <= y
+set: R1 = x <= y
+
+step: The else branch
+rule: ASSIGN, WP
+focus: else
+calc:
+  wp(z := y, Q)
+  = (z <= y && z <= x)[z <- y]
+  = y <= y && y <= x
+  = y <= x
+set: R2 = y <= x
+
+step: Combine the branches
+rule: IF, WP
+focus: if
+calc:
+  wp(if (x - y > 0) then z := x else z := y, Q)
+  = (x - y > 0 ==> x <= y) && (!(x - y > 0) ==> y <= x)
+  = (x > y ==> x <= y) && (x <= y ==> y <= x)
+  = x <= y && (x <= y ==> y <= x)    // A ==> !A is the same as !A
+  = x <= y && y <= x                 // A && (A ==> B) is A && B
+  = x = y
+set: R3 = x = y
+text:
+  The first implication says: if $x > y$ then $x <= y$. Its two sides
+  contradict each other, so it can only hold when $x > y$ is false, that
+  is, when $x <= y$.
+result: The weakest precondition is $x = y$.
+
+summary:
+  The program computes the maximum of $x$ and $y$, but the postcondition
+  describes the minimum. The two agree only when $x = y$, and this is what
+  the weakest precondition says.

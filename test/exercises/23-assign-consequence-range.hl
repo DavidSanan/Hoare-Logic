@@ -1,0 +1,73 @@
+# Source: Slides "ICT3112 - 3 - Consequence Rule" and HoareLogic.pdf, section "Consequence rule".
+id: assign-consequence-range
+title: Weakening the precondition and strengthening the postcondition
+topic: Skip and consequence
+level: 2
+source: Slides 3, Consequence Rule; HoareLogic.pdf, "Consequence rule"
+tags: consequence, assignment
+
+task:
+  Prove the triple with the full consequence rule: weaken the
+  precondition to $1 <= x <= 9$, and strengthen the postcondition to
+  $10 <= y <= 90$.
+
+pre: 2 <= x <= 8
+post: 0 <= y <= 100
+
+program:
+  {P}
+  {P'}
+  y := x * 10
+  {Q'}
+  {Q}
+
+verdict: valid
+
+step: Choose a stronger postcondition
+rule: CONSEQUENCE
+text:
+  The program can only produce values of $y$ between $20$ and $80$, so the
+  bounds $0$ and $100$ of the postcondition are far from what happens. We
+  choose a simpler and stronger postcondition $Q'$, the multiples of ten
+  from $10$ to $90$ for the values $x = 1, ..., 9$.
+set: Q' = 10 <= y <= 90
+vc: 10 <= y <= 90 ==> 0 <= y <= 100
+why:
+  Every number between $10$ and $90$ is between $0$ and $100$. This is the
+  third premise of the consequence rule, $Q' ==> Q$.
+
+step: Apply the assignment rule to the new postcondition
+rule: ASSIGN, WP
+focus: y := x * 10
+calc:
+  wp(y := x * 10, Q')
+  = (10 <= y <= 90)[y <- x * 10]
+  = 10 <= x * 10 <= 90
+  = 1 <= x <= 9           // divide by 10
+set: P' = 1 <= x <= 9
+instance: ASSIGN
+  ---
+  {1 <= x <= 9} y := x * 10 {10 <= y <= 90}
+
+step: Weaken the precondition
+rule: CONSEQUENCE, LOGIC
+vc: 2 <= x <= 8 ==> 1 <= x <= 9
+why:
+  The interval $[2, 8]$ is included in $[1, 9]$. So $P$ is stronger than
+  $P'$, which is the first premise of the consequence rule.
+
+step: Apply the consequence rule
+rule: CONSEQUENCE
+instance: CONSEQUENCE
+  2 <= x <= 8 ==> 1 <= x <= 9
+  {1 <= x <= 9} y := x * 10 {10 <= y <= 90}
+  10 <= y <= 90 ==> 0 <= y <= 100
+  ---
+  {2 <= x <= 8} y := x * 10 {0 <= y <= 100}
+result: The triple is valid.
+
+summary:
+  The consequence rule lets us prove a triple through a different triple,
+  as long as the precondition gets stronger and the postcondition gets
+  weaker. The proof outline shows the two steps as the implications
+  $\{P\}$ to $\{P'\}$ and $\{Q'\}$ to $\{Q\}$.

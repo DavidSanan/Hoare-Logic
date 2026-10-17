@@ -1,0 +1,99 @@
+# Source: Slides "ICT3112 - 7 - Recepy for Loop Invariants - exercises", Exercise 3 and Exercise 5 (b).
+id: sum-of-odd-numbers
+title: Sum of the first n odd numbers
+topic: Loop invariants
+level: 2
+source: Slides 7, Recipe exercises, Exercises 3 and 5 b
+tags: recipe, invariant, failed candidate
+
+task:
+  Find the invariant by generalising the postcondition, give a variant,
+  and check establishment and preservation. A trace with a few rows helps.
+
+pre: n >= 0
+post: s = n^2
+
+program:
+  {P}
+  {R4}
+  i := 0;                  // i1
+  {R3}
+  s := 0;                  // i2
+  {I}
+  while (i < n) do {
+    {I && i < n}
+    {R2}
+    s := s + (2 * i + 1);  // b1
+    {R1}
+    i := i + 1             // b2
+    {I}
+  }
+  {I && !(i < n)}
+  {Q}
+
+verdict: valid
+
+step: A candidate that keeps n
+rule: LOGIC
+text:
+  Exercise 5 (b) of the slides proposes the candidate $s = n^2 && 0 <= i <= n$,
+  which only adds the bounds to the postcondition. Establishment fails:
+vc: {n >= 0} i := 0; s := 0 {s = n^2 && 0 <= i <= n}
+status: fails
+counterexample: n = 2, i = 0, s = 0
+why:
+  Right after the initialisation $i = 0$ and $s = 0$. With $n = 2$ the
+  candidate asks for $s = 4$. The candidate rejects a real state, so it is
+  too strong. The fix is to replace $n$ by $i$.
+
+step: Trace and generalise
+rule: WHILE-CONSEQUENCE
+focus: while
+text:
+  | At the loop head | $i$ | $s$ |
+  |---|---|---|
+  | before iteration 1 | $0$ | $0$ |
+  | before iteration 2 | $1$ | $1$ |
+  | before iteration 3 | $2$ | $4$ |
+  | before iteration 4 | $3$ | $9$ |
+set: I = s = i^2 && 0 <= i <= n
+
+step: Establishment
+rule: ASSIGN, SEQ, WP
+focus: i1, i2
+calc:
+  wp(s := 0, I)
+  = 0 = i^2 && 0 <= i <= n
+set: R3 = 0 = i^2 && 0 <= i <= n
+calc:
+  wp(i := 0, R3)
+  = 0 = 0^2 && 0 <= 0 <= n
+  = 0 <= n
+set: R4 = 0 <= n
+vc: n >= 0 ==> 0 <= n
+
+step: Preservation
+rule: ASSIGN, SEQ, CONSEQUENCE
+focus: b1, b2
+calc:
+  wp(i := i + 1, I)
+  = s = (i + 1)^2 && 0 <= i + 1 <= n
+set: R1 = s = (i + 1)^2 && 0 <= i + 1 <= n
+calc:
+  wp(s := s + (2 * i + 1), R1)
+  = s + (2 * i + 1) = (i + 1)^2 && 0 <= i + 1 <= n
+set: R2 = s + (2 * i + 1) = (i + 1)^2 && 0 <= i + 1 <= n
+vc: s = i^2 && 0 <= i <= n && i < n ==> s + (2 * i + 1) = (i + 1)^2 && 0 <= i + 1 <= n
+why:
+  $(i + 1)^2 = i^2 + 2 * i + 1$, and $s = i^2$.
+
+step: Exit and termination
+rule: CONSEQUENCE, WHILE-TOTAL
+vc: s = i^2 && 0 <= i <= n && !(i < n) ==> s = n^2
+why:
+  At the exit $i = n$, so $s = n^2$.
+vc: {s = i^2 && 0 <= i <= n && i < n && n - i = E0} s := s + (2 * i + 1); i := i + 1 {n - i < E0}
+why:
+  The variant $n - i$ decreases by one in every iteration, and it is
+  positive when an iteration starts.
+result: The triple is valid.

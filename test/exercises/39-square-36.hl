@@ -1,0 +1,58 @@
+# Source: Exercise sheet "Hoare Logic 2" (solved), 1 b).
+id: square-36
+title: A precondition with two solutions
+topic: Sequential composition
+level: 2
+source: Exercise sheet "Hoare Logic 2", 1 b
+tags: assignment, sequence, disjunction, consequence
+
+task:
+  Show that the triple is valid. Compute the weakest precondition and
+  explain why it is weaker than the given precondition.
+
+pre: x = 5
+post: x = 36
+range: 8
+
+program:
+  {P}
+  {R2}
+  y := x + 1;      // i1
+  {R1}
+  x := y * y       // i2
+  {Q}
+
+verdict: valid
+
+step: The last statement, `x := y * y`
+rule: ASSIGN, WP
+focus: i2
+calc:
+  wp(x := y * y, Q)
+  = (x = 36)[x <- y * y]
+  = y * y = 36
+set: R1 = y * y = 36
+
+step: The first statement, `y := x + 1`
+rule: ASSIGN, WP
+focus: i1
+calc:
+  wp(y := x + 1, R1)
+  = (x + 1) * (x + 1) = 36
+  = x + 1 = 6 || x + 1 = -6       // the square roots of 36 are 6 and -6
+  = x = 5 || x = -7
+set: R2 = x = 5 || x = -7
+
+step: Compare with the precondition
+rule: CONSEQUENCE, LOGIC
+vc: x = 5 ==> x = 5 || x = -7
+why:
+  This is the law $A ==> A || B$: if one side of a disjunction holds, the
+  disjunction holds.
+result: The triple is valid.
+
+summary:
+  The weakest precondition has two solutions, $5$ and $-7$, since
+  squaring forgets the sign. The given precondition picks one of them, so
+  it is stronger than the weakest precondition, and the consequence rule
+  applies.
