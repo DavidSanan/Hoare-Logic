@@ -298,10 +298,13 @@ Which names are arrays is inferred from their use, as in the tests: a name read 
 
 The definitions of `fib`, `fact`, `pow`, `sum` and `prod` are unfolded on the terms of each check: for a term $fact(i + 1)$ the query contains $fact(i + 1) = fact\_step(i + 1)$ and the same for $fact(i)$, which is the step that the proofs of the course use. A power with a constant exponent, such as $i^2$, is unfolded down to the exponent $0$. A term under a quantifier, whose arguments are bound, uses instead the general axiom with a pattern, which the solver instantiates on the terms it meets.
 
-Two choices of the first prototype were changed after the tests:
+Two choices of the first prototype were changed after the tests. Neither problem is specific to the browser: the same queries give the same results with native Z3 4.13.0 (the version of the WebAssembly build) and with native Z3 5.3.1.
 
-- `define-fun-rec` made the WebAssembly build of Z3 crash when it was used inside the scopes of the queries, and its lazy unfolding did not decide simple checks of the factorial exercise within the time limit. The definitions are now declared functions with their one-step definition, unfolded explicitly.
-- A quantified axiom with the pattern $F(lo, hi)$ creates the new term $F(lo, hi - 1)$, which matches the pattern again: the unfolding never stops and the solver reaches its time limit. The explicit unfolding on the terms of the check avoids this loop.
+- `define-fun-rec` inside the scopes of the queries (each query between `push` and `pop`, with the definitions given again in each scope) makes Z3 crash. The crash is a bug of Z3: three such scopes are enough to crash native Z3 4.13.0 and 5.3.1 with a segmentation fault, and the WebAssembly build with "memory access out of bounds" (the reproduction is a file of three queries, kept with the tools).
+- With the definitions given once, `define-fun-rec` left simple checks undecided in Z3 4.13.0. For example, $f = fact(i) \wedge 0 \le i \le n \wedge \neg(i < n) \Rightarrow f = fact(n)$ follows from $i = n$, yet Z3 4.13.0 expanded the definition 165 686 times in 4 seconds without an answer. Z3 5.3.1 proves it with 4 expansions.
+- A quantified axiom with the pattern $F(lo, hi)$ creates the new term $F(lo, hi - 1)$, which matches the pattern again, so the instantiation does not stop. On a check of the factorial exercise, Z3 made 25 389 instantiations of the axiom for $prod$ in 4 seconds without an answer. This is a property of instantiation by patterns, in every version of Z3.
+
+The explicit unfolding on the terms of the check avoids the three problems, and it gives the same answers with every version of Z3.
 
 Because the definitions are only partly unfolded, a model can give a recursive function values that its definition does not allow; such a model is not a real counterexample. Every model is therefore evaluated (section 10). When a model is not confirmed, or when the solver gives no answer, the engine searches again for a counterexample among small numbers (between $-10$ and $10$, arrays of at most 8 cells), with the definitions unfolded 12 steps, so that they are exact on those numbers. If that search finds no confirmed counterexample either, the claim is "not decided".
 
