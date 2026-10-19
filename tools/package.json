@@ -1,0 +1,8 @@
+{
+  "name": "hoare-logic-tools",
+  "private": true,
+  "description": "Command-line tools of the Hoare Logic Workbench. Only the prover needs the dependency.",
+  "dependencies": {
+    "z3-solver": "4.13.0"
+  }
+}

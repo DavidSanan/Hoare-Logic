@@ -819,3 +819,7 @@ dialog::backdrop { background: rgba(10, 14, 22, .45); }
   .calc td.why { grid-column: 2; }
   main { padding-block: 22px 48px; }
 }
+
+/* The prover */
+.proof-block { margin-top: 4px; }
+.final + .proof-block { display: grid; gap: 8px; justify-items: start; }

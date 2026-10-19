@@ -545,5 +545,5 @@
     }
   }
 
-  HL.Checker = { checkExercise, checkImplication, checkEquiv, checkTriple, checkCounterexample, collectVars, arrayVarsOf };
+  HL.Checker = { checkExercise, checkImplication, checkEquiv, checkTriple, checkCounterexample, collectVars, arrayVarsOf, resolver, prepare, prepareLine };
 })(typeof window !== 'undefined' ? window : globalThis);

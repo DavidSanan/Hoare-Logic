@@ -510,8 +510,9 @@
     }
     if (rules.length) s += '<h4>Rules used</h4><div class="chips">' + rules.map(ruleChip).join('') + '</div>';
     if (ex.summary) s += '<div class="prose">' + md(ex.summary) + '</div>';
+    s += proofBlockHTML();
     s += '<div class="test-block"><h4>Test this solution</h4><p class="muted">The test runs the program and evaluates every claim of the steps on many small states. It does not prove anything: a passing test means that no counterexample was found among the states that were tried.</p>' +
-      '<button type="button" class="btn run-tests">Run the tests</button><div class="test-report"></div></div>';
+      '<button type="button" class="btn ghost run-tests">Run the tests</button><div class="test-report"></div></div>';
     return s + '</article>';
   }
 
@@ -571,6 +572,105 @@
   // The step viewer
   // ------------------------------------------------------------------
 
+  // ------------------------------------------------------------------
+  // The prover: Z3, compiled to WebAssembly, proves the claims of the
+  // solution (smt.js, ivl.js, prover.js). Z3 is loaded the first time it is
+  // needed. It uses threads, which browsers allow only on pages that are
+  // "cross-origin isolated"; on GitHub Pages the service worker
+  // coi-serviceworker.js makes the page isolated.
+  // ------------------------------------------------------------------
+
+  let solverPromise = null;
+  let proofQueue = Promise.resolve();
+
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const el = document.createElement('script');
+      el.src = src;
+      el.onload = resolve;
+      el.onerror = () => reject(new Error('The file ' + src + ' could not be loaded'));
+      document.head.appendChild(el);
+    });
+  }
+
+  function getSolver() {
+    if (!solverPromise) {
+      solverPromise = (async () => {
+        if (!window.crossOriginIsolated) {
+          throw new Error('The browser does not allow Z3 to run on this page, because the page is not cross-origin isolated. Reload the page once; if the message stays, the browser does not support it.');
+        }
+        await loadScript('z3/z3-built.js');
+        await loadScript('z3/z3-lowlevel.js');
+        const Z3 = await window.HLZ3init();
+        const ctx = Z3.mk_context(Z3.mk_config());
+        return { run: (text) => Z3.eval_smtlib2_string(ctx, text) };
+      })();
+      solverPromise.catch(() => { solverPromise = null; });
+    }
+    return solverPromise;
+  }
+
+  function proofBlockHTML(compact) {
+    return '<div class="test-block proof-block">' + (compact ? '' : '<h4>Prove this solution</h4><p class="muted">The prover sends every claim of the solution to the SMT solver Z3: every line of every calculation, every verification condition, and every check of the annotated program, which are those of the rules of the course. A proved claim holds in every state. The first use downloads Z3 (about 32 MB).</p>') +
+      '<button type="button" class="btn run-proof">Prove with Z3</button><div class="proof-report" aria-live="polite"></div></div>';
+  }
+
+  function runProof(ex, button) {
+    const out = $('.proof-report', button.parentElement);
+    button.disabled = true;
+    button.textContent = solverPromise ? 'Proving…' : 'Loading Z3…';
+    proofQueue = proofQueue.then(async () => {
+      try {
+        const solver = await getSolver();
+        button.textContent = 'Proving…';
+        const results = await HL.Prover.proveExercise(ex, solver, {
+          timeout: 4000,
+          onProgress: (rs) => { button.textContent = 'Proving… ' + rs.length; }
+        });
+        out.innerHTML = proofReportHTML(results);
+      } catch (err) {
+        out.innerHTML = '<p class="bad">' + esc(err.message) + '</p>';
+      }
+      button.disabled = false;
+      button.textContent = 'Prove again';
+    });
+  }
+
+  function proofReportHTML(results) {
+    const proved = results.filter((r) => r.status === 'proved').length;
+    const stated = results.filter((r) => (r.status === 'refuted' && r.ok) || r.status === 'expected').length;
+    const wrong = results.filter((r) => r.ok === false).length;
+    const open = results.filter((r) => r.ok == null && r.status !== 'expected').length;
+    let s = '<div class="report-summary"><span class="badge ok">' + proved + ' proved</span>' +
+      (stated ? '<span class="badge ok">' + stated + ' refuted, as stated</span>' : '') +
+      (wrong ? '<span class="badge bad">' + wrong + ' wrong</span>' : '') +
+      (open ? '<span class="badge warn">' + open + ' not decided</span>' : '') + '</div>';
+    const groups = [];
+    for (const r of results) {
+      let g = groups.find((x) => x.name === r.group);
+      if (!g) groups.push((g = { name: r.group, items: [] }));
+      g.items.push(r);
+    }
+    for (const g of groups) {
+      s += '<div class="report-group"><h5>' + esc(g.name) + '</h5><ul>';
+      for (const r of g.items) {
+        const good = r.ok === true || r.status === 'expected';
+        const cls = good ? 'ok' : r.ok === false ? 'bad' : 'warn';
+        const icon = good ? '✓' : r.ok === false ? '✗' : '?';
+        let detail;
+        if (r.status === 'proved') detail = r.ok ? 'Proved: it holds in every state.' : 'Proved, but the exercise says that it does not hold.';
+        else if (r.status === 'refuted') detail = (r.ok ? 'Refuted, as the exercise states. ' : 'Refuted. ') + 'Counterexample: ' + stateHTML(r.state) + '.';
+        else if (r.status === 'expected') detail = esc(r.reason) + (r.state ? ' Counterexample: ' + stateHTML(r.state) + '.' : '');
+        else if (r.status === 'unknown') detail = 'Not decided by the solver' + (r.reason ? ': ' + esc(r.reason) : '') + '.';
+        else detail = esc(r.reason || 'Not proved.');
+        s += '<li class="' + cls + '"><span class="icon" aria-hidden="true">' + icon + '</span><div><div class="what">' + esc(r.item) +
+          '</div><div class="detail">' + detail + '</div></div></li>';
+      }
+      s += '</ul></div>';
+    }
+    return s;
+  }
+
   // The viewer shows an exercise one step at a time. With several choices
   // (for example of invariant), it shows the steps of the chosen one.
   // Options: compact (no header, no summary: used for the examples of the
@@ -629,6 +729,7 @@
       else if (b.classList.contains('next')) this.go(this.k + 1);
       else if (b.classList.contains('toggle-all')) { this.all = !this.all; this.render(); }
       else if (b.classList.contains('run-tests')) this.runTests(b);
+      else if (b.classList.contains('run-proof')) runProof(this.ex, b);
     }
 
     runTests(button) {
@@ -703,7 +804,7 @@
         ok = ex.verdict !== 'invalid';
         text = ok ? '✓ The triple is proved.' : '✗ The triple is not valid.';
       }
-      return '<div class="final ' + (ok ? 'ok' : 'bad') + '">' + text + '</div>';
+      return '<div class="final ' + (ok ? 'ok' : 'bad') + '">' + text + '</div>' + proofBlockHTML(true);
     }
 
     render() {
