@@ -1,0 +1,39 @@
+id: rule-skip-same
+title: Same assertion
+topic: Skip
+example-of: SKIP
+derived: true
+
+task:
+  Use the rule SKIP to decide whether this triple can be derived.
+
+pre: x > 0
+post: x > 0
+
+program:
+  {P}
+  {R1}
+  skip       // s
+  {Q}
+
+verdict: valid
+
+step: R1, the precondition given by the rule SKIP
+rule: SKIP
+focus: s
+text:
+  The rule SKIP gives the triple whose precondition is the postcondition:
+  `skip` does not change the state.
+calc:
+  wp(skip, Q)
+  = Q           // wp(skip, Q) = Q
+  = x > 0       // Q is x > 0
+set: R1 = x > 0
+
+step: P and R1 are the same formula
+rule: SKIP
+focus: P, R1
+text:
+  The precondition $P$ is exactly $R1$.
+  >>> «P» <=> «R1»
+  So the rule SKIP gives the triple directly, without the consequence rule.

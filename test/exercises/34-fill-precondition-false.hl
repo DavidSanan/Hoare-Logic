@@ -71,14 +71,15 @@ calc:
   = false                  // z does not occur in false, so nothing changes
 set: R3 = false
 
-step: The precondition must imply the weakest precondition
+step: P implies R3
 rule: CONSEQUENCE
+focus: P, R3
 text:
   $R3$ is the weakest precondition of the whole program for $Q$. It is
   $false$: no initial state makes the program end in $Q$. By the
   consequence rule, the triple is valid when the precondition $P$ implies
   $R3$.
-  >>> «false : P» ==> «false : R3»
+  >>> «P» ==> «R3»
 vc: false ==> false
 why:
   $false$ implies any formula. The triple is valid, but it says nothing

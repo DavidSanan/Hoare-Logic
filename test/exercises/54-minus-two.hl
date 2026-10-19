@@ -13,6 +13,9 @@ task:
   starts with a positive value. The triple is also valid without $n > 0$,
   but then the invariant must also cover start values below $-1$.
 
+given:
+  Loop condition B: $x > 0$
+
 pre: x = n && n > 0
 post: x <= 0
 
@@ -39,79 +42,89 @@ text:
   $-1$. So every value of $x$ at the loop head is at least $-1$.
 set: I = x >= -1
 text:
-  The loop rule with consequence needs three checks, with the loop
-  condition $B$ being $x > 0$: establishment $P ==> I$, preservation
-  $\{I && B\}$ `x := x - 2` $\{I\}$, and exit $I && !B ==> Q$.
+  The loop rule with consequence has three premises, with the loop
+  condition $B$ being $x > 0$: initialisation $P ==> I$, preservation
+  $\{I && B\}$ `x := x - 2` $\{I\}$, and conclusion $I && !B ==> Q$.
 
-step: Establishment: P implies I
+step: P implies I
+part: Initialisation
 rule: CONSEQUENCE, LOGIC
+focus: P, I
 text:
-  No statement comes before the loop, so we prove that the precondition
-  $P$ implies $I$.
-  >>> «x = n && n > 0 : P» ==> «x >= -1 : I»
+  The invariant must hold when the loop is reached. No statement comes
+  before the loop, so the precondition $P$ must imply $I$.
+  >>> «P» ==> «I»
 vc: x = n && n > 0 ==> x >= -1
 why:
   From $x = n$ and $n > 0$ we get $x > 0$, so $x >= -1$.
 
-step: Preservation: R1, the weakest precondition of x := x - 2 for I
+step: R1, the weakest precondition of x := x - 2 for I
+part: Preservation
 rule: ASSIGN, WP
 focus: x := x - 2
 text:
-  We prove that one iteration keeps the invariant:
-  >>> {«x >= -1 : I» && «x > 0 : B»} x := x - 2 {«x >= -1 : I»}
+  One iteration must keep the invariant:
+  >>> {«I» && «x > 0 : B»} x := x - 2 {«I»}
   We calculate the weakest precondition of the body for $I$. We substitute
   the assigned variable ($x$) with the assignment expression ($x - 2$) in
   $I$.
 calc:
   wp(x := x - 2, I)
-  = (x >= -1)[x <- x - 2]
+  = (x >= -1)[x <- x - 2]     // I
   = x - 2 >= -1      // x is replaced by x - 2
   = x >= 1           // add 2 to both sides
 set: R1 = x >= 1
 
-step: Preservation: I and B imply R1
+step: I and B imply R1
+part: Preservation
 rule: CONSEQUENCE, LOGIC
+focus: I && x > 0, R1
 text:
   By the consequence rule, the triple holds when $I && B$ implies $R1$,
   computed in the previous step.
-  >>> «x >= -1 : I» && «x > 0 : B» ==> «x >= 1 : R1»
+  >>> «I» && «x > 0 : B» ==> «R1»
 vc: x >= -1 && x > 0 ==> x >= 1
 why:
   For integers, $x > 0$ is the same as $x >= 1$.
 
-step: Exit: I and not B imply Q
+step: I and not B imply Q
+part: Conclusion
 rule: CONSEQUENCE, LOGIC
+focus: I && !(x > 0), Q
 text:
   When the loop stops, $I$ holds and $B$ is false. This must imply the
   postcondition $Q$.
-  >>> «x >= -1 : I» && «!(x > 0) : ¬B» ==> «x <= 0 : Q»
+  >>> «I» && «!(x > 0) : ¬B» ==> «Q»
 vc: x >= -1 && !(x > 0) ==> x <= 0
 why:
   $!(x > 0)$ is $x <= 0$, which is $Q$ itself.
 
-step: Termination: the variant is not negative
+step: The variant is not negative
+part: Termination
 rule: WHILE-TOTAL
+focus: I && x > 0
 text:
   The body decreases $x$ by two, and the loop runs only while $x > 0$. So
-  we take the variant $E = x$. The rule WHILE-TOTAL has two checks. The
+  we take the variant $E = x$. The rule WHILE-TOTAL has two premises. The
   first one: $E$ is not negative when an iteration starts.
-  >>> «x >= -1 : I» && «x > 0 : B» ==> «x >= 0 : E >= 0»
+  >>> «I» && «x > 0 : B» ==> «x >= 0 : E >= 0»
 vc: x >= -1 && x > 0 ==> x >= 0
 why:
   $x > 0$ gives $x >= 0$.
 
-step: Termination: the body decreases the variant
+step: The body decreases the variant
+part: Termination
 rule: WHILE-TOTAL, ASSIGN, WP
 focus: x := x - 2
 text:
-  The second check: the body keeps $I$ and makes $E$ smaller. $E0$ is a
+  The second premise: the body keeps $I$ and makes $E$ smaller. $E0$ is a
   logical variable for the value of $E$ when the iteration starts.
-  >>> {«x >= -1 : I» && «x > 0 : B» && «x = E0 : E = E0»} x := x - 2 {«x >= -1 : I» && «x < E0 : E < E0»}
+  >>> {«I» && «x > 0 : B» && «x = E0 : E = E0»} x := x - 2 {«I» && «x < E0 : E < E0»}
   We calculate the weakest precondition of the body for the
   postcondition of this triple. We substitute $x$ with $x - 2$.
 calc:
   wp(x := x - 2, x >= -1 && x < E0)
-  = (x >= -1 && x < E0)[x <- x - 2]
+  = (x >= -1 && x < E0)[x <- x - 2]     // I is x >= -1, E is x
   = x - 2 >= -1 && x - 2 < E0     // x is replaced by x - 2
   = x >= 1 && x - 2 < E0          // add 2 to both sides of x - 2 >= -1
 vc: x >= -1 && x > 0 && x = E0 ==> x >= 1 && x - 2 < E0

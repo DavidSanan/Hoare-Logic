@@ -14,9 +14,12 @@ task:
   bound is smaller than its lower bound is empty, and its value is $0$.
 
   Find a loop invariant $I$: $s$ is the sum of the first $i$ elements.
-  Prove establishment, preservation and the postcondition at the exit.
+  Prove initialisation, preservation and the conclusion at the exit.
   The loop reads $a[i]$, so ARRAY-READ adds a definedness condition. Then
   give a variant and show that the loop terminates.
+
+given:
+  Loop condition B: $i < n$
 
 pre: n = sizeof(a)
 post: s = sum(k, 0, n - 1, a[k])
@@ -52,14 +55,20 @@ text:
   needs $n = sizeof(a)$ to show that the read $a[i]$ is inside the array,
   so we keep it from $P$.
 set: I = s = sum(k, 0, i - 1, a[k]) && 0 <= i <= n && n = sizeof(a)
+text:
+  The loop rule with consequence has three premises, with the loop
+  condition $B$ being $i < n$: initialisation (the statements before the
+  loop establish $I$ from $P$), preservation $\{I && B\}$ body $\{I\}$,
+  and conclusion $I && !B ==> Q$.
 
-step: Establishment: R1, the weakest precondition of s := 0
+step: R1, the weakest precondition of s := 0 for I
+part: Initialisation
 rule: ASSIGN, WP
 focus: i2
 text:
-  The loop is preceded by `i := 0; s := 0`, so establishment is the
+  The loop is preceded by `i := 0; s := 0`, so initialisation is the
   triple
-  >>> {«n = sizeof(a) : P»} i := 0; s := 0 {«s = sum(k, 0, i - 1, a[k]) && 0 <= i <= n && n = sizeof(a) : I»}
+  >>> {«P»} i := 0; s := 0 {«I»}
   We compute its weakest precondition from the last statement. We
   substitute $s$ with $0$ in its postcondition, the invariant $I$.
 calc:
@@ -68,7 +77,8 @@ calc:
   = 0 = sum(k, 0, i - 1, a[k]) && 0 <= i <= n && n = sizeof(a)     // s is replaced by 0
 set: R1 = 0 = sum(k, 0, i - 1, a[k]) && 0 <= i <= n && n = sizeof(a)
 
-step: Establishment: R2, the weakest precondition of i := 0
+step: R2, the weakest precondition of i := 0 for R1
+part: Initialisation
 rule: ASSIGN, WP
 focus: i1
 text:
@@ -81,24 +91,27 @@ calc:
   = 0 <= n && n = sizeof(a)                   // 0 = 0 and 0 <= 0 are true
 set: R2 = 0 <= n && n = sizeof(a)
 
-step: Establishment: the precondition implies R2
+step: P implies R2
+part: Initialisation
 rule: CONSEQUENCE
+focus: P, R2
 text:
   $R2$ is the weakest precondition of `i := 0; s := 0` for $I$. By the
-  consequence rule, establishment holds when the precondition $P$ implies
-  $R2$.
+  consequence rule, initialisation holds when the precondition $P$
+  implies $R2$.
+  >>> «P» ==> «R2»
 vc: n = sizeof(a) ==> 0 <= n && n = sizeof(a)
 why:
   $n = sizeof(a)$ is in $P$. The size of an array is never negative, so
   $0 <= n$.
 
-step: Preservation: R3, the weakest precondition of i := i + 1
+step: R3, the weakest precondition of i := i + 1 for I
+part: Preservation
 rule: ASSIGN, WP
 focus: b2
 text:
-  Preservation is the triple below, where the loop body is
-  `s := s + a[i]; i := i + 1`.
-  >>> {«s = sum(k, 0, i - 1, a[k]) && 0 <= i <= n && n = sizeof(a) : I» && «i < n : B»} s := s + a[i]; i := i + 1 {«s = sum(k, 0, i - 1, a[k]) && 0 <= i <= n && n = sizeof(a) : I»}
+  One iteration must keep the invariant:
+  >>> {«I» && «i < n : B»} s := s + a[i]; i := i + 1 {«I»}
   We compute the weakest precondition of the body for $I$, from the last
   statement. We substitute $i$ with $i + 1$ in $I$.
 calc:
@@ -108,7 +121,8 @@ calc:
   = s = sum(k, 0, i, a[k]) && 0 <= i + 1 <= n && n = sizeof(a)             // i + 1 - 1 is i
 set: R3 = s = sum(k, 0, i, a[k]) && 0 <= i + 1 <= n && n = sizeof(a)
 
-step: Preservation: R4, the weakest precondition of s := s + a[i]
+step: R4, the weakest precondition of s := s + a[i] for R3
+part: Preservation
 rule: ARRAY-READ, WP
 focus: b1
 text:
@@ -121,12 +135,15 @@ calc:
   = s + a[i] = sum(k, 0, i, a[k]) && 0 <= i + 1 <= n && n = sizeof(a) && 0 <= i < sizeof(a)     // def(a[i]) is 0 <= i < sizeof(a)
 set: R4 = s + a[i] = sum(k, 0, i, a[k]) && 0 <= i + 1 <= n && n = sizeof(a) && 0 <= i < sizeof(a)
 
-step: Preservation: I and B imply R4
+step: I and B imply R4
+part: Preservation
 rule: CONSEQUENCE
+focus: I && i < n, R4
 text:
   $R4$ is the weakest precondition of the body for $I$. By the consequence
   rule, preservation holds when the invariant $I$ and the loop condition
   $B$ together imply $R4$.
+  >>> «I» && «i < n : B» ==> «R4»
 vc: s = sum(k, 0, i - 1, a[k]) && 0 <= i <= n && n = sizeof(a) && i < n ==> s + a[i] = sum(k, 0, i, a[k]) && 0 <= i + 1 <= n && n = sizeof(a) && 0 <= i < sizeof(a)
 why:
   First conjunct: $sum(k, 0, i, a[k]) = sum(k, 0, i - 1, a[k]) + a[i]$,
@@ -137,38 +154,62 @@ why:
 
   Definedness: $0 <= i$, and $i < n = sizeof(a)$.
 
-step: The postcondition at the exit
+step: I and not B imply Q
+part: Conclusion
 rule: CONSEQUENCE, LOGIC
+focus: I && !(i < n), Q
 text:
-  When the loop stops, $I$ holds and the loop condition $B$ is false. The
-  postcondition $Q$ must follow from them.
+  When the loop stops, $I$ holds and the loop condition $B$ is false. This
+  must imply the postcondition $Q$.
+  >>> «I» && «!(i < n) : ¬B» ==> «Q»
 vc: s = sum(k, 0, i - 1, a[k]) && 0 <= i <= n && n = sizeof(a) && !(i < n) ==> s = sum(k, 0, n - 1, a[k])
 why:
   $!(i < n)$ is $i >= n$. With $i <= n$ from $I$ it gives $i = n$, so
   $s = sum(k, 0, i - 1, a[k])$ becomes $s = sum(k, 0, n - 1, a[k])$.
 
-step: Termination with the variant n - i
+step: The variant is not negative
+part: Termination
 rule: WHILE-TOTAL
+focus: I && i < n
 text:
   The counter $i$ goes up to $n$, so $n - i$ is the number of iterations
-  left. We use the variant $E = n - i$. The rule WHILE-TOTAL asks two
-  things.
-
-  First, the variant is not negative when an iteration starts.
+  left. We take the variant $E = n - i$. The rule WHILE-TOTAL has two
+  premises. The first one: $E$ is not negative when an iteration starts.
+  >>> «I» && «i < n : B» ==> «n - i >= 0 : E >= 0»
 vc: s = sum(k, 0, i - 1, a[k]) && 0 <= i <= n && n = sizeof(a) && i < n ==> n - i >= 0
 why:
   $i < n$ from $B$ gives $n - i > 0$.
+
+step: The variant after i := i + 1
+part: Termination
+rule: WHILE-TOTAL, ASSIGN, WP
+focus: b2
 text:
-  Second, the body decreases the variant. We write $E0$ for the value of
-  $n - i$ before the iteration, and compute the weakest precondition of
-  the body for $n - i < E0$, from the last statement.
+  The second premise: the body keeps $I$ and makes $E$ smaller. $E0$ is a
+  logical variable for the value of $E$ when the iteration starts.
+  >>> {«I» && «i < n : B» && «n - i = E0 : E = E0»} s := s + a[i]; i := i + 1 {«I» && «n - i < E0 : E < E0»}
+  Preservation already shows that the body keeps $I$, so we compute the
+  weakest precondition of the body for $n - i < E0$, from the last
+  statement. We substitute $i$ with $i + 1$.
 calc:
   wp(i := i + 1, n - i < E0)
+  = (n - i < E0)[i <- i + 1]
   = n - (i + 1) < E0          // i is replaced by i + 1
+
+step: The variant after s := s + a[i]
+part: Termination
+rule: WHILE-TOTAL, ARRAY-READ, WP
+focus: b1
+text:
+  We substitute $s$ with $s + a[i]$ in the result of the previous step.
+  The expression reads $a[i]$, so ARRAY-READ adds $def(a[i])$.
 calc:
   wp(s := s + a[i], n - (i + 1) < E0)
-  = n - (i + 1) < E0 && def(a[i])           // s does not occur; ARRAY-READ adds def(a[i])
+  = (n - (i + 1) < E0)[s <- s + a[i]] && def(a[i])
+  = n - (i + 1) < E0 && def(a[i])           // s does not occur, so nothing is replaced
   = n - (i + 1) < E0 && 0 <= i < sizeof(a)  // def(a[i]) is 0 <= i < sizeof(a)
+text:
+  The precondition of the triple must imply this formula.
 vc: s = sum(k, 0, i - 1, a[k]) && 0 <= i <= n && n = sizeof(a) && i < n && n - i = E0 ==> n - (i + 1) < E0 && 0 <= i < sizeof(a)
 why:
   $n - (i + 1) = (n - i) - 1 = E0 - 1$, which is smaller than $E0$. The

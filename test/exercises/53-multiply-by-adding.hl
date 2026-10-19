@@ -10,6 +10,9 @@ task:
   Give a proof outline and a loop invariant. The variables $x'$ and $y'$
   are logical variables: they keep the initial values of $x$ and $y$.
 
+given:
+  Loop condition B: $a <= y$
+
 pre: x = x' && y = y' && y >= 0
 post: z = x * y
 
@@ -42,94 +45,104 @@ text:
   when $a$ reaches $y + 1$, which gives the bounds of $a$.
 set: I = z = x * (a - 1) && 1 <= a <= y + 1
 text:
-  The loop rule with consequence needs three checks, with the loop
-  condition $B$ being $a <= y$: establishment, preservation of $I$ by the
-  body, and exit $I && !B ==> Q$.
+  The loop rule with consequence has three premises, with the loop
+  condition $B$ being $a <= y$: initialisation, preservation of $I$ by the
+  body, and conclusion $I && !B ==> Q$.
 
-step: Establishment: R3, the weakest precondition of a := 1 for I
+step: R3, the weakest precondition of a := 1 for I
+part: Initialisation
 rule: ASSIGN, WP
 focus: i2
 text:
-  The loop comes after two assignments, so establishment is the triple
+  The loop comes after two assignments, so initialisation is the triple
   $\{P\}$ `z := 0; a := 1` $\{I\}$. We calculate the weakest precondition
   of these two statements for $I$, from the last one. We substitute the
   assigned variable ($a$) with the assignment expression ($1$) in $I$.
 calc:
   wp(a := 1, I)
-  = (z = x * (a - 1) && 1 <= a <= y + 1)[a <- 1]
+  = (z = x * (a - 1) && 1 <= a <= y + 1)[a <- 1]     // I
   = z = x * (1 - 1) && 1 <= 1 <= y + 1     // a is replaced by 1
   = z = 0 && 1 <= 1 <= y + 1               // x * (1 - 1) is x * 0, which is 0
   = z = 0 && 0 <= y                        // 1 <= 1 is true; subtract 1 from both sides of 1 <= y + 1
 set: R3 = z = 0 && 0 <= y
 
-step: Establishment: R4, the weakest precondition of z := 0 for R3
+step: R4, the weakest precondition of z := 0 for R3
+part: Initialisation
 rule: ASSIGN, WP
 focus: i1
 text:
   We substitute $z$ with $0$ in $R3$, computed in the previous step.
 calc:
   wp(z := 0, R3)
-  = (z = 0 && 0 <= y)[z <- 0]
+  = (z = 0 && 0 <= y)[z <- 0]     // R3
   = 0 = 0 && 0 <= y      // z is replaced by 0
   = 0 <= y               // 0 = 0 is true, and true && A is A
 set: R4 = 0 <= y
 
-step: Establishment: P implies R4
+step: P implies R4
+part: Initialisation
 rule: CONSEQUENCE, LOGIC
+focus: P, R4
 text:
-  $R4$ is the weakest precondition of the initialisation for $I$. By the
-  consequence rule, establishment holds when the precondition $P$ implies
+  $R4$ is the weakest precondition of the two assignments for $I$. By the
+  consequence rule, initialisation holds when the precondition $P$ implies
   $R4$.
-  >>> «x = x' && y = y' && y >= 0 : P» ==> «0 <= y : R4»
+  >>> «P» ==> «R4»
 vc: x = x' && y = y' && y >= 0 ==> 0 <= y
 why:
   $y >= 0$ is part of $P$.
 
-step: Preservation: R1, the weakest precondition of a := a + 1 for I
+step: R1, the weakest precondition of a := a + 1 for I
+part: Preservation
 rule: ASSIGN, WP
 focus: b2
 text:
-  We prove that one iteration keeps the invariant:
-  >>> {«z = x * (a - 1) && 1 <= a <= y + 1 : I» && «a <= y : B»} z := z + x; a := a + 1 {«z = x * (a - 1) && 1 <= a <= y + 1 : I»}
+  One iteration must keep the invariant:
+  >>> {«I» && «a <= y : B»} z := z + x; a := a + 1 {«I»}
   We calculate the weakest precondition of the body for $I$, from the last
   statement. We substitute $a$ with $a + 1$ in $I$.
 calc:
   wp(a := a + 1, I)
-  = (z = x * (a - 1) && 1 <= a <= y + 1)[a <- a + 1]
+  = (z = x * (a - 1) && 1 <= a <= y + 1)[a <- a + 1]     // I
   = z = x * (a + 1 - 1) && 1 <= a + 1 <= y + 1    // a is replaced by a + 1
   = z = x * a && 1 <= a + 1 <= y + 1              // a + 1 - 1 is a
   = z = x * a && 0 <= a <= y                      // subtract 1 from each part of the bounds
 set: R1 = z = x * a && 0 <= a <= y
 
-step: Preservation: R2, the weakest precondition of z := z + x for R1
+step: R2, the weakest precondition of z := z + x for R1
+part: Preservation
 rule: ASSIGN, WP
 focus: b1
 text:
   We substitute $z$ with $z + x$ in $R1$, computed in the previous step.
 calc:
   wp(z := z + x, R1)
-  = (z = x * a && 0 <= a <= y)[z <- z + x]
+  = (z = x * a && 0 <= a <= y)[z <- z + x]     // R1
   = z + x = x * a && 0 <= a <= y          // z is replaced by z + x
   = z = x * a - x && 0 <= a <= y          // subtract x from both sides
   = z = x * (a - 1) && 0 <= a <= y        // x * a - x is x * (a - 1)
 set: R2 = z = x * (a - 1) && 0 <= a <= y
 
-step: Preservation: I and B imply R2
+step: I and B imply R2
+part: Preservation
 rule: CONSEQUENCE, LOGIC
+focus: I && a <= y, R2
 text:
   By the consequence rule, the triple holds when $I && B$ implies $R2$.
-  >>> «z = x * (a - 1) && 1 <= a <= y + 1 : I» && «a <= y : B» ==> «z = x * (a - 1) && 0 <= a <= y : R2»
+  >>> «I» && «a <= y : B» ==> «R2»
 vc: z = x * (a - 1) && 1 <= a <= y + 1 && a <= y ==> z = x * (a - 1) && 0 <= a <= y
 why:
   $z = x * (a - 1)$ is part of $I$. From $1 <= a$ we get $0 <= a$, and
   $a <= y$ is $B$.
 
-step: Exit: I and not B imply Q
+step: I and not B imply Q
+part: Conclusion
 rule: CONSEQUENCE, LOGIC
+focus: I && !(a <= y), Q
 text:
   When the loop stops, $I$ holds and $B$ is false. This must imply the
   postcondition $Q$.
-  >>> «z = x * (a - 1) && 1 <= a <= y + 1 : I» && «!(a <= y) : ¬B» ==> «z = x * y : Q»
+  >>> «I» && «!(a <= y) : ¬B» ==> «Q»
 vc: z = x * (a - 1) && 1 <= a <= y + 1 && !(a <= y) ==> z = x * y
 why:
   $!(a <= y)$ is $a > y$, that is $a >= y + 1$. Together with

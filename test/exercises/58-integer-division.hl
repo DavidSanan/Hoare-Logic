@@ -15,6 +15,9 @@ task:
   The precondition contains $x' >= 0$. Without it the triple is not valid:
   from $x' = -1$ the loop does not run, and $r = -1$ breaks $0 <= r$.
 
+given:
+  Loop condition B: $r >= y$
+
 pre: x = x' && y = y' && y' > 0 && x' >= 0 && q = 0 && r = x
 post: x' = q * y' + r && 0 <= r < y'
 
@@ -46,99 +49,118 @@ text:
   is needed for termination.
 set: I = x' = q * y' + r && 0 <= r && y = y' && y' > 0
 text:
-  The loop rule with consequence needs three checks, with the loop
-  condition $B$ being $r >= y$: establishment $P ==> I$, preservation of
-  $I$ by the body, and exit $I && !B ==> Q$.
+  The loop rule with consequence has three premises, with the loop
+  condition $B$ being $r >= y$: initialisation $P ==> I$, preservation of
+  $I$ by the body, and conclusion $I && !B ==> Q$.
 
-step: Establishment: P implies I
+step: P implies I
+part: Initialisation
 rule: CONSEQUENCE, LOGIC
+focus: P, I
 text:
-  No statement comes before the loop, so we prove that the precondition
-  $P$ implies $I$.
-  >>> «x = x' && y = y' && y' > 0 && x' >= 0 && q = 0 && r = x : P» ==> «x' = q * y' + r && 0 <= r && y = y' && y' > 0 : I»
+  The invariant must hold when the loop is reached. No statement comes
+  before the loop, so the precondition $P$ must imply $I$.
+  >>> «P» ==> «I»
 vc: x = x' && y = y' && y' > 0 && x' >= 0 && q = 0 && r = x ==> I
 why:
   From $q = 0$ and $r = x = x'$: $q * y' + r = 0 * y' + x' = x'$, and
   $0 <= r$ follows from $x' >= 0$. The facts $y = y'$ and $y' > 0$ are in
   $P$.
 
-step: Preservation: R1, the weakest precondition of q := q + 1 for I
+step: R1, the weakest precondition of q := q + 1 for I
+part: Preservation
 rule: ASSIGN, WP
 focus: b2
 text:
-  We prove that one iteration keeps the invariant:
-  >>> {«x' = q * y' + r && 0 <= r && y = y' && y' > 0 : I» && «r >= y : B»} r := r - y; q := q + 1 {«x' = q * y' + r && 0 <= r && y = y' && y' > 0 : I»}
+  One iteration must keep the invariant:
+  >>> {«I» && «r >= y : B»} r := r - y; q := q + 1 {«I»}
   We calculate the weakest precondition of the body for $I$, from the last
   statement. We substitute $q$ with $q + 1$ in $I$.
 calc:
   wp(q := q + 1, I)
-  = (x' = q * y' + r && 0 <= r && y = y' && y' > 0)[q <- q + 1]
+  = (x' = q * y' + r && 0 <= r && y = y' && y' > 0)[q <- q + 1]     // I
   = x' = (q + 1) * y' + r && 0 <= r && y = y' && y' > 0      // q is replaced by q + 1
 set: R1 = x' = (q + 1) * y' + r && 0 <= r && y = y' && y' > 0
 
-step: Preservation: R2, the weakest precondition of r := r - y for R1
+step: R2, the weakest precondition of r := r - y for R1
+part: Preservation
 rule: ASSIGN, WP
 focus: b1
 text:
   We substitute $r$ with $r - y$ in $R1$, computed in the previous step.
 calc:
   wp(r := r - y, R1)
-  = (x' = (q + 1) * y' + r && 0 <= r && y = y' && y' > 0)[r <- r - y]
+  = (x' = (q + 1) * y' + r && 0 <= r && y = y' && y' > 0)[r <- r - y]     // R1
   = x' = (q + 1) * y' + (r - y) && 0 <= r - y && y = y' && y' > 0    // r is replaced by r - y
   = x' = q * y' + r && 0 <= r - y && y = y' && y' > 0                // with y = y', (q + 1) * y' + (r - y) is q * y' + r
   = x' = q * y' + r && y <= r && y = y' && y' > 0                    // add y to both sides of 0 <= r - y
 set: R2 = x' = q * y' + r && y <= r && y = y' && y' > 0
 
-step: Preservation: I and B imply R2
+step: I and B imply R2
+part: Preservation
 rule: CONSEQUENCE, LOGIC
+focus: I && r >= y, R2
 text:
   By the consequence rule, the triple holds when $I && B$ implies $R2$.
-  >>> «x' = q * y' + r && 0 <= r && y = y' && y' > 0 : I» && «r >= y : B» ==> «x' = q * y' + r && y <= r && y = y' && y' > 0 : R2»
+  >>> «I» && «r >= y : B» ==> «R2»
 vc: x' = q * y' + r && 0 <= r && y = y' && y' > 0 && r >= y ==> x' = q * y' + r && y <= r && y = y' && y' > 0
 why:
   $y <= r$ is $B$. The other three parts of $R2$ are part of $I$.
 
-step: Exit: I and not B imply Q
+step: I and not B imply Q
+part: Conclusion
 rule: CONSEQUENCE, LOGIC
+focus: I && !(r >= y), Q
 text:
   When the loop stops, $I$ holds and $B$ is false. This must imply the
   postcondition $Q$.
-  >>> «x' = q * y' + r && 0 <= r && y = y' && y' > 0 : I» && «!(r >= y) : ¬B» ==> «x' = q * y' + r && 0 <= r < y' : Q»
+  >>> «I» && «!(r >= y) : ¬B» ==> «Q»
 vc: x' = q * y' + r && 0 <= r && y = y' && y' > 0 && !(r >= y) ==> x' = q * y' + r && 0 <= r < y'
 why:
   $!(r >= y)$ is $r < y$, and $y = y'$ gives $r < y'$. The equation and
   $0 <= r$ are part of $I$.
 
-step: Termination: the variant is not negative
+step: The variant is not negative
+part: Termination
 rule: WHILE-TOTAL
+focus: I && r >= y
 text:
   The body decreases $r$ by $y$, which is positive, and $r$ is never
   negative. So we take the variant $E = r$. The rule WHILE-TOTAL has two
-  checks. The first one: $E$ is not negative when an iteration starts.
-  >>> «x' = q * y' + r && 0 <= r && y = y' && y' > 0 : I» && «r >= y : B» ==> «r >= 0 : E >= 0»
+  premises. The first one: $E$ is not negative when an iteration starts.
+  >>> «I» && «r >= y : B» ==> «r >= 0 : E >= 0»
 vc: x' = q * y' + r && 0 <= r && y = y' && y' > 0 && r >= y ==> r >= 0
 why:
   $0 <= r$ is part of $I$.
 
-step: Termination: the body decreases the variant
+step: The weakest precondition of q := q + 1 for r < E0
+part: Termination
 rule: WHILE-TOTAL, ASSIGN, WP
-focus: b1, b2
+focus: b2
 text:
-  The second check: the body keeps $I$ and makes $E$ smaller. $E0$ is a
+  The second premise: the body keeps $I$ and makes $E$ smaller. $E0$ is a
   logical variable for the value of $E$ when the iteration starts. The
-  body keeps $I$ by the preservation check above, so it remains to show
+  body keeps $I$ by the preservation premise, so it remains to show
   $r < E0$ at the end of the body:
-  >>> {«I && r >= y : I and B» && «r = E0 : E = E0»} r := r - y; q := q + 1 {«r < E0 : E < E0»}
+  >>> {«I» && «r >= y : B» && «r = E0 : E = E0»} r := r - y; q := q + 1 {«r < E0 : E < E0»}
   We calculate the weakest precondition of the body for $r < E0$, from
-  the last statement.
+  the last statement. We substitute $q$ with $q + 1$.
 calc:
   wp(q := q + 1, r < E0)
-  = (r < E0)[q <- q + 1]
-  = r < E0          // q does not occur in r < E0, so nothing changes
+  = (r < E0)[q <- q + 1]     // E is r
+  = r < E0                   // q does not occur in r < E0, so nothing changes
+
+step: The body decreases the variant
+part: Termination
+rule: WHILE-TOTAL, ASSIGN, WP
+focus: b1
+text:
+  We substitute $r$ with $r - y$ in $r < E0$, computed in the previous
+  step. Then the precondition of the triple must imply the result.
 calc:
   wp(r := r - y, r < E0)
-  = (r < E0)[r <- r - y]
-  = r - y < E0      // r is replaced by r - y
+  = (r < E0)[r <- r - y]     // the result of the previous step
+  = r - y < E0               // r is replaced by r - y
 vc: x' = q * y' + r && 0 <= r && y = y' && y' > 0 && r >= y && r = E0 ==> r - y < E0
 why:
   From $y = y'$ and $y' > 0$ we get $y > 0$, so $r - y < r$, and $r = E0$.

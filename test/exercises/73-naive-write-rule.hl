@@ -29,6 +29,7 @@ verdict: valid
 
 step: The triple given by the naive rule
 rule: LOGIC
+focus: i1
 text:
   The naive rule replaces the text $a[i]$ in $Q$ by $1$. $Q$ is written
   with $a[j]$, so there is nothing to replace, and the rule gives:
@@ -60,12 +61,14 @@ calc:
   = j != i && a[j] = 0 && 0 <= i < sizeof(a)     // def(a[i]) is 0 <= i < sizeof(a)
 set: R1 = j != i && a[j] = 0 && 0 <= i < sizeof(a)
 
-step: The precondition must imply the weakest precondition
+step: P implies R1
 rule: CONSEQUENCE
+focus: P, R1
 text:
   $R1$ is the weakest precondition of the statement for $Q$. By the
   consequence rule, the triple is valid when the precondition $P$ implies
   $R1$.
+  >>> «P» ==> «R1»
 vc: j != i && a[j] = 0 && 0 <= i < sizeof(a) ==> j != i && a[j] = 0 && 0 <= i < sizeof(a)
 why:
   $P$ and $R1$ are the same formula.

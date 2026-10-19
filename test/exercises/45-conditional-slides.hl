@@ -12,6 +12,9 @@ task:
   conditional. Then use the consequence rule to decide whether the triple
   is valid.
 
+given:
+  Condition B: $x = y$
+
 pre: x + y = 0
 post: x = y + 1
 
@@ -61,12 +64,13 @@ set: R2 = x + y = 0
 
 step: R3, the weakest precondition of the conditional
 rule: IF, WP
-focus: if
+focus: if, R1, R2
 text:
   The weakest precondition of `if B then c1 else c2` for $Q$ is
   >> (B ==> wp(c1, Q)) && (!B ==> wp(c2, Q))
   Here the condition $B$ is $x = y$, $wp(c1, Q)$ is $R1$ and
-  $wp(c2, Q)$ is $R2$.
+  $wp(c2, Q)$ is $R2$:
+  >>> («x = y : B» ==> «R1») && («!(x = y) : ¬B» ==> «R2»)
 calc:
   wp(if (x = y) then x := y + 1 else x := 1 - x, Q)
   = (x = y ==> true) && (!(x = y) ==> x + y = 0)   // B, R1 and R2 put in the formula
@@ -75,12 +79,14 @@ calc:
   = x != y ==> x + y = 0                           // !(x = y) is x != y
 set: R3 = x != y ==> x + y = 0
 
-step: The precondition must imply the weakest precondition
+step: P implies R3
 rule: CONSEQUENCE
+focus: P, R3
 text:
   $R3$ is the weakest precondition of the whole program for $Q$. By the
   consequence rule, the triple is valid when the precondition $P$ implies
   $R3$.
+  >>> «P» ==> «R3»
 vc: x + y = 0 ==> (x != y ==> x + y = 0)
 why:
   Assume $P$, that is $x + y = 0$. This is the right side of the

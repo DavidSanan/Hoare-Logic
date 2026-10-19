@@ -50,12 +50,14 @@ note:
   The brackets around $j = i || a[j] = 0$ matter: the definedness
   conditions must hold in both cases.
 
-step: The precondition must imply the weakest precondition
+step: P implies R1
 rule: CONSEQUENCE
+focus: P, R1
 text:
   $R1$ is the weakest precondition of the statement for $Q$. By the
   consequence rule, the triple is valid when the precondition $P$ implies
   $R1$.
+  >>> «P» ==> «R1»
 vc: (j = i || a[j] = 0) && 0 <= i < sizeof(a) && 0 <= j < sizeof(a) ==> (j = i || a[j] = 0) && 0 <= i < sizeof(a) && 0 <= j < sizeof(a)
 why:
   $P$ and $R1$ are the same formula.

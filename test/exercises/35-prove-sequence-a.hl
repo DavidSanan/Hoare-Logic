@@ -72,13 +72,14 @@ calc:
   = y = y' && x = x'                       // y = y', so subtract y on the left and y' on the right
 set: R3 = y = y' && x = x'
 
-step: The precondition must imply the weakest precondition
+step: P implies R3
 rule: CONSEQUENCE, LOGIC
+focus: P, R3
 text:
   $R3$ is the weakest precondition of the whole program for $Q$. By the
   consequence rule, the triple is valid when the precondition $P$ implies
   $R3$.
-  >>> «x = x' && y = y' : P» ==> «y = y' && x = x' : R3»
+  >>> «P» ==> «R3»
 vc: x = x' && y = y' ==> y = y' && x = x'
 why:
   $R3$ has the same two conjuncts as $P$, in a different order.

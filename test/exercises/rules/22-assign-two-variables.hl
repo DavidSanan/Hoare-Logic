@@ -1,0 +1,78 @@
+id: rule-assign-two-variables
+title: Two variables
+topic: Assignment
+example-of: ASSIGN
+derived: true
+
+task:
+  Use the rule ASSIGN to decide whether this triple can be derived. The
+  names $x'$ and $y'$ are logical variables: the program never assigns
+  them, and they keep the initial values of $x$ and $y$.
+
+given:
+  Assignment expression: $y + x$
+
+pre: y = y' && x = x'
+post: y = y' + x' && x = x'
+
+program:
+  {P}
+  {R1}
+  y := y + x     // i1
+  {Q}
+
+verdict: valid
+
+step: The substitution
+rule: ASSIGN
+focus: i1
+text:
+  The precondition is obtained by substituting the variable $y$ with the
+  assignment expression $y + x$ in the postcondition $Q$.
+calc:
+  wp(y := y + x, Q)
+  = (y = y' + x' && x = x')[y <- y + x]     // Q
+set: R1 = (y = y' + x' && x = x')[y <- y + x]
+
+step: Apply the substitution
+rule: ASSIGN
+focus: i1
+text:
+  Only $y$ is replaced. The variables $x$, $x'$ and $y'$ are other
+  variables, so they stay as they are.
+calc:
+  (y = y' + x' && x = x')[y <- y + x]
+  = y + x = y' + x' && x = x'      // y replaced by y + x
+set: R1 = y + x = y' + x' && x = x'
+
+step: Use the second conjunct
+rule: LOGIC
+focus: R1
+text:
+  The second conjunct says $x = x'$, so in the first conjunct we can
+  replace $x'$ by $x$.
+calc:
+  y + x = y' + x' && x = x'
+  = y + x = y' + x && x = x'       // x' replaced by x, using x = x'
+set: R1 = y + x = y' + x && x = x'
+
+step: Simplify
+rule: LOGIC
+focus: R1
+text:
+  We subtract $x$ from both sides of the first conjunct.
+calc:
+  y + x = y' + x && x = x'
+  = y = y' && x = x'               // subtract x from both sides
+set: R1 = y = y' && x = x'
+
+step: P implies R1
+rule: CONSEQUENCE
+focus: P, R1
+text:
+  The precondition $P$ is the formula we obtained.
+  >>> «P» ==> «R1»
+vc: y = y' && x = x' ==> y = y' && x = x'
+why:
+  The two formulas are the same, so the rule ASSIGN gives the triple, with
+  the consequence rule for the simplified form.

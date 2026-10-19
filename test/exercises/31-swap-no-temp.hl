@@ -54,12 +54,14 @@ calc:
   = y = B && y = A        // both x are replaced by y
 set: R2 = y = B && y = A
 
-step: The precondition must imply the weakest precondition
+step: P implies R2
 rule: CONSEQUENCE
+focus: P, R2
 text:
   $R2$ is the weakest precondition of the whole program for $Q$. By the
   consequence rule, the triple is valid when the precondition $P$ implies
   $R2$.
+  >>> «P» ==> «R2»
 vc: x = A && y = B ==> y = B && y = A
 status: fails
 counterexample: x = 1, y = 2, A = 1, B = 2

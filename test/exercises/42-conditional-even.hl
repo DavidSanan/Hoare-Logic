@@ -13,6 +13,9 @@ task:
   conditional. Then use the consequence rule to check that the
   precondition $P$ implies it.
 
+given:
+  Condition B: $x > 0$
+
 pre: (x > 0 ==> odd(x)) && (x <= 0 ==> even(z))
 post: even(x)
 
@@ -60,12 +63,13 @@ set: R2 = even(z)
 
 step: R3, the weakest precondition of the conditional
 rule: IF, WP
-focus: if
+focus: if, R1, R2
 text:
   The weakest precondition of `if B then c1 else c2` for $Q$ is
   >> (B ==> wp(c1, Q)) && (!B ==> wp(c2, Q))
   Here the condition $B$ is $x > 0$, $wp(c1, Q)$ is $R1$ and
-  $wp(c2, Q)$ is $R2$.
+  $wp(c2, Q)$ is $R2$:
+  >>> («x > 0 : B» ==> «R1») && («!(x > 0) : ¬B» ==> «R2»)
 calc:
   wp(if (x > 0) then x := x + 1 else x := z, Q)
   = (x > 0 ==> odd(x)) && (!(x > 0) ==> even(z))    // B, R1 and R2 put in the formula
@@ -75,12 +79,14 @@ text:
   We stop here. The formula reads as two cases: if $x > 0$, then $x$ must
   be odd; otherwise $z$ must be even.
 
-step: The precondition must imply the weakest precondition
+step: P implies R3
 rule: CONSEQUENCE
+focus: P, R3
 text:
   $R3$ is the weakest precondition of the whole program for $Q$. By the
   consequence rule, the triple is valid when the precondition $P$ implies
   $R3$.
+  >>> «P» ==> «R3»
 vc: (x > 0 ==> odd(x)) && (x <= 0 ==> even(z)) ==> (x > 0 ==> odd(x)) && (x <= 0 ==> even(z))
 why:
   $P$ and $R3$ are the same formula, and every formula implies itself.

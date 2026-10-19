@@ -13,6 +13,9 @@ task:
   conditional. Then use the consequence rule to check that the
   precondition $P$ implies it.
 
+given:
+  Condition B: $x - y > 0$
+
 pre: x = y
 post: z <= y && z <= x
 
@@ -63,12 +66,13 @@ set: R2 = y <= x
 
 step: R3, the weakest precondition of the conditional
 rule: IF, WP
-focus: if
+focus: if, R1, R2
 text:
   The weakest precondition of `if B then c1 else c2` for $Q$ is
   >> (B ==> wp(c1, Q)) && (!B ==> wp(c2, Q))
   Here the condition $B$ is $x - y > 0$, $wp(c1, Q)$ is $R1$ and
-  $wp(c2, Q)$ is $R2$.
+  $wp(c2, Q)$ is $R2$:
+  >>> («x - y > 0 : B» ==> «R1») && («!(x - y > 0) : ¬B» ==> «R2»)
 calc:
   wp(if (x - y > 0) then z := x else z := y, Q)
   = (x - y > 0 ==> x <= y) && (!(x - y > 0) ==> y <= x)   // B, R1 and R2 put in the formula
@@ -79,12 +83,14 @@ calc:
   = x = y                                                 // x <= y and y <= x together say x = y
 set: R3 = x = y
 
-step: The precondition must imply the weakest precondition
+step: P implies R3
 rule: CONSEQUENCE
+focus: P, R3
 text:
   $R3$ is the weakest precondition of the whole program for $Q$. By the
   consequence rule, the triple is valid when the precondition $P$ implies
   $R3$.
+  >>> «P» ==> «R3»
 vc: x = y ==> x = y
 why:
   $P$ and $R3$ are the same formula, and every formula implies itself.

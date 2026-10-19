@@ -1,0 +1,45 @@
+id: rule-skip-different
+title: Different assertions
+topic: Skip
+example-of: SKIP
+derived: false
+
+task:
+  Use the rule SKIP to decide whether this triple can be derived.
+
+pre: x = 0
+post: x = 1
+
+program:
+  {P}
+  {R1}
+  skip       // s
+  {Q}
+
+verdict: invalid
+
+step: R1, the precondition given by the rule SKIP
+rule: SKIP
+focus: s
+text:
+  The rule SKIP gives the triple whose precondition is the postcondition:
+  `skip` does not change the state.
+calc:
+  wp(skip, Q)
+  = Q           // wp(skip, Q) = Q
+  = x = 1       // Q is x = 1
+set: R1 = x = 1
+
+step: P does not imply R1
+rule: CONSEQUENCE
+focus: P, R1
+text:
+  The precondition $P$ is not the formula $R1$. The consequence rule would
+  need $P$ to imply $R1$.
+  >>> «P» ==> «R1»
+vc: x = 0 ==> x = 1
+status: fails
+counterexample: x = 0
+why:
+  In the state $x = 0$, `skip` does not change $x$, so $x = 1$ is false at
+  the end. The triple is not valid.

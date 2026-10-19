@@ -38,30 +38,32 @@ text:
   least $0$.
 set: I = x >= 0
 text:
-  The loop rule with consequence needs three checks, with the loop
-  condition $B$ being $x > 0$: establishment $P ==> I$, preservation
-  $\{I && B\}$ `x := x - 1` $\{I\}$, and exit $I && !B ==> Q$.
+  The loop rule with consequence has three premises, with the loop
+  condition $B$ being $x > 0$: initialisation $P ==> I$, preservation
+  $\{I && B\}$ `x := x - 1` $\{I\}$, and conclusion $I && !B ==> Q$.
 
-step: Establishment: P implies I
+step: P implies I
+part: Initialisation
 rule: CONSEQUENCE, LOGIC
+focus: P, I
 text:
   The invariant must hold when the loop is reached. No statement comes
-  before the loop, so we prove that the precondition $P$ implies $I$.
-  >>> «x = N && N >= 0 : P» ==> «x >= 0 : I»
+  before the loop, so the precondition $P$ must imply $I$.
+  >>> «P» ==> «I»
 vc: x = N && N >= 0 ==> x >= 0
 why:
   Replace $x$ by $N$, using $x = N$. Then $x >= 0$ becomes $N >= 0$, which
   is part of $P$.
 
-step: Preservation: R1, the weakest precondition of x := x - 1 for I
+step: R1, the weakest precondition of x := x - 1 for I
+part: Preservation
 rule: ASSIGN, WP
 focus: x := x - 1
 text:
-  We prove that one iteration keeps the invariant:
-  >>> {«x >= 0 : I» && «x > 0 : B»} x := x - 1 {«x >= 0 : I»}
+  One iteration must keep the invariant:
+  >>> {«I» && «x > 0 : B»} x := x - 1 {«I»}
   We calculate the weakest precondition of the body for $I$. We substitute
-  the assigned variable ($x$) with the assignment expression ($x - 1$) in
-  $I$.
+  the variable $x$ with the assignment expression $x - 1$ in $I$.
 calc:
   wp(x := x - 1, I)
   = (x >= 0)[x <- x - 1]
@@ -69,44 +71,50 @@ calc:
   = x >= 1          // add 1 to both sides
 set: R1 = x >= 1
 
-step: Preservation: I and B imply R1
+step: I and B imply R1
+part: Preservation
 rule: CONSEQUENCE, LOGIC
+focus: I && x > 0, R1
 text:
-  By the consequence rule, the triple holds when $I && B$ implies $R1$,
-  computed in the previous step.
-  >>> «x >= 0 : I» && «x > 0 : B» ==> «x >= 1 : R1»
+  By the consequence rule, the triple holds when $I && B$ implies $R1$.
+  >>> «I» && «x > 0 : B» ==> «R1»
 vc: x >= 0 && x > 0 ==> x >= 1
 why:
   For integers, $x > 0$ is the same as $x >= 1$.
 
-step: Exit: I and not B imply Q
+step: I and not B imply Q
+part: Conclusion
 rule: CONSEQUENCE, LOGIC
+focus: I && !(x > 0), Q
 text:
   When the loop stops, $I$ holds and the loop condition $B$ is false. This
   must imply the postcondition $Q$.
-  >>> «x >= 0 : I» && «!(x > 0) : ¬B» ==> «x = 0 : Q»
+  >>> «I» && «!(x > 0) : ¬B» ==> «Q»
 vc: x >= 0 && !(x > 0) ==> x = 0
 why:
   $!(x > 0)$ is $x <= 0$. Together with $x >= 0$ it gives $x = 0$.
 
-step: Termination: the variant is not negative
+step: The variant is not negative
+part: Termination
 rule: WHILE-TOTAL
+focus: I && x > 0
 text:
   The body decreases $x$ by one, and the loop runs only while $x > 0$. So
-  we take the variant $E = x$. The rule WHILE-TOTAL has two checks. The
+  we take the variant $E = x$. The rule WHILE-TOTAL has two premises. The
   first one: $E$ is not negative when an iteration starts.
-  >>> «x >= 0 : I» && «x > 0 : B» ==> «x >= 0 : E >= 0»
+  >>> «I» && «x > 0 : B» ==> «x >= 0 : E >= 0»
 vc: x >= 0 && x > 0 ==> x >= 0
 why:
   $x >= 0$ is the invariant itself.
 
-step: Termination: the body decreases the variant
+step: The body decreases the variant
+part: Termination
 rule: WHILE-TOTAL, ASSIGN, WP
 focus: x := x - 1
 text:
-  The second check: the body keeps $I$ and makes $E$ smaller. $E0$ is a
+  The second premise: the body keeps $I$ and makes $E$ smaller. $E0$ is a
   logical variable for the value of $E$ when the iteration starts.
-  >>> {«x >= 0 : I» && «x > 0 : B» && «x = E0 : E = E0»} x := x - 1 {«x >= 0 : I» && «x < E0 : E < E0»}
+  >>> {«I» && «x > 0 : B» && «x = E0 : E = E0»} x := x - 1 {«I» && «x < E0 : E < E0»}
   We calculate the weakest precondition of the body for the
   postcondition of this triple. We substitute $x$ with $x - 1$.
 calc:

@@ -1,0 +1,74 @@
+id: rule-consequence-stronger
+title: Stronger precondition
+topic: Consequence
+example-of: CONSEQUENCE
+derived: true
+
+task:
+  Use the consequence rule to derive this triple. We take $Q'$ equal to
+  $Q$ and compute $P'$ with the rule ASSIGN.
+
+pre: x > 120
+post: x > 101
+
+scheme: CONSEQUENCE
+  First premise: «P» ==> «P'»
+  Middle premise: {«P'»} x := x + 1 {«Q'»}
+  Last premise: «Q'» ==> «Q»
+  ---
+  {«P»} x := x + 1 {«Q»}
+
+program:
+  {P}
+  {P'}
+  x := x + 1     // i1
+  {Q'}
+  {Q}
+
+verdict: valid
+
+step: Q' and the substitution
+part: Middle premise
+rule: ASSIGN
+focus: i1
+text:
+  We take $Q' = Q$. Then $P'$ is obtained by substituting the variable $x$
+  with the assignment expression $x + 1$ in $Q'$.
+set: Q' = x > 101
+calc:
+  wp(x := x + 1, Q')
+  = (x > 101)[x <- x + 1]     // Q' is x > 101
+  = x + 1 > 101               // x replaced by x + 1
+set: P' = x + 1 > 101
+
+step: Simplify P'
+part: Middle premise
+rule: LOGIC
+focus: P'
+text:
+  We subtract 1 from both sides. The rule ASSIGN gives the middle premise
+  with this $P'$.
+calc:
+  x + 1 > 101
+  = x > 100                   // subtract 1 from both sides
+set: P' = x > 100
+
+step: P implies P'
+part: First premise
+rule: CONSEQUENCE
+focus: P, P'
+text:
+  >>> «P» ==> «P'»
+vc: x > 120 ==> x > 100
+why:
+  Every integer greater than 120 is greater than 100.
+
+step: Q' implies Q
+part: Last premise
+rule: CONSEQUENCE
+focus: Q', Q
+text:
+  >>> «Q'» ==> «Q»
+vc: x > 101 ==> x > 101
+why:
+  The two formulas are the same. All three premises hold.

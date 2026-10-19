@@ -37,12 +37,14 @@ calc:
   = x >= 3                // add 3 to both sides
 set: R1 = x >= 3
 
-step: The precondition must imply the weakest precondition
+step: P implies R1
 rule: CONSEQUENCE
+focus: P, R1
 text:
   $R1$ is the weakest precondition of the program for $Q$. By the
   consequence rule, the triple is valid when the precondition $P$ implies
   $R1$.
+  >>> «P» ==> «R1»
 vc: x >= 0 ==> x >= 3
 status: fails
 counterexample: x = 0

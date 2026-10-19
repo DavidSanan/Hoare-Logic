@@ -77,7 +77,7 @@
 
     <section class="page" id="page-wp" hidden>
       <div class="page-head"><h1>Weakest precondition calculator</h1>
-        <p class="lede">Type a loop-free program and a postcondition. The calculator applies the rules backwards, one statement at a time, and shows every intermediate assertion. If you also give a precondition, it tests the verification condition <i>P</i> ⇒ <i>wp</i> on sample states.</p></div>
+        <p class="lede">Type a program, its precondition and its postcondition, and an invariant for each loop. The calculator computes the weakest precondition backwards, one statement at a time, and shows the annotated program with every intermediate assertion. For each loop it shows the initialisation, the preservation and the conclusion. The last step uses the consequence rule to compare the precondition with the weakest precondition.</p></div>
       <div class="page-body">
         <form id="wp-form" class="wp-form">
           <div class="field">
@@ -98,7 +98,11 @@
               <input id="wp-post" type="text" spellcheck="false" autocomplete="off">
             </div>
           </div>
-          <div><button type="submit" class="btn">Compute the weakest precondition</button></div>
+          <div class="field">
+            <label for="wp-inv">Invariants of the loops (one per line, in the order of the loops)</label>
+            <textarea id="wp-inv" rows="2" spellcheck="false"></textarea>
+          </div>
+          <div><button type="submit" class="btn">Compute the proof</button></div>
         </form>
         <div id="wp-out" class="wp-out" aria-live="polite"></div>
       </div>
@@ -151,8 +155,8 @@
   <script src="js/logic.js"></script>
   <script src="js/format.js"></script>
   <script src="js/checker.js"></script>
+  <script src="js/generate.js"></script>
   <script src="js/content.js"></script>
-  <script src="js/rule-examples.js"></script>
   <script src="exercises/bundle.js"></script>
   <script src="js/app.js"></script>
 </body>

@@ -19,6 +19,9 @@ hint:
   remainder, so $x mod 2$ is always $0$ or $1$, and this equation holds
   for every integer $x$.
 
+given:
+  Loop condition B: $!(x = 0)$
+
 pre: x = x' && y = y' && y' > 0
 post: z = x' * y'
 
@@ -58,14 +61,21 @@ text:
   division loses one copy of $y$, and the then branch adds it to $z$
   first.
 set: I = x' * y' = x * y + z
+text:
+  The loop rule with consequence has three premises, with the loop
+  condition $B$ being $!(x = 0)$: initialisation, preservation and
+  conclusion.
 
-step: Establishment: R1, the weakest precondition of z := 0
+step: R1, the weakest precondition of z := 0 for I
+part: Initialisation
 rule: ASSIGN, WP
 focus: i1
 text:
-  The loop is preceded by `z := 0`, so establishment is the triple
-  >>> {«x = x' && y = y' && y' > 0 : P»} z := 0 {«x' * y' = x * y + z : I»}
-  We substitute $z$ with $0$ in its postcondition, the invariant $I$.
+  The invariant must hold when the loop is reached. The loop is preceded
+  by `z := 0`, so initialisation is the triple
+  >>> {«P»} z := 0 {«I»}
+  We substitute $z$ with $0$ in the postcondition of `z := 0`, the
+  invariant $I$.
 calc:
   wp(z := 0, I)
   = (x' * y' = x * y + z)[z <- 0]
@@ -73,21 +83,25 @@ calc:
   = x' * y' = x * y           // A + 0 is A
 set: R1 = x' * y' = x * y
 
-step: Establishment: the precondition implies R1
+step: P implies R1
+part: Initialisation
 rule: CONSEQUENCE
+focus: P, R1
 text:
-  By the consequence rule, establishment holds when the precondition $P$
+  By the consequence rule, initialisation holds when the precondition $P$
   implies $R1$.
+  >>> «P» ==> «R1»
 vc: x = x' && y = y' && y' > 0 ==> x' * y' = x * y
 why:
   $P$ gives $x = x'$ and $y = y'$, so $x * y = x' * y'$.
 
-step: Preservation: R2, the weakest precondition of x := x div 2
+step: R2, the weakest precondition of x := x div 2 for I
+part: Preservation
 rule: ASSIGN, WP
 focus: b3
 text:
-  Preservation is the triple below, where $c$ is the loop body.
-  >>> {«x' * y' = x * y + z : I» && «!(x = 0) : B»} c {«x' * y' = x * y + z : I»}
+  One iteration must keep the invariant:
+  >>> {«I» && «!(x = 0) : B»} if (x mod 2 = 1) then z := z + y else skip; y := y * 2; x := x div 2 {«I»}
   We compute the weakest precondition of the body for $I$, from the last
   statement. We substitute $x$ with $x div 2$ in $I$.
 calc:
@@ -96,18 +110,20 @@ calc:
   = x' * y' = (x div 2) * y + z      // x is replaced by x div 2
 set: R2 = x' * y' = (x div 2) * y + z
 
-step: Preservation: R3, the weakest precondition of y := y * 2
+step: R3, the weakest precondition of y := y * 2 for R2
+part: Preservation
 rule: ASSIGN, WP
 focus: b2
 text:
-  We substitute $y$ with $y * 2$ in $R2$, computed in the previous step.
+  We substitute $y$ with $y * 2$ in $R2$.
 calc:
   wp(y := y * 2, R2)
   = (x' * y' = (x div 2) * y + z)[y <- y * 2]
   = x' * y' = (x div 2) * (y * 2) + z      // y is replaced by y * 2
 set: R3 = x' * y' = (x div 2) * (y * 2) + z
 
-step: Preservation: R4, the then branch z := z + y
+step: R4, the weakest precondition of the then branch z := z + y
+part: Preservation
 rule: ASSIGN, WP
 focus: then
 text:
@@ -120,7 +136,8 @@ calc:
   = x' * y' = (x div 2) * (y * 2) + (z + y)      // z is replaced by z + y
 set: R4 = x' * y' = (x div 2) * (y * 2) + (z + y)
 
-step: Preservation: R5, the else branch skip
+step: R5, the weakest precondition of the else branch skip
+part: Preservation
 rule: SKIP, WP
 focus: else
 text:
@@ -128,10 +145,11 @@ text:
   postcondition $R3$.
 calc:
   wp(skip, R3)
-  = x' * y' = (x div 2) * (y * 2) + z
+  = x' * y' = (x div 2) * (y * 2) + z      // R3, since skip changes nothing
 set: R5 = x' * y' = (x div 2) * (y * 2) + z
 
-step: Preservation: R6, the weakest precondition of the conditional
+step: R6, the weakest precondition of the conditional
+part: Preservation
 rule: IF, WP
 focus: if
 text:
@@ -143,12 +161,14 @@ calc:
   = (x mod 2 = 1 ==> x' * y' = (x div 2) * (y * 2) + (z + y)) && (!(x mod 2 = 1) ==> x' * y' = (x div 2) * (y * 2) + z)     // R4 and R5 from the two previous steps
 set: R6 = (x mod 2 = 1 ==> x' * y' = (x div 2) * (y * 2) + (z + y)) && (!(x mod 2 = 1) ==> x' * y' = (x div 2) * (y * 2) + z)
 
-step: Preservation: I and B imply R6
+step: I and B imply R6
+part: Preservation
 rule: CONSEQUENCE, LOGIC
+focus: I && !(x = 0), R6
 text:
   $R6$ is the weakest precondition of the body for $I$. By the consequence
-  rule, preservation holds when the invariant $I$ and the loop condition
-  $B$ together imply $R6$.
+  rule, preservation holds when $I$ and $B$ together imply $R6$.
+  >>> «I» && «!(x = 0) : B» ==> «R6»
 vc: x' * y' = x * y + z && !(x = 0) ==> (x mod 2 = 1 ==> x' * y' = (x div 2) * (y * 2) + (z + y)) && (!(x mod 2 = 1) ==> x' * y' = (x div 2) * (y * 2) + z)
 why:
   The hint gives $x = 2 * (x div 2) + (x mod 2)$, so
@@ -162,12 +182,15 @@ why:
   In both cases $I$, $x' * y' = x * y + z$, gives the formula of the
   case.
 
-step: The postcondition at the exit
+step: I and not B imply Q
+part: Conclusion
 rule: CONSEQUENCE, LOGIC
+focus: I && x = 0, Q
 text:
   When the loop stops, $I$ holds and the loop condition $B$ is false.
-  $!B$ is $!(!(x = 0))$, which is $x = 0$. The postcondition $Q$ must
-  follow from them.
+  $!B$ is $!(!(x = 0))$, which is $x = 0$. This must imply the
+  postcondition $Q$.
+  >>> «I» && «x = 0 : ¬B» ==> «Q»
 vc: x' * y' = x * y + z && x = 0 ==> z = x' * y'
 why:
   With $x = 0$ the invariant becomes $x' * y' = 0 * y + z$, which is

@@ -1,0 +1,170 @@
+id: rule-whilec-count
+title: Counting to 10
+topic: Loop
+example-of: WHILE-CONSEQUENCE
+derived: true
+
+task:
+  Use the loop rule with consequence to derive this triple. Choose the
+  invariant above the steps: the proof succeeds with the first one and
+  fails with the second one.
+
+given:
+  Loop condition B: $x < 10$
+
+pre: x = 0
+post: x = 10
+
+scheme: WHILE-CONSEQUENCE
+  Initialisation: «P» ==> «I»
+  Preservation: {«I» && «x < 10 : B»} x := x + 1 {«I»}
+  Conclusion: «I» && «!(x < 10) : ¬B» ==> «Q»
+  ---
+  {«P»} while x < 10 do x := x + 1 {«Q»}
+
+program:
+  {P}
+  {I}
+  while x < 10 do {
+    {I && x < 10}
+    {R1}
+    x := x + 1     // b
+    {I}
+  }
+  {I && !(x < 10)}
+  {Q}
+
+verdict: valid
+
+choice: I = 0 ≤ x ≤ 10
+outcome: proves
+
+step: The invariant I
+rule: WHILE-CONSEQUENCE
+focus: while
+text:
+  The variable $x$ goes from 0 to 10, one by one, and the loop stops at
+  10. So $0 <= x <= 10$ holds each time the condition is evaluated.
+set: I = 0 <= x <= 10
+
+step: P implies I
+part: Initialisation
+rule: CONSEQUENCE
+focus: P, I
+text:
+  The invariant must hold when the loop is reached.
+  >>> «P» ==> «I»
+  $P$ says $x = 0$, so we replace $x$ by 0 in $I$.
+assume: x = 0
+calc:
+  0 <= x <= 10
+  = 0 <= 0 <= 10       // x = 0, by P
+  = true               // 0 <= 0 and 0 <= 10
+vc: x = 0 ==> 0 <= x <= 10
+
+step: R1, the weakest precondition of the body for I
+part: Preservation
+rule: ASSIGN
+focus: b
+text:
+  One iteration must keep the invariant:
+  >>> {«I» && «x < 10 : B»} x := x + 1 {«I»}
+  We substitute the variable $x$ with $x + 1$ in $I$.
+calc:
+  wp(x := x + 1, I)
+  = (0 <= x <= 10)[x <- x + 1]     // I
+  = 0 <= x + 1 <= 10               // x replaced by x + 1
+set: R1 = 0 <= x + 1 <= 10
+
+step: I and B imply R1
+part: Preservation
+rule: CONSEQUENCE
+focus: I && x < 10, R1
+text:
+  >>> «I» && «x < 10 : B» ==> «R1»
+  We prove the two bounds of $R1$ separately.
+  - Lower bound: from $0 <= x$, in $I$, we get $0 <= x + 1$.
+  - Upper bound: from $x < 10$, which is $B$, we get $x + 1 <= 10$, since
+    $x$ is an integer.
+vc: 0 <= x <= 10 && x < 10 ==> 0 <= x + 1 <= 10
+
+step: I and not B imply Q
+part: Conclusion
+rule: CONSEQUENCE
+focus: I && !(x < 10), Q
+text:
+  When the loop stops, $I$ holds and $B$ is false. This must imply $Q$.
+  >>> «I» && «!(x < 10) : ¬B» ==> «Q»
+  We simplify the left side.
+calc:
+  0 <= x <= 10 && !(x < 10)
+  = 0 <= x <= 10 && x >= 10     // !(x < 10) is x >= 10
+  = x = 10                      // x <= 10 and x >= 10
+vc: 0 <= x <= 10 && !(x < 10) ==> x = 10
+why:
+  The left side is $x = 10$, which is $Q$. All three premises hold.
+
+choice: I = 0 ≤ x
+outcome: fails
+
+step: The candidate invariant I
+rule: WHILE-CONSEQUENCE
+focus: while
+text:
+  We try the weaker candidate $0 <= x$, without the upper bound.
+set: I = 0 <= x
+
+step: P implies I
+part: Initialisation
+rule: CONSEQUENCE
+focus: P, I
+text:
+  >>> «P» ==> «I»
+  $P$ says $x = 0$, so we replace $x$ by 0 in $I$.
+assume: x = 0
+calc:
+  0 <= x
+  = 0 <= 0       // x = 0, by P
+  = true         // 0 <= 0
+vc: x = 0 ==> 0 <= x
+
+step: R1, the weakest precondition of the body for I
+part: Preservation
+rule: ASSIGN
+focus: b
+text:
+  >>> {«I» && «x < 10 : B»} x := x + 1 {«I»}
+  We substitute the variable $x$ with $x + 1$ in $I$.
+calc:
+  wp(x := x + 1, I)
+  = (0 <= x)[x <- x + 1]     // I
+  = 0 <= x + 1               // x replaced by x + 1
+set: R1 = 0 <= x + 1
+
+step: I and B imply R1
+part: Preservation
+rule: CONSEQUENCE
+focus: I && x < 10, R1
+text:
+  >>> «I» && «x < 10 : B» ==> «R1»
+vc: 0 <= x && x < 10 ==> 0 <= x + 1
+why:
+  From $0 <= x$ we get $0 <= x + 1$.
+
+step: I and not B do not imply Q
+part: Conclusion
+rule: CONSEQUENCE
+focus: I && !(x < 10), Q
+text:
+  >>> «I» && «!(x < 10) : ¬B» ==> «Q»
+  We simplify the left side.
+calc:
+  0 <= x && !(x < 10)
+  = 0 <= x && x >= 10     // !(x < 10) is x >= 10
+  = x >= 10               // x >= 10 gives 0 <= x
+vc: 0 <= x && !(x < 10) ==> x = 10
+status: fails
+counterexample: x = 11
+why:
+  The state $x = 11$ satisfies $x >= 10$ and not $x = 10$. The candidate
+  is an invariant, but it is too weak: the bound $x <= 10$ is missing.

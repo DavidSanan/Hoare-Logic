@@ -13,6 +13,9 @@ task:
   conditional. Then use the consequence rule to decide whether the triple
   is valid.
 
+given:
+  Condition B: $x >= y$
+
 pre: true
 post: m >= x && m >= y && (m = x || m = y)
 
@@ -65,12 +68,13 @@ set: R2 = y >= x
 
 step: R3, the weakest precondition of the conditional
 rule: IF, WP
-focus: if
+focus: if, R1, R2
 text:
   The weakest precondition of `if B then c1 else c2` for $Q$ is
   >> (B ==> wp(c1, Q)) && (!B ==> wp(c2, Q))
   Here the condition $B$ is $x >= y$, $wp(c1, Q)$ is $R1$ and
-  $wp(c2, Q)$ is $R2$.
+  $wp(c2, Q)$ is $R2$:
+  >>> («x >= y : B» ==> «R1») && («!(x >= y) : ¬B» ==> «R2»)
 calc:
   wp(if x >= y then m := x else m := y, Q)
   = (x >= y ==> x >= y) && (!(x >= y) ==> y >= x)   // B, R1 and R2 put in the formula
@@ -80,12 +84,14 @@ calc:
   = true                                            // x < y implies y >= x
 set: R3 = true
 
-step: The precondition must imply the weakest precondition
+step: P implies R3
 rule: CONSEQUENCE
+focus: P, R3
 text:
   $R3$ is the weakest precondition of the whole program for $Q$. By the
   consequence rule, the triple is valid when the precondition $P$ implies
   $R3$.
+  >>> «P» ==> «R3»
 vc: true ==> true
 why:
   $R3$ is $true$, and every formula implies $true$.

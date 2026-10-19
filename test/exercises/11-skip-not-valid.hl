@@ -32,12 +32,14 @@ calc:
   = x > 5       // wp(skip, Q) is Q
 set: R1 = x > 5
 
-step: The precondition must imply the weakest precondition
+step: P implies R1
 rule: CONSEQUENCE
+focus: P, R1
 text:
   $R1$ is the weakest precondition of the program for $Q$. By the
   consequence rule, the triple is valid when the precondition $P$ implies
   $R1$.
+  >>> «P» ==> «R1»
 vc: x > 0 ==> x > 5
 status: fails
 counterexample: x = 1

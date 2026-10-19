@@ -9,8 +9,11 @@ tags: recipe, invariant, trace, variant
 task:
   The loop computes $2^n$ by doubling $r$, $n$ times. Find a loop
   invariant $I$ by tracing the values of $i$ and $r$ at the loop head.
-  Then prove establishment, preservation and the postcondition at the
-  exit. Finally, give a variant and show that the loop terminates.
+  Then prove initialisation, preservation and conclusion. Finally, give a
+  variant and show that the loop terminates.
+
+given:
+  Loop condition B: $i < n$
 
 pre: n >= 0
 post: r = 2^n
@@ -50,17 +53,22 @@ text:
   replaced by the counter $i$. We add the bounds $0 <= i <= n$ of the
   counter: at the exit they turn $!(i < n)$ into $i = n$.
 set: I = r = 2^i && 0 <= i <= n
+text:
+  The loop rule with consequence has three premises, with the loop
+  condition $B$ being $i < n$: initialisation, preservation and
+  conclusion.
 
-step: Establishment: R1, the weakest precondition of i := 0
+step: R1, the weakest precondition of i := 0 for I
+part: Initialisation
 rule: ASSIGN, WP
 focus: i2
 text:
-  The loop is preceded by `r := 1; i := 0`, so establishment is the
-  triple
-  >>> {«n >= 0 : P»} r := 1; i := 0 {«r = 2^i && 0 <= i <= n : I»}
-  We compute its weakest precondition from the last statement. The
-  precondition of `i := 0` is obtained by substituting $i$ with $0$ in its
-  postcondition, the invariant $I$.
+  The invariant must hold when the loop is reached. The loop is preceded
+  by `r := 1; i := 0`, so initialisation is the triple
+  >>> {«P»} r := 1; i := 0 {«I»}
+  We compute its weakest precondition from the last statement. We
+  substitute $i$ with $0$ in the postcondition of `i := 0`, the invariant
+  $I$.
 calc:
   wp(i := 0, I)
   = (r = 2^i && 0 <= i <= n)[i <- 0]
@@ -69,39 +77,43 @@ calc:
   = r = 1 && 0 <= n              // 0 <= 0 is true, so only 0 <= n is left
 set: R1 = r = 1 && 0 <= n
 
-step: Establishment: R2, the weakest precondition of r := 1
+step: R2, the weakest precondition of r := 1 for R1
+part: Initialisation
 rule: ASSIGN, WP
 focus: i1
 text:
   We substitute $r$ with $1$ in the postcondition of this statement, which
-  is $R1$, computed in the previous step.
+  is $R1$.
 calc:
   wp(r := 1, R1)
   = (r = 1 && 0 <= n)[r <- 1]
   = 1 = 1 && 0 <= n              // every r is replaced by 1
   = 0 <= n                       // 1 = 1 is true, and true && A is A
 set: R2 = 0 <= n
-
-step: Establishment: the precondition implies R2
-rule: CONSEQUENCE
-text:
-  $R2$ is the weakest precondition of `r := 1; i := 0` for $I$. By the
-  consequence rule, establishment holds when the precondition $P$ implies
-  $R2$.
-vc: n >= 0 ==> 0 <= n
-why:
-  Both sides say the same thing.
 note:
   The initial value of $r$ matters. With `r := 0`, $R2$ would be
   $0 = 1 && 0 <= n$, which is false.
 
-step: Preservation: R3, the weakest precondition of i := i + 1
+step: P implies R2
+part: Initialisation
+rule: CONSEQUENCE
+focus: P, R2
+text:
+  $R2$ is the weakest precondition of `r := 1; i := 0` for $I$. By the
+  consequence rule, initialisation holds when the precondition $P$ implies
+  $R2$.
+  >>> «P» ==> «R2»
+vc: n >= 0 ==> 0 <= n
+why:
+  Both sides say the same thing.
+
+step: R3, the weakest precondition of i := i + 1 for I
+part: Preservation
 rule: ASSIGN, WP
 focus: b2
 text:
-  Preservation is the triple below, where the loop body is
-  `r := 2 * r; i := i + 1`.
-  >>> {«r = 2^i && 0 <= i <= n : I» && «i < n : B»} r := 2 * r; i := i + 1 {«r = 2^i && 0 <= i <= n : I»}
+  One iteration must keep the invariant:
+  >>> {«I» && «i < n : B»} r := 2 * r; i := i + 1 {«I»}
   We compute the weakest precondition of the body for $I$, from the last
   statement. We substitute $i$ with $i + 1$ in $I$.
 calc:
@@ -110,23 +122,26 @@ calc:
   = r = 2^(i + 1) && 0 <= i + 1 <= n     // every i is replaced by i + 1
 set: R3 = r = 2^(i + 1) && 0 <= i + 1 <= n
 
-step: Preservation: R4, the weakest precondition of r := 2 * r
+step: R4, the weakest precondition of r := 2 * r for R3
+part: Preservation
 rule: ASSIGN, WP
 focus: b1
 text:
-  We substitute $r$ with $2 * r$ in $R3$, computed in the previous step.
+  We substitute $r$ with $2 * r$ in $R3$.
 calc:
   wp(r := 2 * r, R3)
   = (r = 2^(i + 1) && 0 <= i + 1 <= n)[r <- 2 * r]
   = 2 * r = 2^(i + 1) && 0 <= i + 1 <= n     // every r is replaced by 2 * r
 set: R4 = 2 * r = 2^(i + 1) && 0 <= i + 1 <= n
 
-step: Preservation: I and B imply R4
+step: I and B imply R4
+part: Preservation
 rule: CONSEQUENCE
+focus: I && i < n, R4
 text:
   $R4$ is the weakest precondition of the body for $I$. By the consequence
-  rule, preservation holds when the invariant $I$ and the loop condition
-  $B$ together imply $R4$.
+  rule, preservation holds when $I$ and $B$ together imply $R4$.
+  >>> «I» && «i < n : B» ==> «R4»
 vc: r = 2^i && 0 <= i <= n && i < n ==> 2 * r = 2^(i + 1) && 0 <= i + 1 <= n
 why:
   First conjunct: $r = 2^i$ by $I$, so $2 * r = 2 * 2^i = 2^(i + 1)$.
@@ -134,37 +149,66 @@ why:
   Second conjunct: $0 <= i$ gives $0 <= i + 1$, and $i < n$ gives
   $i + 1 <= n$.
 
-step: The postcondition at the exit
+step: I and not B imply Q
+part: Conclusion
 rule: CONSEQUENCE, LOGIC
+focus: I && !(i < n), Q
 text:
-  When the loop stops, $I$ holds and the loop condition $B$ is false. The
-  postcondition $Q$ must follow from them.
+  When the loop stops, $I$ holds and the loop condition $B$ is false. This
+  must imply the postcondition $Q$.
+  >>> «I» && «!(i < n) : ¬B» ==> «Q»
 vc: r = 2^i && 0 <= i <= n && !(i < n) ==> r = 2^n
 why:
   $!(i < n)$ is $i >= n$. With $i <= n$ from $I$ it gives $i = n$.
   Replacing $i$ by $n$ in $r = 2^i$ gives $r = 2^n$.
 
-step: Termination with the variant n - i
+step: The variant is not negative
+part: Termination
 rule: WHILE-TOTAL
+focus: I && i < n
 text:
   The counter $i$ goes up to $n$, so $n - i$ is the number of iterations
-  left. We use the variant $E = n - i$. The rule WHILE-TOTAL asks two
-  things.
-
-  First, the variant is not negative when an iteration starts.
+  left. We take the variant $E = n - i$. The rule WHILE-TOTAL has two
+  premises. The first one: $E$ is not negative when an iteration starts.
+  >>> «I» && «i < n : B» ==> «n - i >= 0 : E >= 0»
 vc: r = 2^i && 0 <= i <= n && i < n ==> n - i >= 0
 why:
   $i < n$ from $B$ gives $n - i > 0$.
+
+step: The variant after i := i + 1
+part: Termination
+rule: WHILE-TOTAL, ASSIGN, WP
+focus: b2
 text:
-  Second, the body decreases the variant. We write $E0$ for the value of
-  $n - i$ before the iteration, and compute the weakest precondition of
-  the body for $n - i < E0$, from the last statement.
+  The second premise: the body makes $E$ smaller. $E0$ is a logical
+  variable for the value of $E$ when the iteration starts.
+  >>> {«I» && «i < n : B» && «n - i = E0 : E = E0»} r := 2 * r; i := i + 1 {«n - i < E0 : E < E0»}
+  We compute the weakest precondition of the body for $n - i < E0$, from
+  the last statement. We substitute $i$ with $i + 1$.
 calc:
   wp(i := i + 1, n - i < E0)
+  = (n - i < E0)[i <- i + 1]
   = n - (i + 1) < E0          // i is replaced by i + 1
+
+step: The variant after r := 2 * r
+part: Termination
+rule: WHILE-TOTAL, ASSIGN, WP
+focus: b1
+text:
+  We substitute $r$ with $2 * r$ in the result of the previous step.
 calc:
   wp(r := 2 * r, n - (i + 1) < E0)
+  = (n - (i + 1) < E0)[r <- 2 * r]
   = n - (i + 1) < E0          // r does not occur, so nothing changes
+
+step: The body decreases the variant
+part: Termination
+rule: WHILE-TOTAL, CONSEQUENCE
+focus: I && i < n
+text:
+  By the consequence rule, the second premise holds when $I$, $B$ and
+  $E = E0$ imply the weakest precondition just computed.
+  >>> «I» && «i < n : B» && «n - i = E0 : E = E0» ==> «n - (i + 1) < E0 : wp»
 vc: r = 2^i && 0 <= i <= n && i < n && n - i = E0 ==> n - (i + 1) < E0
 why:
   $n - (i + 1) = (n - i) - 1 = E0 - 1$, which is smaller than $E0$.

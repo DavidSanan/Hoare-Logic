@@ -1,0 +1,71 @@
+id: rule-consequence-known-triple
+title: Using a known triple
+topic: Consequence
+example-of: CONSEQUENCE
+derived: true
+
+task:
+  We know the triple $\{x >= 0\}$ `y := x + 1` $\{y >= 1\}$. Use the
+  consequence rule to derive from it the triple below. The known triple
+  gives $P'$ and $Q'$.
+
+given:
+  Known triple: $\{x >= 0\}$ `y := x + 1` $\{y >= 1\}$
+
+pre: x = 3
+post: y > 0
+
+scheme: CONSEQUENCE
+  First premise: «P» ==> «P'»
+  Middle premise: {«P'»} y := x + 1 {«Q'»}
+  Last premise: «Q'» ==> «Q»
+  ---
+  {«P»} y := x + 1 {«Q»}
+
+program:
+  {P}
+  {P'}
+  y := x + 1     // i1
+  {Q'}
+  {Q}
+
+verdict: valid
+
+step: The known triple
+part: Middle premise
+rule: ASSIGN
+focus: i1
+text:
+  The middle premise is the known triple. We check it with the rule
+  ASSIGN: we substitute the variable $y$ with $x + 1$ in $Q'$.
+set: Q' = y >= 1
+set: P' = x >= 0
+calc:
+  wp(y := x + 1, Q')
+  = (y >= 1)[y <- x + 1]     // Q' is y >= 1
+  = x + 1 >= 1               // y replaced by x + 1
+  = x >= 0                   // subtract 1 from both sides
+text:
+  The result is $P'$, so the rule ASSIGN gives the known triple.
+
+step: P implies P'
+part: First premise
+rule: CONSEQUENCE
+focus: P, P'
+text:
+  >>> «P» ==> «P'»
+vc: x = 3 ==> x >= 0
+why:
+  When $x = 3$, $x >= 0$ is true.
+
+step: Q' implies Q
+part: Last premise
+rule: CONSEQUENCE
+focus: Q', Q
+text:
+  >>> «Q'» ==> «Q»
+vc: y >= 1 ==> y > 0
+why:
+  For integers, $y >= 1$ is the same as $y > 0$. All three premises hold:
+  the consequence rule strengthens the precondition and weakens the
+  postcondition of the known triple.

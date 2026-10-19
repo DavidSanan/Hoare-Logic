@@ -69,12 +69,14 @@ calc:
   = -15 <= x + y <= 5          // subtract 10 from the three parts
 set: R3 = -15 <= x + y <= 5
 
-step: The precondition must imply the weakest precondition
+step: P implies R3
 rule: CONSEQUENCE
+focus: P, R3
 text:
   $R3$ is the weakest precondition of the whole program for $Q$. By the
   consequence rule, the triple is valid when the precondition $P$ implies
   $R3$.
+  >>> «P» ==> «R3»
 vc: -10 <= x <= 0 && 0 <= y <= 5 ==> -15 <= x + y <= 5
 why:
   We add the bounds that $P$ gives for $x$ and $y$. The smallest value of

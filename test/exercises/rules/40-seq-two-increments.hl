@@ -1,0 +1,67 @@
+id: rule-seq-two-increments
+title: Two increments
+topic: Sequential composition
+example-of: SEQ
+derived: true
+
+task:
+  Use the rule SEQ to derive this triple. The intermediate assertion $R1$
+  between the two statements is computed backwards from $Q$.
+
+pre: x = 0
+post: x = 3
+
+scheme: SEQ
+  First premise: {«P»} x := x + 1 {«R1»}
+  Second premise: {«R1»} x := x + 2 {«Q»}
+  ---
+  {«P»} x := x + 1; x := x + 2 {«Q»}
+
+program:
+  {P}
+  {R2}
+  x := x + 1;    // i1
+  {R1}
+  x := x + 2     // i2
+  {Q}
+
+verdict: valid
+
+step: R1, the weakest precondition of x := x + 2
+part: Second premise
+rule: ASSIGN
+focus: i2
+text:
+  We substitute the variable $x$ with the assignment expression $x + 2$ in
+  $Q$.
+calc:
+  wp(x := x + 2, Q)
+  = (x = 3)[x <- x + 2]     // Q is x = 3
+  = x + 2 = 3               // x replaced by x + 2
+  = x = 1                   // subtract 2 from both sides
+set: R1 = x = 1
+
+step: R2, the weakest precondition of x := x + 1
+part: First premise
+rule: ASSIGN
+focus: i1
+text:
+  We substitute the variable $x$ with the assignment expression $x + 1$ in
+  $R1$.
+calc:
+  wp(x := x + 1, R1)
+  = (x = 1)[x <- x + 1]     // R1 is x = 1
+  = x + 1 = 1               // x replaced by x + 1
+  = x = 0                   // subtract 1 from both sides
+set: R2 = x = 0
+
+step: P implies R2
+part: First premise
+rule: CONSEQUENCE
+focus: P, R2
+text:
+  By the consequence rule, the first premise holds when $P$ implies $R2$.
+  >>> «P» ==> «R2»
+vc: x = 0 ==> x = 0
+why:
+  The two formulas are the same. Both premises hold.

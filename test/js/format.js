@@ -15,8 +15,8 @@
   const HL = (root.HL = root.HL || {});
 
   const EXERCISE_FIELDS = new Set(['id', 'title', 'topic', 'level', 'source', 'tags', 'task', 'pre', 'post',
-    'program', 'verdict', 'summary', 'range', 'hint']);
-  const STEP_FIELDS = new Set(['step', 'rule', 'focus', 'set', 'text', 'note', 'calc', 'vc', 'why', 'status',
+    'program', 'verdict', 'summary', 'range', 'hint', 'example-of', 'derived', 'given', 'scheme']);
+  const STEP_FIELDS = new Set(['step', 'part', 'rule', 'focus', 'set', 'text', 'note', 'calc', 'vc', 'why', 'status',
     'counterexample', 'instance', 'assume', 'result']);
 
   // The rules that a step may name. The names match the rules section.
@@ -95,19 +95,41 @@
     const ex = {
       file: fileName || '', id: '', title: '', topic: '', level: 1, source: '', tags: [], task: '', hint: '',
       preSrc: '', postSrc: '', programSrc: '', verdict: '', summary: '', range: null,
-      steps: [], errors, warnings
+      exampleOf: '', derived: null, given: [], scheme: null,
+      steps: [], choices: [], errors, warnings
     };
     const err = (line, msg) => errors.push({ line, msg });
     const warn = (line, msg) => warnings.push({ line, msg });
     let step = null;
     let lastVc = null;
+    // The proof can offer several choices (for example of invariant). The
+    // steps after "choice:" belong to that choice. Without any "choice:",
+    // all steps belong to one implicit choice.
+    let branch = null;
 
     for (const f of fields) {
       const key = f.key;
+      if (key === 'choice') {
+        if (ex.steps.length && !ex.choices.length) {
+          err(f.line, 'When the exercise has choices, every step must come after a "choice:" line');
+        }
+        branch = { title: f.inline || 'Choice ' + (ex.choices.length + 1), outcome: 'proves', steps: [], line: f.line };
+        ex.choices.push(branch);
+        step = null;
+        lastVc = null;
+        continue;
+      }
+      if (key === 'outcome') {
+        const w = valueText(f).trim().toLowerCase();
+        if (!branch || step) err(f.line, 'The field "outcome" must follow a "choice:" line, before its first step');
+        else if (!['proves', 'fails'].includes(w)) err(f.line, 'The outcome must be "proves" or "fails"');
+        else branch.outcome = w;
+        continue;
+      }
       if (key === 'step') {
-        step = { title: f.inline || 'Step', line: f.line, rules: [], focus: [], items: [], sets: [], assume: null };
+        step = { title: f.inline || 'Step', line: f.line, part: '', rules: [], focus: [], items: [], sets: [], assume: null };
         if (f.block.length) step.items.push({ kind: 'text', text: f.block.map((b) => b.text).join('\n'), line: f.line });
-        ex.steps.push(step);
+        (branch ? branch.steps : ex.steps).push(step);
         lastVc = null;
         continue;
       }
@@ -136,6 +158,17 @@
             break;
           }
           case 'summary': ex.summary = v; break;
+          case 'example-of': ex.exampleOf = v.trim().toUpperCase(); break;
+          case 'derived': ex.derived = /^(true|yes)$/i.test(v.trim()); break;
+          case 'given':
+            // One "Label: value" per line, shown with the variables.
+            valueLines(f).forEach((l) => {
+              const m = l.text.match(/^([^:]+):\s*(.*)$/);
+              if (m) ex.given.push([m[1].trim(), m[2].trim()]);
+              else if (l.text.trim()) err(l.line, 'Write each given element as "Label: value"');
+            });
+            break;
+          case 'scheme': ex.scheme = parseScheme(valueLines(f), f, err); break;
           case 'range': {
             const n = parseInt(v, 10);
             if (!(n >= 1 && n <= 20)) err(f.line, 'The range must be a number between 1 and 20');
@@ -156,6 +189,7 @@
       }
       const v = valueText(f);
       switch (key) {
+        case 'part': step.part = v.trim(); break;
         case 'rule':
           v.split(/[,\s]+/).map((r) => r.trim().toUpperCase()).filter(Boolean).forEach((r) => {
             if (!RULES.includes(r)) warn(f.line, 'Unknown rule "' + r + '". The known rules are ' + RULES.join(', '));
@@ -247,7 +281,10 @@
     if (!ex.preSrc) err(1, 'The field "pre" (the precondition) is missing');
     if (!ex.postSrc) err(1, 'The field "post" (the postcondition) is missing');
     if (!ex.programSrc.trim()) err(1, 'The field "program" is missing');
-    if (!ex.steps.length) warn(1, 'The exercise has no steps');
+    if (!ex.choices.length) ex.choices.push({ title: '', outcome: 'proves', steps: ex.steps, line: 1 });
+    ex.steps = ex.choices[0].steps;
+    const allSteps = [].concat(...ex.choices.map((c) => c.steps));
+    if (!allSteps.length) warn(1, 'The exercise has no steps');
 
     if (ex.preSrc) {
       try { ex.pre = HL.parseFormula(ex.preSrc); } catch (e) { err(ex.preLine, 'In the precondition: ' + e.message); }
@@ -271,27 +308,77 @@
         if (a.slot && !ex.slotNames.includes(a.slot)) ex.slotNames.push(a.slot);
       });
       const setNames = new Set();
-      ex.steps.forEach((s) => s.sets.forEach((x) => setNames.add(x.name)));
+      allSteps.forEach((s) => s.sets.forEach((x) => setNames.add(x.name)));
       ex.slotNames.forEach((n) => {
         if (n !== 'P' && n !== 'Q' && !setNames.has(n)) {
           warn(ex.programLine, 'The assertion {' + n + '} in the program is never given a value with "set: ' + n + ' = ..."');
         }
       });
-      // Resolve the focus of every step.
+      // Resolve the focus of every step: statements, and assertion lines
+      // given by the name of a slot (P, I, R1) or by their formula.
       const stmts = [];
       HL.walkStmts(ex.program, (s) => stmts.push(s));
-      ex.steps.forEach((s) => {
+      const asserts = [];
+      HL.walkAsserts(ex.program, (a) => { a.aid = 'a' + asserts.length; asserts.push(a); });
+      allSteps.forEach((s) => {
         s.focusIds = [];
+        s.focusAsserts = [];
         s.focus.forEach((fc) => {
-          const ids = findStatements(stmts, fc.text);
-          if (!ids.length) warn(fc.line, 'The focus "' + fc.text + '" does not match any statement of the program');
-          s.focusIds.push(...ids);
+          const t = fc.text.trim();
+          const bySlot = asserts.filter((a) => a.slot === t);
+          if (bySlot.length) { s.focusAsserts.push(...bySlot.map((a) => a.aid)); return; }
+          const ids = findStatements(stmts, t);
+          if (ids.length) { s.focusIds.push(...ids); return; }
+          const canon = HL.canonHead(t);
+          const lit = asserts.filter((a) => HL.canonHead(a.src) === canon);
+          if (lit.length) { s.focusAsserts.push(...lit.map((a) => a.aid)); return; }
+          warn(fc.line, 'The focus "' + t + '" does not match any statement or assertion of the program');
         });
       });
     }
-    ex.steps.forEach((s, j) => { s.index = j + 1; });
+    ex.choices.forEach((c) => numberSteps(c.steps));
     if (!ex.topic) ex.topic = 'Other';
     return ex;
+  }
+
+  // Steps of the same part get the numbers n.1, n.2, ... ; a part with a
+  // single step, or a step without part, gets the number n.
+  function numberSteps(steps) {
+    let n = 0;
+    let j = 0;
+    while (j < steps.length) {
+      const part = steps[j].part;
+      let k = j + 1;
+      while (part && k < steps.length && steps[k].part === part) k++;
+      n++;
+      for (let i = j; i < k; i++) {
+        steps[i].index = i + 1;
+        steps[i].number = k - j > 1 ? n + '.' + (i - j + 1) : String(n);
+      }
+      j = k;
+    }
+  }
+  HL.numberSteps = numberSteps;
+
+  // scheme: the rule with the elements of the exercise. One premise per
+  // line, "Part: premise", then a line of dashes and the conclusion. In the
+  // premises, «X» stands for the current value of the assertion X, and
+  // «formula : label» shows the formula with a label under it.
+  function parseScheme(lines, f, err) {
+    const premises = [];
+    let conclusion = '';
+    let afterBar = false;
+    let name = f.inline && /^[A-Za-z-]+$/.test(f.inline.trim()) ? f.inline.trim().toUpperCase() : '';
+    for (const l of name ? f.block : lines) {
+      const t = l.text.trim();
+      if (!t) continue;
+      if (/^-{3,}$/.test(t)) { afterBar = true; continue; }
+      if (afterBar) { conclusion = t; continue; }
+      const m = t.match(/^([A-Z][A-Za-z ]*):\s+(.*)$/);
+      premises.push(m ? { part: m[1].trim(), src: m[2], line: l.line } : { part: '', src: t, line: l.line });
+    }
+    if (!conclusion) err(f.line, 'The scheme has no conclusion. Put a line of dashes "---" before the conclusion.');
+    return { name, premises, conclusion };
   }
 
   function findStatements(stmts, text) {

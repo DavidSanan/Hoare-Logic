@@ -931,6 +931,14 @@
   }
 
   HL.substitute = (n, x, E) => substitute(expand(n), x, expand(E));
+  HL.substituteNode = substitute;
+  // Remove the parentheses around comparisons and atoms, which never need
+  // them; used to show values put in place of assertion names.
+  HL.simplifyParens = function sp(n) {
+    n = mapChildren(n, sp);
+    if (n.k === 'paren' && (isAtomic(n.e) || n.e.k === 'chain' || n.e.k === 'paren')) return n.e;
+    return n;
+  };
   HL.expand = expand;
   HL.wp = (prog, Q) => wp(prog, expand(Q));
 

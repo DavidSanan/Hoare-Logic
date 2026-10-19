@@ -15,6 +15,9 @@ task:
   Hint: fill a table with the values of $x$ and $y$ after each iteration,
   without evaluating the additions.
 
+given:
+  Loop condition B: $y < n$
+
 pre: x = 0 && y = 0
 post: x = sum(k, 0, n, k)
 
@@ -55,54 +58,61 @@ text:
   has one part for each case.
 set: I = (n > 0 ==> 0 <= y <= n && x = sum(k, 0, y, k)) && (n <= 0 ==> x = 0 && y = 0)
 text:
-  The loop rule with consequence needs three checks, with the loop
-  condition $B$ being $y < n$: establishment $P ==> I$, preservation of
-  $I$ by the body, and exit $I && !B ==> Q$.
+  The loop rule with consequence has three premises, with the loop
+  condition $B$ being $y < n$: initialisation $P ==> I$, preservation of
+  $I$ by the body, and conclusion $I && !B ==> Q$.
 
-step: Establishment: P implies I
+step: P implies I
+part: Initialisation
 rule: CONSEQUENCE, LOGIC
+focus: P, I
 text:
-  No statement comes before the loop, so we prove that the precondition
-  $P$ implies $I$.
-  >>> «x = 0 && y = 0 : P» ==> «(n > 0 ==> 0 <= y <= n && x = sum(k, 0, y, k)) && (n <= 0 ==> x = 0 && y = 0) : I»
+  The invariant must hold when the loop is reached. No statement comes
+  before the loop, so the precondition $P$ must imply $I$.
+  >>> «P» ==> «I»
 vc: x = 0 && y = 0 ==> I
 why:
   Case $n > 0$: with $y = 0$, $0 <= 0 <= n$ holds, and
   $sum(k, 0, 0, k) = 0 = x$. Case $n <= 0$: $x = 0 && y = 0$ is $P$
   itself.
 
-step: Preservation: R1, the weakest precondition of x := x + y for I
+step: R1, the weakest precondition of x := x + y for I
+part: Preservation
 rule: ASSIGN, WP
 focus: b2
 text:
-  We prove that one iteration keeps the invariant:
-  >>> {«(n > 0 ==> 0 <= y <= n && x = sum(k, 0, y, k)) && (n <= 0 ==> x = 0 && y = 0) : I» && «y < n : B»} y := y + 1; x := x + y {«(n > 0 ==> 0 <= y <= n && x = sum(k, 0, y, k)) && (n <= 0 ==> x = 0 && y = 0) : I»}
+  One iteration must keep the invariant:
+  >>> {«I» && «y < n : B»} y := y + 1; x := x + y {«I»}
   We calculate the weakest precondition of the body for $I$, from the last
   statement. We substitute $x$ with $x + y$ in $I$.
 calc:
   wp(x := x + y, I)
-  = ((n > 0 ==> 0 <= y <= n && x = sum(k, 0, y, k)) && (n <= 0 ==> x = 0 && y = 0))[x <- x + y]
+  = ((n > 0 ==> 0 <= y <= n && x = sum(k, 0, y, k)) && (n <= 0 ==> x = 0 && y = 0))[x <- x + y]    // I
   = (n > 0 ==> 0 <= y <= n && x + y = sum(k, 0, y, k)) && (n <= 0 ==> x + y = 0 && y = 0)    // x is replaced by x + y
 set: R1 = (n > 0 ==> 0 <= y <= n && x + y = sum(k, 0, y, k)) && (n <= 0 ==> x + y = 0 && y = 0)
 
-step: Preservation: R2, the weakest precondition of y := y + 1 for R1
+step: R2, the weakest precondition of y := y + 1 for R1
+part: Preservation
 rule: ASSIGN, WP
 focus: b1
 text:
   We substitute $y$ with $y + 1$ in $R1$, computed in the previous step.
 calc:
   wp(y := y + 1, R1)
-  = ((n > 0 ==> 0 <= y <= n && x + y = sum(k, 0, y, k)) && (n <= 0 ==> x + y = 0 && y = 0))[y <- y + 1]
+  = ((n > 0 ==> 0 <= y <= n && x + y = sum(k, 0, y, k)) && (n <= 0 ==> x + y = 0 && y = 0))[y <- y + 1]    // R1
   = (n > 0 ==> 0 <= y + 1 <= n && x + (y + 1) = sum(k, 0, y + 1, k)) && (n <= 0 ==> x + (y + 1) = 0 && y + 1 = 0)    // y is replaced by y + 1
   = (n > 0 ==> -1 <= y <= n - 1 && x + (y + 1) = sum(k, 0, y + 1, k)) && (n <= 0 ==> x + (y + 1) = 0 && y + 1 = 0)    // subtract 1 from each part of the bounds
   = (n > 0 ==> -1 <= y <= n - 1 && x = sum(k, 0, y, k)) && (n <= 0 ==> x + (y + 1) = 0 && y + 1 = 0)    // since y >= -1, sum(k, 0, y + 1, k) is sum(k, 0, y, k) + (y + 1); subtract y + 1 from both sides
   = (n > 0 ==> -1 <= y <= n - 1 && x = sum(k, 0, y, k)) && (n <= 0 ==> x = 0 && y = -1)    // y + 1 = 0 is y = -1, and then x + (y + 1) = 0 is x = 0
 set: R2 = (n > 0 ==> -1 <= y <= n - 1 && x = sum(k, 0, y, k)) && (n <= 0 ==> x = 0 && y = -1)
 
-step: Preservation: I and B imply R2
+step: I and B imply R2
+part: Preservation
 rule: CONSEQUENCE, LOGIC
+focus: I && y < n, R2
 text:
   By the consequence rule, the triple holds when $I && B$ implies $R2$.
+  >>> «I» && «y < n : B» ==> «R2»
   We check the two cases of $n$.
 vc: I && y < n ==> R2
 why:
@@ -113,12 +123,14 @@ why:
   contradict each other, so no state is in this case and the implication
   holds.
 
-step: Exit: I and not B imply Q
+step: I and not B imply Q
+part: Conclusion
 rule: CONSEQUENCE, LOGIC
+focus: I && !(y < n), Q
 text:
   When the loop stops, $I$ holds and $B$ is false. This must imply the
   postcondition $Q$.
-  >>> «(n > 0 ==> 0 <= y <= n && x = sum(k, 0, y, k)) && (n <= 0 ==> x = 0 && y = 0) : I» && «!(y < n) : ¬B» ==> «x = sum(k, 0, n, k) : Q»
+  >>> «I» && «!(y < n) : ¬B» ==> «Q»
 vc: I && !(y < n) ==> x = sum(k, 0, n, k)
 why:
   Case $n > 0$: $!(y < n)$ is $y >= n$, and with $y <= n$ it gives

@@ -14,7 +14,12 @@ task:
 
   Then explain why the property $s = 2 * i$ alone is an invariant of this
   loop, but is not enough to prove the postcondition. Which condition is
-  missing, and in which of the three checks of the loop rule is it needed?
+  missing, and in which of the three premises of the loop rule is it
+  needed? Choose the invariant above the steps: the proof succeeds with
+  the first one and fails with the second one.
+
+given:
+  Loop condition B: $i < n$
 
 pre: n >= 0
 post: s = 2 * n
@@ -39,6 +44,9 @@ program:
 
 verdict: valid
 
+choice: I: s = 2·i ∧ 0 ≤ i ≤ n
+outcome: proves
+
 step: The invariant I
 rule: WHILE-CONSEQUENCE
 focus: while
@@ -50,27 +58,29 @@ text:
   $n$.
 set: I = s = 2 * i && 0 <= i <= n
 text:
-  The loop rule with consequence needs three checks, with the loop
-  condition $B$ being $i < n$: establishment, preservation of $I$ by the
-  body, and exit $I && !B ==> Q$.
+  The loop rule with consequence has three premises, with the loop
+  condition $B$ being $i < n$: initialisation, preservation of $I$ by the
+  body, and conclusion $I && !B ==> Q$.
 
-step: Establishment: R3, the weakest precondition of s := 0 for I
+step: R3, the weakest precondition of s := 0 for I
+part: Initialisation
 rule: ASSIGN, WP
 focus: i2
 text:
-  The loop comes after two assignments, so establishment is the triple
+  The loop comes after two assignments, so initialisation is the triple
   $\{P\}$ `i := 0; s := 0` $\{I\}$. We calculate the weakest precondition
   of these two statements for $I$, from the last one. We substitute the
   assigned variable ($s$) with the assignment expression ($0$) in $I$.
 calc:
   wp(s := 0, I)
-  = (s = 2 * i && 0 <= i <= n)[s <- 0]
-  = 0 = 2 * i && 0 <= i <= n     // s is replaced by 0
-  = i = 0 && 0 <= i <= n         // 2 * i is 0 only when i is 0
-  = i = 0 && 0 <= n              // replace i by 0 in 0 <= i <= n
+  = (s = 2 * i && 0 <= i <= n)[s <- 0]     // I
+  = 0 = 2 * i && 0 <= i <= n               // s is replaced by 0
+  = i = 0 && 0 <= i <= n                   // 2 * i is 0 only when i is 0
+  = i = 0 && 0 <= n                        // replace i by 0 in 0 <= i <= n
 set: R3 = i = 0 && 0 <= n
 
-step: Establishment: R4, the weakest precondition of i := 0 for R3
+step: R4, the weakest precondition of i := 0 for R3
+part: Initialisation
 rule: ASSIGN, WP
 focus: i1
 text:
@@ -78,82 +88,189 @@ text:
   ($0$) in $R3$, computed in the previous step.
 calc:
   wp(i := 0, R3)
-  = (i = 0 && 0 <= n)[i <- 0]
-  = 0 = 0 && 0 <= n      // i is replaced by 0
-  = 0 <= n               // 0 = 0 is true, and true && A is A
+  = (i = 0 && 0 <= n)[i <- 0]     // R3
+  = 0 = 0 && 0 <= n               // i is replaced by 0
+  = 0 <= n                        // 0 = 0 is true, and true && A is A
 set: R4 = 0 <= n
 
-step: Establishment: P implies R4
+step: P implies R4
+part: Initialisation
 rule: CONSEQUENCE, LOGIC
+focus: P, R4
 text:
-  $R4$ is the weakest precondition of the initialisation for $I$. By the
-  consequence rule, establishment holds when the precondition $P$ implies
+  $R4$ is the weakest precondition of the two assignments for $I$. By the
+  consequence rule, initialisation holds when the precondition $P$ implies
   $R4$.
-  >>> «n >= 0 : P» ==> «0 <= n : R4»
+  >>> «P» ==> «R4»
 vc: n >= 0 ==> 0 <= n
 why:
   The two formulas say the same thing.
 
-step: Preservation: R1, the weakest precondition of s := s + 2 for I
+step: R1, the weakest precondition of s := s + 2 for I
+part: Preservation
 rule: ASSIGN, WP
 focus: b2
 text:
-  We prove that one iteration keeps the invariant:
-  >>> {«s = 2 * i && 0 <= i <= n : I» && «i < n : B»} i := i + 1; s := s + 2 {«s = 2 * i && 0 <= i <= n : I»}
+  One iteration must keep the invariant:
+  >>> {«I» && «i < n : B»} i := i + 1; s := s + 2 {«I»}
   We calculate the weakest precondition of the body for $I$, from the last
   statement. We substitute $s$ with $s + 2$ in $I$.
 calc:
   wp(s := s + 2, I)
-  = (s = 2 * i && 0 <= i <= n)[s <- s + 2]
-  = s + 2 = 2 * i && 0 <= i <= n      // s is replaced by s + 2
+  = (s = 2 * i && 0 <= i <= n)[s <- s + 2]     // I
+  = s + 2 = 2 * i && 0 <= i <= n               // s is replaced by s + 2
 set: R1 = s + 2 = 2 * i && 0 <= i <= n
 
-step: Preservation: R2, the weakest precondition of i := i + 1 for R1
+step: R2, the weakest precondition of i := i + 1 for R1
+part: Preservation
 rule: ASSIGN, WP
 focus: b1
 text:
   We substitute $i$ with $i + 1$ in $R1$, computed in the previous step.
 calc:
   wp(i := i + 1, R1)
-  = (s + 2 = 2 * i && 0 <= i <= n)[i <- i + 1]
-  = s + 2 = 2 * (i + 1) && 0 <= i + 1 <= n    // i is replaced by i + 1
-  = s = 2 * i && 0 <= i + 1 <= n              // 2 * (i + 1) is 2 * i + 2; subtract 2 from both sides
-  = s = 2 * i && -1 <= i <= n - 1             // subtract 1 from each part of the bounds
+  = (s + 2 = 2 * i && 0 <= i <= n)[i <- i + 1]     // R1
+  = s + 2 = 2 * (i + 1) && 0 <= i + 1 <= n         // i is replaced by i + 1
+  = s = 2 * i && 0 <= i + 1 <= n                   // 2 * (i + 1) is 2 * i + 2; subtract 2 from both sides
+  = s = 2 * i && -1 <= i <= n - 1                  // subtract 1 from each part of the bounds
 set: R2 = s = 2 * i && -1 <= i <= n - 1
 
-step: Preservation: I and B imply R2
+step: I and B imply R2
+part: Preservation
 rule: CONSEQUENCE, LOGIC
+focus: I && i < n, R2
 text:
   By the consequence rule, the triple holds when $I && B$ implies $R2$.
-  >>> «s = 2 * i && 0 <= i <= n : I» && «i < n : B» ==> «s = 2 * i && -1 <= i <= n - 1 : R2»
+  >>> «I» && «i < n : B» ==> «R2»
 vc: s = 2 * i && 0 <= i <= n && i < n ==> s = 2 * i && -1 <= i <= n - 1
 why:
   $s = 2 * i$ is part of $I$. From $0 <= i$ we get $-1 <= i$. For
   integers, $i < n$ is $i <= n - 1$.
 
-step: Exit: I and not B imply Q
+step: I and not B imply Q
+part: Conclusion
 rule: CONSEQUENCE, LOGIC
+focus: I && !(i < n), Q
 text:
   When the loop stops, $I$ holds and $B$ is false. This must imply the
   postcondition $Q$.
-  >>> «s = 2 * i && 0 <= i <= n : I» && «!(i < n) : ¬B» ==> «s = 2 * n : Q»
+  >>> «I» && «!(i < n) : ¬B» ==> «Q»
 vc: s = 2 * i && 0 <= i <= n && !(i < n) ==> s = 2 * n
 why:
   $!(i < n)$ is $i >= n$. Together with $i <= n$ it gives $i = n$, and
   then $s = 2 * i$ becomes $s = 2 * n$.
+result: The triple is valid, with the invariant $s = 2 * i && 0 <= i <= n$.
 
-step: Why s = 2 * i alone is not enough
-rule: LOGIC
+choice: I: s = 2·i
+outcome: fails
+
+step: The candidate invariant I
+rule: WHILE-CONSEQUENCE
+focus: while
 text:
-  Remove the bounds from the calculations above. $R4$ becomes
-  $0 = 2 * 0$, which is true, and $R2$ becomes $s = 2 * i$, which is the
-  candidate itself. So $s = 2 * i$ is established and preserved: it is an
-  invariant. The exit check fails, because $!(i < n)$ only gives $i >= n$.
+  At the loop head the values are $(i, s) = (0, 0), (1, 2), (2, 4), ...$,
+  so $s = 2 * i$. We try this formula alone, without the bounds of $i$.
+set: I = s = 2 * i
+text:
+  The loop rule with consequence has three premises, with the loop
+  condition $B$ being $i < n$: initialisation, preservation of $I$ by the
+  body, and conclusion $I && !B ==> Q$.
+
+step: R3, the weakest precondition of s := 0 for I
+part: Initialisation
+rule: ASSIGN, WP
+focus: i2
+text:
+  The loop comes after two assignments, so initialisation is the triple
+  $\{P\}$ `i := 0; s := 0` $\{I\}$. We calculate the weakest precondition
+  of these two statements for $I$, from the last one. We substitute the
+  assigned variable ($s$) with the assignment expression ($0$) in $I$.
+calc:
+  wp(s := 0, I)
+  = (s = 2 * i)[s <- 0]     // I
+  = 0 = 2 * i               // s is replaced by 0
+  = i = 0                   // 2 * i is 0 only when i is 0
+set: R3 = i = 0
+
+step: R4, the weakest precondition of i := 0 for R3
+part: Initialisation
+rule: ASSIGN, WP
+focus: i1
+text:
+  We substitute the assigned variable ($i$) with the assignment expression
+  ($0$) in $R3$, computed in the previous step.
+calc:
+  wp(i := 0, R3)
+  = (i = 0)[i <- 0]     // R3
+  = 0 = 0               // i is replaced by 0
+  = true                // 0 = 0 is true
+set: R4 = true
+
+step: P implies R4
+part: Initialisation
+rule: CONSEQUENCE, LOGIC
+focus: P, R4
+text:
+  By the consequence rule, initialisation holds when the precondition $P$
+  implies $R4$.
+  >>> «P» ==> «R4»
+vc: n >= 0 ==> true
+why:
+  Every formula implies $true$.
+
+step: R1, the weakest precondition of s := s + 2 for I
+part: Preservation
+rule: ASSIGN, WP
+focus: b2
+text:
+  One iteration must keep the candidate:
+  >>> {«I» && «i < n : B»} i := i + 1; s := s + 2 {«I»}
+  We calculate the weakest precondition of the body for $I$, from the last
+  statement. We substitute $s$ with $s + 2$ in $I$.
+calc:
+  wp(s := s + 2, I)
+  = (s = 2 * i)[s <- s + 2]     // I
+  = s + 2 = 2 * i               // s is replaced by s + 2
+set: R1 = s + 2 = 2 * i
+
+step: R2, the weakest precondition of i := i + 1 for R1
+part: Preservation
+rule: ASSIGN, WP
+focus: b1
+text:
+  We substitute $i$ with $i + 1$ in $R1$, computed in the previous step.
+calc:
+  wp(i := i + 1, R1)
+  = (s + 2 = 2 * i)[i <- i + 1]     // R1
+  = s + 2 = 2 * (i + 1)             // i is replaced by i + 1
+  = s = 2 * i                       // 2 * (i + 1) is 2 * i + 2; subtract 2 from both sides
+set: R2 = s = 2 * i
+
+step: I and B imply R2
+part: Preservation
+rule: CONSEQUENCE, LOGIC
+focus: I && i < n, R2
+text:
+  By the consequence rule, the triple holds when $I && B$ implies $R2$.
+  >>> «I» && «i < n : B» ==> «R2»
+vc: s = 2 * i && i < n ==> s = 2 * i
+why:
+  $R2$ is the candidate $I$ itself. So $s = 2 * i$ holds at the start and
+  is kept by the body: it is an invariant of the loop.
+
+step: I and not B do not imply Q
+part: Conclusion
+rule: CONSEQUENCE, LOGIC
+focus: I && !(i < n), Q
+text:
+  When the loop stops, $I$ holds and $B$ is false. This must imply the
+  postcondition $Q$.
+  >>> «I» && «!(i < n) : ¬B» ==> «Q»
 vc: s = 2 * i && !(i < n) ==> s = 2 * n
 status: fails
 counterexample: n = 1, i = 2, s = 4
 why:
-  The state $n = 1$, $i = 2$, $s = 4$ satisfies $s = 2 * i$ and $i >= n$,
-  but $s != 2 * n$. The missing condition is the bound $i <= n$. It is
-  needed in the exit check, where with $i >= n$ it gives $i = n$.
-result: The triple is valid, with the invariant $s = 2 * i && 0 <= i <= n$.
+  $!(i < n)$ only gives $i >= n$. The state $n = 1$, $i = 2$, $s = 4$
+  satisfies $s = 2 * i$ and $i >= n$, but $s != 2 * n$. The candidate is
+  an invariant, but it is too weak: the bound $i <= n$ is missing. It is
+  needed in the conclusion, where with $i >= n$ it gives $i = n$.

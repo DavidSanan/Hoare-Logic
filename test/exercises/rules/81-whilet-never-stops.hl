@@ -1,0 +1,173 @@
+id: rule-whilet-never-stops
+title: A loop that never stops
+topic: Loop
+example-of: WHILE-TOTAL
+derived: false
+
+task:
+  Use the rule WHILE-TOTAL to try to show that the loop terminates, with
+  the invariant $x >= 0$. Choose the candidate variant above the steps.
+  The logical variable $n$ is the value of $E$ when an iteration starts.
+
+given:
+  Loop condition B: $x >= 0$
+  n: the value of $E$ when an iteration starts
+
+pre: x >= 0
+post: x >= 0 && !(x >= 0)
+
+program:
+  {P}
+  {I}
+  while x >= 0 do {
+    {I && x >= 0}
+    {R1}
+    x := x + 1     // b
+    {I}
+  }
+  {I && !(x >= 0)}
+  {Q}
+
+verdict: valid
+
+choice: E = x
+outcome: fails
+
+step: The invariant I and the variant E
+rule: WHILE-TOTAL
+focus: while
+text:
+  The rule uses the precondition as the invariant. We try the variant
+  $E = x$.
+set: I = x >= 0
+
+step: P implies I
+part: Initialisation
+rule: CONSEQUENCE
+focus: P, I
+text:
+  >>> «P» ==> «I»
+vc: x >= 0 ==> x >= 0
+why:
+  $P$ and $I$ are the same formula.
+
+step: R1, the weakest precondition of the body for I
+part: Preservation
+rule: ASSIGN
+focus: b
+text:
+  One iteration must keep the invariant. We substitute the variable $x$
+  with $x + 1$ in $I$.
+calc:
+  wp(x := x + 1, I)
+  = (x >= 0)[x <- x + 1]     // I is x >= 0
+  = x + 1 >= 0               // x replaced by x + 1
+set: R1 = x + 1 >= 0
+
+step: I and B imply R1
+part: Preservation
+rule: CONSEQUENCE
+focus: I && x >= 0, R1
+text:
+  >>> «I» && «x >= 0 : B» ==> «R1»
+vc: x >= 0 && x >= 0 ==> x + 1 >= 0
+why:
+  From $x >= 0$ we get $x + 1 >= 0$. The invariant is preserved.
+
+step: The body must decrease E
+part: Variant
+rule: WHILE-TOTAL, ASSIGN
+focus: b
+text:
+  The body must make $E$ smaller than its value $n$ at the start of the
+  iteration. We compute the weakest precondition of $x < n$ for the body.
+calc:
+  wp(x := x + 1, x < n)
+  = (x < n)[x <- x + 1]
+  = x + 1 < n          // x replaced by x + 1
+vc: x >= 0 && x >= 0 && x = n ==> x + 1 < n
+status: fails
+counterexample: x = 0, n = 0
+why:
+  With $x = n$, $x + 1 = n + 1$ is not smaller than $n$: the body
+  increases $E$.
+
+step: I and not B imply Q
+part: Conclusion
+rule: CONSEQUENCE
+focus: I && !(x >= 0), Q
+text:
+  >>> «I» && «!(x >= 0) : ¬B» ==> «Q»
+vc: x >= 0 && !(x >= 0) ==> x >= 0 && !(x >= 0)
+why:
+  The two formulas are the same: $Q$ is $I && !B$. Partial correctness
+  holds, but the variant failed, so termination is not proved.
+
+choice: E = -x
+outcome: fails
+
+step: The invariant I and the variant E
+rule: WHILE-TOTAL
+focus: while
+text:
+  The rule uses the precondition as the invariant. We try the variant
+  $E = -x$, which decreases in every iteration.
+set: I = x >= 0
+
+step: P implies I
+part: Initialisation
+rule: CONSEQUENCE
+focus: P, I
+text:
+  >>> «P» ==> «I»
+vc: x >= 0 ==> x >= 0
+why:
+  $P$ and $I$ are the same formula.
+
+step: R1, the weakest precondition of the body for I
+part: Preservation
+rule: ASSIGN
+focus: b
+text:
+  One iteration must keep the invariant. We substitute the variable $x$
+  with $x + 1$ in $I$.
+calc:
+  wp(x := x + 1, I)
+  = (x >= 0)[x <- x + 1]     // I is x >= 0
+  = x + 1 >= 0               // x replaced by x + 1
+set: R1 = x + 1 >= 0
+
+step: I and B imply R1
+part: Preservation
+rule: CONSEQUENCE
+focus: I && x >= 0, R1
+text:
+  >>> «I» && «x >= 0 : B» ==> «R1»
+vc: x >= 0 && x >= 0 ==> x + 1 >= 0
+why:
+  From $x >= 0$ we get $x + 1 >= 0$. The invariant is preserved.
+
+step: The variant must not be negative
+part: Variant
+rule: WHILE-TOTAL
+focus: I && x >= 0
+text:
+  When an iteration starts, $E$ must not be negative.
+  >>> «I» && «x >= 0 : B» ==> «-x >= 0 : E ≥ 0»
+vc: x >= 0 && x >= 0 ==> -x >= 0
+status: fails
+counterexample: x = 1
+why:
+  In the state $x = 1$, $-x = -1$. No variant can work, because the loop
+  never stops: $x$ only grows, so $x >= 0$ stays true.
+
+step: I and not B imply Q
+part: Conclusion
+rule: CONSEQUENCE
+focus: I && !(x >= 0), Q
+text:
+  >>> «I» && «!(x >= 0) : ¬B» ==> «Q»
+vc: x >= 0 && !(x >= 0) ==> x >= 0 && !(x >= 0)
+why:
+  The two formulas are the same: $Q$ is $I && !B$. Partial correctness
+  holds, but the variant failed, so termination is not proved.

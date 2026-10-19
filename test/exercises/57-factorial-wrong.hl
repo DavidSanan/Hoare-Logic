@@ -12,6 +12,12 @@ task:
   $1 <= i <= n && f = prod(k, 1, i, k)$ is proposed for the loop.
 
   Check the proposed invariant, and decide whether the triple is valid.
+  Choose the invariant above the steps: the first one is the invariant
+  that the loop really keeps, and it leads to the verdict; the second one
+  is the proposed invariant, and its proof fails.
+
+given:
+  Loop condition B: $i < n$
 
 pre: i = 1 && f = 1 && n >= 1
 post: f = prod(k, 1, n, k)
@@ -32,68 +38,10 @@ program:
 
 verdict: invalid
 
-step: The proposed invariant I
-rule: WHILE-CONSEQUENCE
-focus: while
-text:
-  We take the invariant proposed in the task. The loop rule with
-  consequence needs three checks, with the loop condition $B$ being
-  $i < n$: establishment $P ==> I$, preservation of $I$ by the body, and
-  exit $I && !B ==> Q$.
-set: I = 1 <= i <= n && f = prod(k, 1, i, k)
+choice: I: 1 ≤ i ≤ n ∧ f = prod(k, 1, i − 1, k)
+outcome: proves
 
-step: Establishment of the proposed I
-rule: CONSEQUENCE, LOGIC
-text:
-  No statement comes before the loop, so we prove that the precondition
-  $P$ implies $I$.
-  >>> «i = 1 && f = 1 && n >= 1 : P» ==> «1 <= i <= n && f = prod(k, 1, i, k) : I»
-vc: i = 1 && f = 1 && n >= 1 ==> 1 <= i <= n && f = prod(k, 1, i, k)
-why:
-  With $i = 1$: $1 <= 1 <= n$ follows from $n >= 1$, and
-  $prod(k, 1, 1, k) = 1 = f$.
-
-step: Preservation of the proposed I: R1, the weakest precondition of i := i + 1
-rule: ASSIGN, WP
-focus: b2
-text:
-  We check that one iteration keeps the invariant:
-  >>> {«1 <= i <= n && f = prod(k, 1, i, k) : I» && «i < n : B»} f := f * i; i := i + 1 {«1 <= i <= n && f = prod(k, 1, i, k) : I»}
-  We calculate the weakest precondition of the body for $I$, from the last
-  statement. We substitute $i$ with $i + 1$ in $I$.
-calc:
-  wp(i := i + 1, I)
-  = (1 <= i <= n && f = prod(k, 1, i, k))[i <- i + 1]
-  = 1 <= i + 1 <= n && f = prod(k, 1, i + 1, k)     // i is replaced by i + 1
-  = 0 <= i <= n - 1 && f = prod(k, 1, i + 1, k)     // subtract 1 from each part of the bounds
-set: R1 = 0 <= i <= n - 1 && f = prod(k, 1, i + 1, k)
-
-step: Preservation of the proposed I: R2, the weakest precondition of f := f * i
-rule: ASSIGN, WP
-focus: b1
-text:
-  We substitute $f$ with $f * i$ in $R1$, computed in the previous step.
-calc:
-  wp(f := f * i, R1)
-  = (0 <= i <= n - 1 && f = prod(k, 1, i + 1, k))[f <- f * i]
-  = 0 <= i <= n - 1 && f * i = prod(k, 1, i + 1, k)     // f is replaced by f * i
-set: R2 = 0 <= i <= n - 1 && f * i = prod(k, 1, i + 1, k)
-
-step: Preservation of the proposed I fails
-rule: CONSEQUENCE, LOGIC
-text:
-  By the consequence rule, the triple holds when $I && B$ implies $R2$.
-  >>> «1 <= i <= n && f = prod(k, 1, i, k) : I» && «i < n : B» ==> «0 <= i <= n - 1 && f * i = prod(k, 1, i + 1, k) : R2»
-vc: 1 <= i <= n && f = prod(k, 1, i, k) && i < n ==> 0 <= i <= n - 1 && f * i = prod(k, 1, i + 1, k)
-status: fails
-counterexample: i = 1, f = 1, n = 2
-why:
-  From $f = 1 * ... * i$ the body computes $f * i = 1 * ... * i * i$, but
-  $R2$ needs $1 * ... * i * (i + 1)$. In the state $i = 1$, $f = 1$,
-  $n = 2$: $f * i = 1$, and $prod(k, 1, 2, k) = 2$. So the proposed
-  formula is not an invariant of the loop.
-
-step: A corrected invariant I
+step: The invariant I
 rule: WHILE-CONSEQUENCE
 focus: while
 text:
@@ -107,63 +55,78 @@ text:
   | before iteration 4 | $4$ | $6$ |
 
   The body multiplies $f$ by $i$ before it increases $i$, so $f$ is the
-  product of the numbers below $i$: $f = 1 * 2 * ... * (i - 1)$. We keep
-  the bounds of the proposed invariant.
+  product of the numbers below $i$: $f = 1 * 2 * ... * (i - 1)$, and not
+  the product up to $i$ as proposed in the task. We keep the bounds of the
+  proposed invariant.
 set: I = 1 <= i <= n && f = prod(k, 1, i - 1, k)
-
-step: Establishment of the corrected I
-rule: CONSEQUENCE, LOGIC
 text:
-  We prove that the precondition $P$ implies the new $I$.
-  >>> «i = 1 && f = 1 && n >= 1 : P» ==> «1 <= i <= n && f = prod(k, 1, i - 1, k) : I»
+  The loop rule with consequence has three premises, with the loop
+  condition $B$ being $i < n$: initialisation $P ==> I$, preservation of
+  $I$ by the body, and conclusion $I && !B ==> Q$.
+
+step: P implies I
+part: Initialisation
+rule: CONSEQUENCE, LOGIC
+focus: P, I
+text:
+  The invariant must hold when the loop is reached. No statement comes
+  before the loop, so the precondition $P$ must imply $I$.
+  >>> «P» ==> «I»
 vc: i = 1 && f = 1 && n >= 1 ==> 1 <= i <= n && f = prod(k, 1, i - 1, k)
 why:
   With $i = 1$ the product $prod(k, 1, 0, k)$ has no term, so it is $1$,
   which is $f$. The bounds $1 <= 1 <= n$ follow from $n >= 1$.
 
-step: Preservation of the corrected I: R1, the weakest precondition of i := i + 1
+step: R1, the weakest precondition of i := i + 1 for I
+part: Preservation
 rule: ASSIGN, WP
 focus: b2
 text:
-  We check the triple:
-  >>> {«1 <= i <= n && f = prod(k, 1, i - 1, k) : I» && «i < n : B»} f := f * i; i := i + 1 {«1 <= i <= n && f = prod(k, 1, i - 1, k) : I»}
-  We substitute $i$ with $i + 1$ in the new $I$.
+  One iteration must keep the invariant:
+  >>> {«I» && «i < n : B»} f := f * i; i := i + 1 {«I»}
+  We calculate the weakest precondition of the body for $I$, from the last
+  statement. We substitute $i$ with $i + 1$ in $I$.
 calc:
   wp(i := i + 1, I)
-  = (1 <= i <= n && f = prod(k, 1, i - 1, k))[i <- i + 1]
-  = 1 <= i + 1 <= n && f = prod(k, 1, i + 1 - 1, k)     // i is replaced by i + 1
-  = 1 <= i + 1 <= n && f = prod(k, 1, i, k)             // i + 1 - 1 is i
-  = 0 <= i <= n - 1 && f = prod(k, 1, i, k)             // subtract 1 from each part of the bounds
+  = (1 <= i <= n && f = prod(k, 1, i - 1, k))[i <- i + 1]     // I
+  = 1 <= i + 1 <= n && f = prod(k, 1, i + 1 - 1, k)          // i is replaced by i + 1
+  = 1 <= i + 1 <= n && f = prod(k, 1, i, k)                  // i + 1 - 1 is i
+  = 0 <= i <= n - 1 && f = prod(k, 1, i, k)                  // subtract 1 from each part of the bounds
 set: R1 = 0 <= i <= n - 1 && f = prod(k, 1, i, k)
 
-step: Preservation of the corrected I: R2, the weakest precondition of f := f * i
+step: R2, the weakest precondition of f := f * i for R1
+part: Preservation
 rule: ASSIGN, WP
 focus: b1
 text:
   We substitute $f$ with $f * i$ in $R1$, computed in the previous step.
 calc:
   wp(f := f * i, R1)
-  = (0 <= i <= n - 1 && f = prod(k, 1, i, k))[f <- f * i]
-  = 0 <= i <= n - 1 && f * i = prod(k, 1, i, k)     // f is replaced by f * i
+  = (0 <= i <= n - 1 && f = prod(k, 1, i, k))[f <- f * i]     // R1
+  = 0 <= i <= n - 1 && f * i = prod(k, 1, i, k)              // f is replaced by f * i
 set: R2 = 0 <= i <= n - 1 && f * i = prod(k, 1, i, k)
 
-step: Preservation of the corrected I holds
+step: I and B imply R2
+part: Preservation
 rule: CONSEQUENCE, LOGIC
+focus: I && i < n, R2
 text:
   By the consequence rule, the triple holds when $I && B$ implies $R2$.
-  >>> «1 <= i <= n && f = prod(k, 1, i - 1, k) : I» && «i < n : B» ==> «0 <= i <= n - 1 && f * i = prod(k, 1, i, k) : R2»
+  >>> «I» && «i < n : B» ==> «R2»
 vc: 1 <= i <= n && f = prod(k, 1, i - 1, k) && i < n ==> 0 <= i <= n - 1 && f * i = prod(k, 1, i, k)
 why:
   From $1 <= i$ we get $0 <= i$, and for integers $i < n$ is $i <= n - 1$.
   Since $i >= 1$, $prod(k, 1, i, k) = prod(k, 1, i - 1, k) * i$, which is
   $f * i$ by $I$.
 
-step: Exit with the corrected I fails
+step: I and not B do not imply Q
+part: Conclusion
 rule: CONSEQUENCE, LOGIC
+focus: I && !(i < n), Q
 text:
   When the loop stops, $I$ holds and $B$ is false. This must imply the
   postcondition $Q$.
-  >>> «1 <= i <= n && f = prod(k, 1, i - 1, k) : I» && «!(i < n) : ¬B» ==> «f = prod(k, 1, n, k) : Q»
+  >>> «I» && «!(i < n) : ¬B» ==> «Q»
 vc: 1 <= i <= n && f = prod(k, 1, i - 1, k) && !(i < n) ==> f = prod(k, 1, n, k)
 status: fails
 counterexample: i = 2, f = 1, n = 2
@@ -171,10 +134,10 @@ why:
   $!(i < n)$ and $i <= n$ give $i = n$, so $I$ gives
   $f = 1 * ... * (n - 1)$, which is not $1 * ... * n$ when $n >= 2$.
 text:
-  A failed check shows only that this invariant does not prove the triple.
-  Here the state $i = 2$, $f = 1$, $n = 2$ is reached by the program: from
-  $i = 1$, $f = 1$, $n = 2$ the loop runs once and stops. So the triple
-  itself is not valid.
+  A failed premise shows only that this invariant does not prove the
+  triple. Here the state $i = 2$, $f = 1$, $n = 2$ is reached by the
+  program: from $i = 1$, $f = 1$, $n = 2$ the loop runs once and stops. So
+  the triple itself is not valid.
 vc: {i = 1 && f = 1 && n >= 1} while (i < n) do { f := f * i; i := i + 1 } {f = prod(k, 1, n, k)}
 status: fails
 counterexample: i = 1, f = 1, n = 2
@@ -183,8 +146,95 @@ why:
   $prod(k, 1, 2, k) = 2$.
 result: The triple is not valid: the program computes $(n - 1)!$ instead of $n!$.
 
+choice: Proposed I: 1 ≤ i ≤ n ∧ f = prod(k, 1, i, k)
+outcome: fails
+
+step: The proposed invariant I
+rule: WHILE-CONSEQUENCE
+focus: while
+text:
+  We take the invariant proposed in the task.
+set: I = 1 <= i <= n && f = prod(k, 1, i, k)
+text:
+  The loop rule with consequence has three premises, with the loop
+  condition $B$ being $i < n$: initialisation $P ==> I$, preservation of
+  $I$ by the body, and conclusion $I && !B ==> Q$.
+
+step: P implies I
+part: Initialisation
+rule: CONSEQUENCE, LOGIC
+focus: P, I
+text:
+  The invariant must hold when the loop is reached. No statement comes
+  before the loop, so the precondition $P$ must imply $I$.
+  >>> «P» ==> «I»
+vc: i = 1 && f = 1 && n >= 1 ==> 1 <= i <= n && f = prod(k, 1, i, k)
+why:
+  With $i = 1$: $1 <= 1 <= n$ follows from $n >= 1$, and
+  $prod(k, 1, 1, k) = 1 = f$.
+
+step: R1, the weakest precondition of i := i + 1 for I
+part: Preservation
+rule: ASSIGN, WP
+focus: b2
+text:
+  One iteration must keep the invariant:
+  >>> {«I» && «i < n : B»} f := f * i; i := i + 1 {«I»}
+  We calculate the weakest precondition of the body for $I$, from the last
+  statement. We substitute $i$ with $i + 1$ in $I$.
+calc:
+  wp(i := i + 1, I)
+  = (1 <= i <= n && f = prod(k, 1, i, k))[i <- i + 1]     // I
+  = 1 <= i + 1 <= n && f = prod(k, 1, i + 1, k)          // i is replaced by i + 1
+  = 0 <= i <= n - 1 && f = prod(k, 1, i + 1, k)          // subtract 1 from each part of the bounds
+set: R1 = 0 <= i <= n - 1 && f = prod(k, 1, i + 1, k)
+
+step: R2, the weakest precondition of f := f * i for R1
+part: Preservation
+rule: ASSIGN, WP
+focus: b1
+text:
+  We substitute $f$ with $f * i$ in $R1$, computed in the previous step.
+calc:
+  wp(f := f * i, R1)
+  = (0 <= i <= n - 1 && f = prod(k, 1, i + 1, k))[f <- f * i]     // R1
+  = 0 <= i <= n - 1 && f * i = prod(k, 1, i + 1, k)              // f is replaced by f * i
+set: R2 = 0 <= i <= n - 1 && f * i = prod(k, 1, i + 1, k)
+
+step: I and B do not imply R2
+part: Preservation
+rule: CONSEQUENCE, LOGIC
+focus: I && i < n, R2
+text:
+  By the consequence rule, the triple holds when $I && B$ implies $R2$.
+  >>> «I» && «i < n : B» ==> «R2»
+vc: 1 <= i <= n && f = prod(k, 1, i, k) && i < n ==> 0 <= i <= n - 1 && f * i = prod(k, 1, i + 1, k)
+status: fails
+counterexample: i = 1, f = 1, n = 2
+why:
+  From $f = 1 * ... * i$ the body computes $f * i = 1 * ... * i * i$, but
+  $R2$ needs $1 * ... * i * (i + 1)$. In the state $i = 1$, $f = 1$,
+  $n = 2$: $f * i = 1$, and $prod(k, 1, 2, k) = 2$. So the proposed
+  formula is not an invariant of the loop.
+
+step: I and not B imply Q
+part: Conclusion
+rule: CONSEQUENCE, LOGIC
+focus: I && !(i < n), Q
+text:
+  When the loop stops, $I$ holds and $B$ is false. This must imply the
+  postcondition $Q$.
+  >>> «I» && «!(i < n) : ¬B» ==> «Q»
+vc: 1 <= i <= n && f = prod(k, 1, i, k) && !(i < n) ==> f = prod(k, 1, n, k)
+why:
+  $!(i < n)$ is $i >= n$. Together with $i <= n$ it gives $i = n$, so
+  $f = prod(k, 1, i, k)$ becomes $f = prod(k, 1, n, k)$. This premise
+  holds, but the proof fails because preservation fails: the proposed
+  formula would give the postcondition if the loop kept it, and the loop
+  does not keep it.
+
 summary:
-  The failed preservation check of the proposed invariant was a sign of a
-  bug in the program. Swapping the two statements of the body,
+  The failed preservation premise of the proposed invariant was a sign of
+  a bug in the program. Swapping the two statements of the body,
   `i := i + 1; f := f * i`, gives a correct program, for which
   $1 <= i <= n && f = prod(k, 1, i, k)$ is an invariant.

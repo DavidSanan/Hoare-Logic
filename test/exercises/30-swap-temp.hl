@@ -67,12 +67,14 @@ calc:
   = y = B && x = A        // t is replaced by x; y = B has no t
 set: R3 = y = B && x = A
 
-step: The precondition must imply the weakest precondition
+step: P implies R3
 rule: CONSEQUENCE
+focus: P, R3
 text:
   $R3$ is the weakest precondition of the whole program for $Q$. By the
   consequence rule, the triple is valid when the precondition $P$ implies
   $R3$.
+  >>> «P» ==> «R3»
 vc: x = A && y = B ==> y = B && x = A
 why:
   $P$ and $R3$ have the same two conjuncts in a different order, and the

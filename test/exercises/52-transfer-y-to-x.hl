@@ -10,6 +10,9 @@ task:
   Give a proof outline and a loop invariant. The variables $x'$ and $y'$
   are logical variables: they keep the initial values of $x$ and $y$.
 
+given:
+  Loop condition B: $y > 0$
+
 pre: x = x' && y = y' && y >= 0
 post: x = x' + y'
 
@@ -38,65 +41,73 @@ text:
   goes down from $y'$ to $0$, which gives the bounds of $y$.
 set: I = 0 <= y <= y' && x + y = x' + y'
 text:
-  The loop rule with consequence needs three checks, with the loop
-  condition $B$ being $y > 0$: establishment $P ==> I$, preservation of
-  $I$ by the body, and exit $I && !B ==> Q$.
+  The loop rule with consequence has three premises, with the loop
+  condition $B$ being $y > 0$: initialisation $P ==> I$, preservation of
+  $I$ by the body, and conclusion $I && !B ==> Q$.
 
-step: Establishment: P implies I
+step: P implies I
+part: Initialisation
 rule: CONSEQUENCE, LOGIC
+focus: P, I
 text:
-  No statement comes before the loop, so we prove that the precondition
-  $P$ implies $I$.
-  >>> «x = x' && y = y' && y >= 0 : P» ==> «0 <= y <= y' && x + y = x' + y' : I»
+  The invariant must hold when the loop is reached. No statement comes
+  before the loop, so the precondition $P$ must imply $I$.
+  >>> «P» ==> «I»
 vc: x = x' && y = y' && y >= 0 ==> 0 <= y <= y' && x + y = x' + y'
 why:
   $0 <= y$ is part of $P$, and $y = y'$ gives $y <= y'$. Replacing $x$ by
   $x'$ and $y$ by $y'$ turns $x + y = x' + y'$ into $x' + y' = x' + y'$,
   which is true.
 
-step: Preservation: R1, the weakest precondition of y := y - 1 for I
+step: R1, the weakest precondition of y := y - 1 for I
+part: Preservation
 rule: ASSIGN, WP
 focus: b2
 text:
-  We prove that one iteration keeps the invariant:
-  >>> {«0 <= y <= y' && x + y = x' + y' : I» && «y > 0 : B»} x := x + 1; y := y - 1 {«0 <= y <= y' && x + y = x' + y' : I»}
+  One iteration must keep the invariant:
+  >>> {«I» && «y > 0 : B»} x := x + 1; y := y - 1 {«I»}
   We calculate the weakest precondition of the body for $I$, from the last
   statement. We substitute $y$ with $y - 1$ in $I$.
 calc:
   wp(y := y - 1, I)
-  = (0 <= y <= y' && x + y = x' + y')[y <- y - 1]
+  = (0 <= y <= y' && x + y = x' + y')[y <- y - 1]     // I
   = 0 <= y - 1 <= y' && x + (y - 1) = x' + y'     // y is replaced by y - 1
   = 1 <= y <= y' + 1 && x + y - 1 = x' + y'       // add 1 to each part of the bounds
 set: R1 = 1 <= y <= y' + 1 && x + y - 1 = x' + y'
 
-step: Preservation: R2, the weakest precondition of x := x + 1 for R1
+step: R2, the weakest precondition of x := x + 1 for R1
+part: Preservation
 rule: ASSIGN, WP
 focus: b1
 text:
   We substitute $x$ with $x + 1$ in $R1$, computed in the previous step.
 calc:
   wp(x := x + 1, R1)
-  = (1 <= y <= y' + 1 && x + y - 1 = x' + y')[x <- x + 1]
+  = (1 <= y <= y' + 1 && x + y - 1 = x' + y')[x <- x + 1]     // R1
   = 1 <= y <= y' + 1 && (x + 1) + y - 1 = x' + y'    // x is replaced by x + 1
   = 1 <= y <= y' + 1 && x + y = x' + y'              // + 1 and - 1 cancel
 set: R2 = 1 <= y <= y' + 1 && x + y = x' + y'
 
-step: Preservation: I and B imply R2
+step: I and B imply R2
+part: Preservation
 rule: CONSEQUENCE, LOGIC
+focus: I && y > 0, R2
 text:
   By the consequence rule, the triple holds when $I && B$ implies $R2$.
-  >>> «0 <= y <= y' && x + y = x' + y' : I» && «y > 0 : B» ==> «1 <= y <= y' + 1 && x + y = x' + y' : R2»
+  >>> «I» && «y > 0 : B» ==> «R2»
 vc: 0 <= y <= y' && x + y = x' + y' && y > 0 ==> 1 <= y <= y' + 1 && x + y = x' + y'
 why:
   For integers, $y > 0$ is $1 <= y$. From $y <= y'$ we get $y <= y' + 1$.
   The equation $x + y = x' + y'$ is part of $I$.
 
-step: Exit: I and not B imply Q
+step: I and not B imply Q
+part: Conclusion
 rule: CONSEQUENCE, LOGIC
+focus: I && !(y > 0), Q
 text:
   When the loop stops, $I$ holds and $B$ is false. This must imply the
   postcondition $Q$.
-  >>> «0 <= y <= y' && x + y = x' + y' : I» && «!(y > 0) : ¬B» ==> «x = x' + y' : Q»
+  >>> «I» && «!(y > 0) : ¬B» ==> «Q»
 vc: 0 <= y <= y' && x + y = x' + y' && !(y > 0) ==> x = x' + y'
 why:
   $!(y > 0)$ is $y <= 0$. Together with $0 <= y$ it gives $y = 0$, so

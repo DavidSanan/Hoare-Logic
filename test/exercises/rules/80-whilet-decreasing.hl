@@ -1,0 +1,109 @@
+id: rule-whilet-decreasing
+title: A decreasing variant
+topic: Loop
+example-of: WHILE-TOTAL
+derived: true
+
+task:
+  Use the rule WHILE-TOTAL to show that the loop terminates, with the
+  invariant $i <= 10$ and the variant $E = 10 - i$. The logical variable
+  $n$ is the value of $E$ when an iteration starts.
+
+given:
+  Loop condition B: $i < 10$
+  Variant E: $10 - i$
+  n: the value of $E$ when an iteration starts
+
+pre: i <= 10
+post: i <= 10 && !(i < 10)
+
+scheme: WHILE-TOTAL
+  Preservation: {«I» && «i < 10 : B» && «10 - i = n : E = n»} i := i + 1 {«I» && «10 - i < n : E < n»}
+  Variant: «I» && «i < 10 : B» ==> «10 - i >= 0 : E ≥ 0»
+  ---
+  {«I»} while i < 10 do i := i + 1 {«I» && «!(i < 10) : ¬B»}
+
+program:
+  {P}
+  {I}
+  while i < 10 do {
+    {I && i < 10 && 10 - i = n}
+    {R1}
+    i := i + 1     // b
+    {I && 10 - i < n}
+  }
+  {I && !(i < 10)}
+  {Q}
+
+verdict: valid
+
+step: The invariant I
+rule: WHILE-TOTAL
+focus: while
+text:
+  The rule uses the precondition of its conclusion as the invariant.
+set: I = i <= 10
+
+step: P implies I
+part: Initialisation
+rule: CONSEQUENCE
+focus: P, I
+text:
+  >>> «P» ==> «I»
+vc: i <= 10 ==> i <= 10
+why:
+  $P$ and $I$ are the same formula.
+
+step: The variant is not negative
+part: Variant
+rule: WHILE-TOTAL
+focus: I && i < 10 && 10 - i = n
+text:
+  When an iteration starts, the variant must not be negative.
+  >>> «I» && «i < 10 : B» ==> «10 - i >= 0 : E ≥ 0»
+  We simplify the right side.
+calc:
+  10 - i >= 0
+  = i <= 10      // add i to both sides
+vc: i <= 10 && i < 10 ==> 10 - i >= 0
+why:
+  The right side is $I$ itself.
+
+step: R1, the weakest precondition of the body
+part: Preservation
+rule: ASSIGN
+focus: b
+text:
+  One iteration must keep $I$ and make the variant smaller than $n$:
+  >>> {«I» && «i < 10 : B» && «10 - i = n : E = n»} i := i + 1 {«I» && «10 - i < n : E < n»}
+  We substitute the variable $i$ with $i + 1$ in the postcondition of the
+  body.
+calc:
+  wp(i := i + 1, i <= 10 && 10 - i < n)
+  = (i <= 10 && 10 - i < n)[i <- i + 1]
+  = i + 1 <= 10 && 10 - (i + 1) < n      // i replaced by i + 1
+  = i < 10 && 10 - (i + 1) < n           // i + 1 <= 10 is i < 10, for integers
+  = i < 10 && 9 - i < n                  // 10 - (i + 1) = 9 - i
+set: R1 = i < 10 && 9 - i < n
+
+step: The precondition of the body implies R1
+part: Preservation
+rule: CONSEQUENCE
+focus: I && i < 10 && 10 - i = n, R1
+text:
+  >>> «I» && «i < 10 : B» && «10 - i = n : E = n» ==> «R1»
+vc: i <= 10 && i < 10 && 10 - i = n ==> i < 10 && 9 - i < n
+why:
+  The conjunct $i < 10$ is $B$. From $10 - i = n$ we get $9 - i = n - 1$,
+  which is smaller than $n$.
+
+step: I and not B imply Q
+part: Conclusion
+rule: CONSEQUENCE
+focus: I && !(i < 10), Q
+text:
+  >>> «I» && «!(i < 10) : ¬B» ==> «Q»
+vc: i <= 10 && !(i < 10) ==> i <= 10 && !(i < 10)
+why:
+  The two formulas are the same: $Q$ is $I && !B$. All premises hold, so
+  the loop terminates.

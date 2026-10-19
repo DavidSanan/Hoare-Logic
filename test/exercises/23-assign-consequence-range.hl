@@ -26,10 +26,13 @@ verdict: valid
 
 step: Q', the stronger postcondition
 rule: CONSEQUENCE
+focus: Q', Q
 text:
   The task gives $Q'$. The consequence rule accepts $Q'$ in place of the
   postcondition $Q$ when $Q'$ implies $Q$.
 set: Q' = 10 <= y <= 90
+text:
+  >>> «Q'» ==> «Q»
 vc: 10 <= y <= 90 ==> 0 <= y <= 100
 why:
   Every number from $10$ to $90$ is between $0$ and $100$.
@@ -50,13 +53,15 @@ set: P' = 1 <= x <= 9
 text:
   This is the weaker precondition $1 <= x <= 9$ given in the task.
 
-step: The precondition must imply the weakest precondition
+step: P implies P'
 rule: CONSEQUENCE
+focus: P, P'
 text:
   $P'$ is the weakest precondition of the program for $Q'$. By the
   consequence rule, the triple is valid when the precondition $P$ implies
   $P'$, and $Q'$ implies $Q$. The second implication was proved in the
   first step.
+  >>> «P» ==> «P'»
 vc: 2 <= x <= 8 ==> 1 <= x <= 9
 why:
   The interval $[2, 8]$ is included in $[1, 9]$.

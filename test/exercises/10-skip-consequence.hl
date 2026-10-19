@@ -35,12 +35,14 @@ instance: SKIP
   ---
   {x > 0} skip {x > 0}
 
-step: The precondition must imply the weakest precondition
+step: P implies R1
 rule: CONSEQUENCE
+focus: P, R1
 text:
   $R1$ is the weakest precondition of the program for $Q$. By the
   consequence rule, the triple is valid when the precondition $P$ implies
   $R1$.
+  >>> «P» ==> «R1»
 vc: x > 5 ==> x > 0
 why:
   Every integer greater than $5$ is greater than $0$.

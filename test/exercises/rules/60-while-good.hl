@@ -1,0 +1,91 @@
+id: rule-while-good
+title: A good invariant
+topic: Loop
+example-of: WHILE
+derived: true
+
+task:
+  Use the rule WHILE to derive this triple. The conclusion of the rule
+  has the invariant $I$ as precondition and $I && !B$ as postcondition,
+  so here the invariant is the precondition $x >= 0$.
+
+given:
+  Loop condition B: $x > 0$
+
+pre: x >= 0
+post: x >= 0 && !(x > 0)
+
+scheme: WHILE
+  Preservation: {«I» && «x > 0 : B»} x := x - 1 {«I»}
+  ---
+  {«I»} while x > 0 do x := x - 1 {«I» && «!(x > 0) : ¬B»}
+
+program:
+  {P}
+  {I}
+  while x > 0 do {
+    {I && x > 0}
+    {R1}
+    x := x - 1     // b
+    {I}
+  }
+  {I && !(x > 0)}
+  {Q}
+
+verdict: valid
+
+step: The invariant I
+rule: WHILE
+focus: while
+text:
+  The rule WHILE uses the precondition of its conclusion as the
+  invariant.
+set: I = x >= 0
+
+step: P implies I
+part: Initialisation
+rule: CONSEQUENCE
+focus: P, I
+text:
+  The invariant must hold when the loop is reached.
+  >>> «P» ==> «I»
+vc: x >= 0 ==> x >= 0
+why:
+  $P$ and $I$ are the same formula.
+
+step: R1, the weakest precondition of the body for I
+part: Preservation
+rule: ASSIGN
+focus: b
+text:
+  One iteration must keep the invariant:
+  >>> {«I» && «x > 0 : B»} x := x - 1 {«I»}
+  We substitute the variable $x$ with $x - 1$ in $I$.
+calc:
+  wp(x := x - 1, I)
+  = (x >= 0)[x <- x - 1]     // I is x >= 0
+  = x - 1 >= 0               // x replaced by x - 1
+  = x >= 1                   // add 1 to both sides
+set: R1 = x >= 1
+
+step: I and B imply R1
+part: Preservation
+rule: CONSEQUENCE
+focus: I && x > 0, R1
+text:
+  >>> «I» && «x > 0 : B» ==> «R1»
+vc: x >= 0 && x > 0 ==> x >= 1
+why:
+  For integers, $x > 0$ is the same as $x >= 1$.
+
+step: I and not B imply Q
+part: Conclusion
+rule: CONSEQUENCE
+focus: I && !(x > 0), Q
+text:
+  When the loop stops, $I$ holds and $B$ is false. This must imply $Q$.
+  >>> «I» && «!(x > 0) : ¬B» ==> «Q»
+vc: x >= 0 && !(x > 0) ==> x >= 0 && !(x > 0)
+why:
+  The two formulas are the same: $Q$ is $I && !B$. When the loop stops,
+  $x = 0$.
