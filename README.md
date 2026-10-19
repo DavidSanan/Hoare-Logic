@@ -190,6 +190,8 @@ evaluated with the evaluator of the site (`logic.js`) before it is
 reported. A counterexample that the evaluator does not confirm is reported
 as "not decided".
 
+The design is described in `docs/verifier-design.md`.
+
 Files: `test/js/smt.js` (formulas to SMT-LIB), `test/js/ivl.js` (the
 internal language and the checks), `test/js/prover.js` (the claims of an
 exercise), `test/z3/` (Z3 4.13.0 compiled to WebAssembly, from the npm
