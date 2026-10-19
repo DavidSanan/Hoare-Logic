@@ -463,7 +463,9 @@ i.fn { font-style: italic; }
 .rx-result.rx-ok { background: var(--ok-soft); color: var(--ok); }
 .rx-result.rx-bad { background: var(--bad-soft); color: var(--bad); }
 .rx-nav { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-@media (max-width: 1100px) {
+/* Below 1400px the sections go above the rule, to leave room for the
+   program and the steps of the examples side by side. */
+@media (max-width: 1400px) {
   .rules-layout { grid-template-columns: 210px minmax(0, 1fr); }
   .rule-sections { grid-column: 2; grid-row: 1; position: static; }
   .rule-view { grid-column: 2; }
@@ -618,13 +620,37 @@ i.fn { font-style: italic; }
 .sdot:hover:not(.cur) { border-color: var(--accent); color: var(--accent); }
 
 .ex-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 22px; align-items: start; }
-/* In the Rules page and the wp calculator the viewer is narrower: the
-   program goes above the steps when there is not enough room. */
-.rx-viewer, .wp-viewer { container-type: inline-size; }
-@container (max-width: 760px) {
+/* In the wp calculator the viewer is narrower: the program goes above the
+   steps when there is not enough room. */
+.wp-viewer { container: wp / inline-size; }
+@container wp (max-width: 760px) {
   .ex-body { grid-template-columns: minmax(0, 1fr); }
   .outline-pane { position: static; }
 }
+/* In the Rules page the steps stay to the right of the program, so that
+   each step and the program it changes are seen together. They go below
+   the program only when the example is very narrow. */
+.rx-viewer { container: rx / inline-size; }
+/* The program column takes the width of its longest line when there is
+   room for it; the steps take the rest. */
+.rx-viewer .ex-body { grid-template-columns: minmax(240px, max-content) minmax(340px, 1fr); gap: 18px; }
+.rx-viewer .given { contain: inline-size; display: flex; flex-wrap: wrap; gap: 6px 22px; }
+.rx-viewer .given > div { flex: 1 1 auto; }
+.rx-viewer .given dd .m { white-space: nowrap; }
+.rx-viewer .outline-pane { position: sticky; }
+@container rx (max-width: 620px) {
+  .rx-viewer .ex-body { grid-template-columns: minmax(0, 1fr); }
+  .rx-viewer .outline-pane { position: static; }
+}
+/* In a narrow steps column the justification of each line of a
+   calculation goes under the line. */
+.rx-viewer .step-pane { container: rxstep / inline-size; }
+@container rxstep (max-width: 520px) {
+  .calc tr { display: grid; grid-template-columns: 2em minmax(0, 1fr); }
+  .calc td.why { display: block; grid-column: 2; width: auto; padding-top: 0; }
+}
+/* The Rules page uses more of a wide screen, to leave room for both. */
+body:has(#page-rules:not([hidden])) :is(.header-inner, .nav-inner, main, .site-footer) { max-width: 1600px; }
 .outline-pane {
   position: sticky;
   top: 60px;
