@@ -7,8 +7,8 @@ source: HoareLogic.pdf, Exercises, "Single assignments" 2
 tags: assignment, wp, counterexample
 
 task:
-  Compute the weakest precondition with the assignment rule. Then check
-  whether the given precondition implies it, and decide whether the
+  Calculate the weakest precondition of the assignment for the
+  postcondition $Q$. Then use the consequence rule to decide whether the
   triple is valid. If it is not valid, give values of the variables that
   show it.
 
@@ -18,42 +18,41 @@ post: y >= 0
 program:
   {P}
   {R1}
-  y := x - 3
+  y := x - 3      // i1
   {Q}
 
 verdict: invalid
 
-step: Apply the assignment rule
+step: R1, the weakest precondition of y := x - 3
 rule: ASSIGN, WP
-focus: y := x - 3
+focus: i1
 text:
-  The assigned variable is $y$, so we replace $y$ by $x - 3$ in the
-  postcondition. The variable $x$ is not assigned.
+  The precondition of an assignment is obtained by substituting the
+  assigned variable ($y$) with the assignment expression ($x - 3$) in the
+  postcondition $Q$.
 calc:
   wp(y := x - 3, Q)
   = (y >= 0)[y <- x - 3]
-  = x - 3 >= 0
+  = x - 3 >= 0            // y is replaced by x - 3
   = x >= 3                // add 3 to both sides
 set: R1 = x >= 3
 
-step: Compare with the precondition
-rule: CONSEQUENCE, LOGIC
+step: The precondition must imply the weakest precondition
+rule: CONSEQUENCE
+text:
+  $R1$ is the weakest precondition of the program for $Q$. By the
+  consequence rule, the triple is valid when the precondition $P$ implies
+  $R1$.
 vc: x >= 0 ==> x >= 3
 status: fails
 counterexample: x = 0
 why:
-  The implication is false: the values $0$, $1$ and $2$ satisfy $x >= 0$
-  but not $x >= 3$. So the consequence rule cannot be used.
-text:
-  A failed verification condition is a strong hint, and here it gives a
-  real counterexample. From the state $x = 0$ the program sets $y$ to
-  $0 - 3 = -3$, and the postcondition $y >= 0$ is false.
-vc: {x >= 0} y := x - 3 {y >= 0}
-status: fails
-counterexample: x = 0, y = 7
-result: The triple is not valid. The state $x = 0$ is a counterexample, whatever the initial value of $y$.
+  The state $x = 0$ satisfies $P$ and does not satisfy $x >= 3$. From
+  this state the program sets $y$ to $0 - 3 = -3$, so $y >= 0$ is false at
+  the end, whatever the initial value of $y$.
+result: The triple is not valid. The state $x = 0$ is a counterexample.
 
 summary:
-  The weakest precondition $x >= 3$ is the exact set of start states from
-  which the assignment reaches $y >= 0$. The precondition $x >= 0$ allows
-  three more values, and each of them is a counterexample.
+  $R1$ is exactly the set of initial states from which the assignment
+  reaches $y >= 0$. The precondition $x >= 0$ also allows $x = 0$, $1$ and
+  $2$, and each of them is a counterexample.

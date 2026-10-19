@@ -4,27 +4,32 @@ title: Sum of the first n odd numbers
 topic: Loop invariants
 level: 2
 source: Slides 7, Recipe exercises, Exercises 3 and 5 b
-tags: recipe, invariant, failed candidate
+tags: recipe, invariant, failed candidate, variant
 
 task:
-  Find the invariant by generalising the postcondition, give a variant,
-  and check establishment and preservation. A trace with a few rows helps.
+  The loop adds the odd numbers $1, 3, 5, ...$, one per iteration. Find a
+  loop invariant $I$ by generalising the postcondition. Prove
+  establishment, preservation and the postcondition at the exit. Then
+  give a variant and show that the loop terminates.
+
+hint:
+  Trace the values of $i$ and $s$ at the loop head for a few iterations.
 
 pre: n >= 0
 post: s = n^2
 
 program:
   {P}
-  {R4}
+  {R2}
   i := 0;                  // i1
-  {R3}
+  {R1}
   s := 0;                  // i2
   {I}
   while (i < n) do {
     {I && i < n}
-    {R2}
+    {R4}
     s := s + (2 * i + 1);  // b1
-    {R1}
+    {R3}
     i := i + 1             // b2
     {I}
   }
@@ -33,20 +38,7 @@ program:
 
 verdict: valid
 
-step: A candidate that keeps n
-rule: LOGIC
-text:
-  Exercise 5 (b) of the slides proposes the candidate $s = n^2 && 0 <= i <= n$,
-  which only adds the bounds to the postcondition. Establishment fails:
-vc: {n >= 0} i := 0; s := 0 {s = n^2 && 0 <= i <= n}
-status: fails
-counterexample: n = 2, i = 0, s = 0
-why:
-  Right after the initialisation $i = 0$ and $s = 0$. With $n = 2$ the
-  candidate asks for $s = 4$. The candidate rejects a real state, so it is
-  too strong. The fix is to replace $n$ by $i$.
-
-step: Trace and generalise
+step: The invariant I
 rule: WHILE-CONSEQUENCE
 focus: while
 text:
@@ -56,44 +48,125 @@ text:
   | before iteration 2 | $1$ | $1$ |
   | before iteration 3 | $2$ | $4$ |
   | before iteration 4 | $3$ | $9$ |
+
+  Keeping $Q$ and only adding the bounds, $s = n^2 && 0 <= i <= n$, does
+  not work: in the first row $s = 0$, and with $n = 2$ this candidate
+  asks for $s = 4$. The trace gives $s = i^2$ instead, which is $Q$ with
+  $n$ replaced by the counter $i$. We add the bounds of $i$, which the
+  exit needs.
 set: I = s = i^2 && 0 <= i <= n
 
-step: Establishment
-rule: ASSIGN, SEQ, WP
-focus: i1, i2
+step: Establishment: R1, the weakest precondition of s := 0
+rule: ASSIGN, WP
+focus: i2
+text:
+  The loop is preceded by `i := 0; s := 0`, so establishment is the
+  triple
+  >>> {«n >= 0 : P»} i := 0; s := 0 {«s = i^2 && 0 <= i <= n : I»}
+  We compute its weakest precondition from the last statement. We
+  substitute $s$ with $0$ in its postcondition, the invariant $I$.
 calc:
   wp(s := 0, I)
-  = 0 = i^2 && 0 <= i <= n
-set: R3 = 0 = i^2 && 0 <= i <= n
-calc:
-  wp(i := 0, R3)
-  = 0 = 0^2 && 0 <= 0 <= n
-  = 0 <= n
-set: R4 = 0 <= n
-vc: n >= 0 ==> 0 <= n
+  = (s = i^2 && 0 <= i <= n)[s <- 0]
+  = 0 = i^2 && 0 <= i <= n       // every s is replaced by 0
+set: R1 = 0 = i^2 && 0 <= i <= n
 
-step: Preservation
-rule: ASSIGN, SEQ, CONSEQUENCE
-focus: b1, b2
+step: Establishment: R2, the weakest precondition of i := 0
+rule: ASSIGN, WP
+focus: i1
+text:
+  We substitute $i$ with $0$ in $R1$, computed in the previous step.
+calc:
+  wp(i := 0, R1)
+  = (0 = i^2 && 0 <= i <= n)[i <- 0]
+  = 0 = 0^2 && 0 <= 0 <= n       // every i is replaced by 0
+  = 0 = 0 && 0 <= 0 <= n         // 0^2 = 0
+  = 0 <= n                       // 0 = 0 and 0 <= 0 are true
+set: R2 = 0 <= n
+
+step: Establishment: the precondition implies R2
+rule: CONSEQUENCE
+text:
+  $R2$ is the weakest precondition of `i := 0; s := 0` for $I$. By the
+  consequence rule, establishment holds when the precondition $P$ implies
+  $R2$.
+vc: n >= 0 ==> 0 <= n
+why:
+  Both sides say the same thing.
+
+step: Preservation: R3, the weakest precondition of i := i + 1
+rule: ASSIGN, WP
+focus: b2
+text:
+  Preservation is the triple below, where the loop body is
+  `s := s + (2 * i + 1); i := i + 1`.
+  >>> {«s = i^2 && 0 <= i <= n : I» && «i < n : B»} s := s + (2 * i + 1); i := i + 1 {«s = i^2 && 0 <= i <= n : I»}
+  We compute the weakest precondition of the body for $I$, from the last
+  statement. We substitute $i$ with $i + 1$ in $I$.
 calc:
   wp(i := i + 1, I)
-  = s = (i + 1)^2 && 0 <= i + 1 <= n
-set: R1 = s = (i + 1)^2 && 0 <= i + 1 <= n
+  = (s = i^2 && 0 <= i <= n)[i <- i + 1]
+  = s = (i + 1)^2 && 0 <= i + 1 <= n     // every i is replaced by i + 1
+set: R3 = s = (i + 1)^2 && 0 <= i + 1 <= n
+
+step: Preservation: R4, the weakest precondition of s := s + (2 * i + 1)
+rule: ASSIGN, WP
+focus: b1
+text:
+  We substitute $s$ with $s + (2 * i + 1)$ in $R3$, computed in the
+  previous step.
 calc:
-  wp(s := s + (2 * i + 1), R1)
-  = s + (2 * i + 1) = (i + 1)^2 && 0 <= i + 1 <= n
-set: R2 = s + (2 * i + 1) = (i + 1)^2 && 0 <= i + 1 <= n
+  wp(s := s + (2 * i + 1), R3)
+  = (s = (i + 1)^2 && 0 <= i + 1 <= n)[s <- s + (2 * i + 1)]
+  = s + (2 * i + 1) = (i + 1)^2 && 0 <= i + 1 <= n     // every s is replaced by s + (2 * i + 1)
+set: R4 = s + (2 * i + 1) = (i + 1)^2 && 0 <= i + 1 <= n
+
+step: Preservation: I and B imply R4
+rule: CONSEQUENCE
+text:
+  $R4$ is the weakest precondition of the body for $I$. By the consequence
+  rule, preservation holds when the invariant $I$ and the loop condition
+  $B$ together imply $R4$.
 vc: s = i^2 && 0 <= i <= n && i < n ==> s + (2 * i + 1) = (i + 1)^2 && 0 <= i + 1 <= n
 why:
-  $(i + 1)^2 = i^2 + 2 * i + 1$, and $s = i^2$.
+  First conjunct: $(i + 1)^2 = i^2 + 2 * i + 1$, and $s = i^2$ by $I$, so
+  $s + (2 * i + 1) = (i + 1)^2$.
 
-step: Exit and termination
-rule: CONSEQUENCE, WHILE-TOTAL
+  Second conjunct: $0 <= i$ gives $0 <= i + 1$, and $i < n$ gives
+  $i + 1 <= n$.
+
+step: The postcondition at the exit
+rule: CONSEQUENCE, LOGIC
+text:
+  When the loop stops, $I$ holds and the loop condition $B$ is false. The
+  postcondition $Q$ must follow from them.
 vc: s = i^2 && 0 <= i <= n && !(i < n) ==> s = n^2
 why:
-  At the exit $i = n$, so $s = n^2$.
-vc: {s = i^2 && 0 <= i <= n && i < n && n - i = E0} s := s + (2 * i + 1); i := i + 1 {n - i < E0}
+  $!(i < n)$ is $i >= n$. With $i <= n$ from $I$ it gives $i = n$, so
+  $s = i^2$ becomes $s = n^2$.
+
+step: Termination with the variant n - i
+rule: WHILE-TOTAL
+text:
+  The counter $i$ goes up to $n$, so $n - i$ is the number of iterations
+  left. We use the variant $E = n - i$. The rule WHILE-TOTAL asks two
+  things.
+
+  First, the variant is not negative when an iteration starts.
+vc: s = i^2 && 0 <= i <= n && i < n ==> n - i >= 0
 why:
-  The variant $n - i$ decreases by one in every iteration, and it is
-  positive when an iteration starts.
-result: The triple is valid.
+  $i < n$ from $B$ gives $n - i > 0$.
+text:
+  Second, the body decreases the variant. We write $E0$ for the value of
+  $n - i$ before the iteration, and compute the weakest precondition of
+  the body for $n - i < E0$, from the last statement.
+calc:
+  wp(i := i + 1, n - i < E0)
+  = n - (i + 1) < E0          // i is replaced by i + 1
+calc:
+  wp(s := s + (2 * i + 1), n - (i + 1) < E0)
+  = n - (i + 1) < E0          // s does not occur, so nothing changes
+vc: s = i^2 && 0 <= i <= n && i < n && n - i = E0 ==> n - (i + 1) < E0
+why:
+  $n - (i + 1) = (n - i) - 1 = E0 - 1$, which is smaller than $E0$.
+result: The triple is valid, and the loop terminates.

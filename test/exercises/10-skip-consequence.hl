@@ -15,38 +15,35 @@ post: x > 0
 
 program:
   {P}
-  {P'}
-  skip
+  {R1}
+  skip        // i1
   {Q}
 
 verdict: valid
 
-step: Apply the Skip rule to the postcondition
-rule: SKIP
-focus: skip
+step: R1, the weakest precondition of skip
+rule: SKIP, WP
+focus: i1
 text:
-  The Skip rule only produces triples whose precondition and
-  postcondition are the same formula. We apply it backwards, starting from
-  the postcondition $x > 0$. It gives the precondition $P'$ below.
+  `skip` does not change the state. By the Skip rule, its weakest
+  precondition is its postcondition, here the postcondition $Q$.
 calc:
   wp(skip, Q)
-  = x > 0
-set: P' = x > 0
+  = x > 0       // wp(skip, Q) is Q
+set: R1 = x > 0
 instance: SKIP
   ---
   {x > 0} skip {x > 0}
 
-step: Link the precondition with the consequence rule
-rule: CONSEQUENCE, LOGIC
+step: The precondition must imply the weakest precondition
+rule: CONSEQUENCE
 text:
-  The precondition of the specification, $x > 5$, is not the formula that
-  the Skip rule gave us. The consequence rule accepts it if it implies
-  that formula.
+  $R1$ is the weakest precondition of the program for $Q$. By the
+  consequence rule, the triple is valid when the precondition $P$ implies
+  $R1$.
 vc: x > 5 ==> x > 0
 why:
-  Every integer greater than $5$ is greater than $0$. In terms of sets of
-  states, $\{6, 7, 8, ...\}$ is included in $\{1, 2, 3, ...\}$, so the
-  precondition is stronger than the formula given by the Skip rule.
+  Every integer greater than $5$ is greater than $0$.
 instance: CONSEQUENCE
   x > 5 ==> x > 0
   {x > 0} skip {x > 0}
@@ -55,7 +52,7 @@ instance: CONSEQUENCE
 result: The triple is valid.
 
 summary:
-  The Skip rule alone cannot prove this triple, because its two
-  assertions differ. The consequence rule bridges the difference with the
-  implication $x > 5 ==> x > 0$. In general, $\{P\}$ `skip` $\{Q\}$ is
-  valid exactly when $P ==> Q$.
+  The Skip rule only gives triples with the same precondition and
+  postcondition. The consequence rule lets us use the stronger
+  precondition $x > 5$. In general, $\{P\}$ `skip` $\{Q\}$ is valid exactly
+  when $P ==> Q$.

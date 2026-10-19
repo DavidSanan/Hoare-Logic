@@ -1,4 +1,4 @@
-# Source: Exercise list "ICT3101 Exercises - Deductive Verification", problem 5 e), with its solution sheet.
+# Source: Exercise list "ICT3101 Exercises - Deductive Verification" (HoareLogic Exercises.pdf), problem 5 e), with its solution sheet.
 id: sum-up-to-n
 title: The sum 0 + 1 + ... + n
 topic: Loops
@@ -8,11 +8,12 @@ tags: while, invariant, sum, case analysis
 
 task:
   Give a proof outline and a loop invariant. The postcondition
-  $x = 0 + 1 + ... + n$ is written $x = sum(k, 0, n, k)$. When $n$ is
-  negative the sum has no term, and its value is $0$.
+  $x = 1 + ... + n$ is written $x = sum(k, 0, n, k)$, the sum of $k$ for
+  $k$ from $0$ to $n$. The extra term $0$ does not change the value. When
+  $n$ is negative the sum has no term, and its value is $0$.
 
-  Hint from the exercise list: fill a table with the values of $x$ and $y$
-  after each iteration, without evaluating the additions.
+  Hint: fill a table with the values of $x$ and $y$ after each iteration,
+  without evaluating the additions.
 
 pre: x = 0 && y = 0
 post: x = sum(k, 0, n, k)
@@ -33,9 +34,12 @@ program:
 
 verdict: valid
 
-step: Trace the loop
-rule: LOGIC
+step: The invariant I
+rule: WHILE-CONSEQUENCE
+focus: while
 text:
+  The values at the loop head, without evaluating the additions:
+
   | Iteration | $y$ | $x$ |
   |---|---|---|
   | 0 | $0$ | $0$ |
@@ -43,52 +47,88 @@ text:
   | 2 | $2$ | $0 + 1 + 2$ |
   | 3 | $3$ | $0 + 1 + 2 + 3$ |
 
-  At every loop head $x = 0 + 1 + ... + y$, that is $x = sum(k, 0, y, k)$.
-  When $n > 0$ the variable $y$ goes from $0$ up to $n$. When $n <= 0$ the
-  loop does not run, and $x$ and $y$ stay $0$.
-
-step: The invariant
-rule: WHILE-CONSEQUENCE
-focus: while
-text:
-  The solution sheet separates the two cases of $n$. We add the bound
-  $0 <= y$ in the case $n > 0$: without it, preservation fails on states
-  with a negative $y$, such as $y = -5$, $x = 0$, $n = 3$, which satisfy
-  $x = sum(k, 0, y, k)$ because the sum is empty.
+  So $x = 0 + 1 + ... + y$, that is $x = sum(k, 0, y, k)$. When $n > 0$,
+  $y$ goes from $0$ up to $n$, which gives the bounds $0 <= y <= n$. The
+  bound $y <= n$ is needed at the exit, and a lower bound is needed in
+  preservation, where the last term of the sum is split off. When
+  $n <= 0$ the loop does not run, and $x$ and $y$ stay $0$. The invariant
+  has one part for each case.
 set: I = (n > 0 ==> 0 <= y <= n && x = sum(k, 0, y, k)) && (n <= 0 ==> x = 0 && y = 0)
+text:
+  The loop rule with consequence needs three checks, with the loop
+  condition $B$ being $y < n$: establishment $P ==> I$, preservation of
+  $I$ by the body, and exit $I && !B ==> Q$.
 
-step: Establishment
+step: Establishment: P implies I
 rule: CONSEQUENCE, LOGIC
+text:
+  No statement comes before the loop, so we prove that the precondition
+  $P$ implies $I$.
+  >>> «x = 0 && y = 0 : P» ==> «(n > 0 ==> 0 <= y <= n && x = sum(k, 0, y, k)) && (n <= 0 ==> x = 0 && y = 0) : I»
 vc: x = 0 && y = 0 ==> I
 why:
-  If $n > 0$: $0 <= 0 <= n$, and $sum(k, 0, 0, k) = 0$. If $n <= 0$: the
-  precondition gives $x = 0 && y = 0$ directly.
+  Case $n > 0$: with $y = 0$, $0 <= 0 <= n$ holds, and
+  $sum(k, 0, 0, k) = 0 = x$. Case $n <= 0$: $x = 0 && y = 0$ is $P$
+  itself.
 
-step: Preservation
-rule: ASSIGN, SEQ, CONSEQUENCE
-focus: b1, b2
+step: Preservation: R1, the weakest precondition of x := x + y for I
+rule: ASSIGN, WP
+focus: b2
+text:
+  We prove that one iteration keeps the invariant:
+  >>> {«(n > 0 ==> 0 <= y <= n && x = sum(k, 0, y, k)) && (n <= 0 ==> x = 0 && y = 0) : I» && «y < n : B»} y := y + 1; x := x + y {«(n > 0 ==> 0 <= y <= n && x = sum(k, 0, y, k)) && (n <= 0 ==> x = 0 && y = 0) : I»}
+  We calculate the weakest precondition of the body for $I$, from the last
+  statement. We substitute $x$ with $x + y$ in $I$.
 calc:
   wp(x := x + y, I)
-  = (n > 0 ==> 0 <= y <= n && x + y = sum(k, 0, y, k)) && (n <= 0 ==> x + y = 0 && y = 0)
+  = ((n > 0 ==> 0 <= y <= n && x = sum(k, 0, y, k)) && (n <= 0 ==> x = 0 && y = 0))[x <- x + y]
+  = (n > 0 ==> 0 <= y <= n && x + y = sum(k, 0, y, k)) && (n <= 0 ==> x + y = 0 && y = 0)    // x is replaced by x + y
 set: R1 = (n > 0 ==> 0 <= y <= n && x + y = sum(k, 0, y, k)) && (n <= 0 ==> x + y = 0 && y = 0)
+
+step: Preservation: R2, the weakest precondition of y := y + 1 for R1
+rule: ASSIGN, WP
+focus: b1
+text:
+  We substitute $y$ with $y + 1$ in $R1$, computed in the previous step.
 calc:
   wp(y := y + 1, R1)
-  = (n > 0 ==> 0 <= y + 1 <= n && x + (y + 1) = sum(k, 0, y + 1, k)) && (n <= 0 ==> x + (y + 1) = 0 && y + 1 = 0)
-set: R2 = (n > 0 ==> 0 <= y + 1 <= n && x + (y + 1) = sum(k, 0, y + 1, k)) && (n <= 0 ==> x + (y + 1) = 0 && y + 1 = 0)
+  = ((n > 0 ==> 0 <= y <= n && x + y = sum(k, 0, y, k)) && (n <= 0 ==> x + y = 0 && y = 0))[y <- y + 1]
+  = (n > 0 ==> 0 <= y + 1 <= n && x + (y + 1) = sum(k, 0, y + 1, k)) && (n <= 0 ==> x + (y + 1) = 0 && y + 1 = 0)    // y is replaced by y + 1
+  = (n > 0 ==> -1 <= y <= n - 1 && x + (y + 1) = sum(k, 0, y + 1, k)) && (n <= 0 ==> x + (y + 1) = 0 && y + 1 = 0)    // subtract 1 from each part of the bounds
+  = (n > 0 ==> -1 <= y <= n - 1 && x = sum(k, 0, y, k)) && (n <= 0 ==> x + (y + 1) = 0 && y + 1 = 0)    // since y >= -1, sum(k, 0, y + 1, k) is sum(k, 0, y, k) + (y + 1); subtract y + 1 from both sides
+  = (n > 0 ==> -1 <= y <= n - 1 && x = sum(k, 0, y, k)) && (n <= 0 ==> x = 0 && y = -1)    // y + 1 = 0 is y = -1, and then x + (y + 1) = 0 is x = 0
+set: R2 = (n > 0 ==> -1 <= y <= n - 1 && x = sum(k, 0, y, k)) && (n <= 0 ==> x = 0 && y = -1)
+
+step: Preservation: I and B imply R2
+rule: CONSEQUENCE, LOGIC
+text:
+  By the consequence rule, the triple holds when $I && B$ implies $R2$.
+  We check the two cases of $n$.
 vc: I && y < n ==> R2
 why:
-  Case $n > 0$: from $0 <= y < n$ we get $0 <= y + 1 <= n$. Since $y >= 0$,
-  $sum(k, 0, y + 1, k) = sum(k, 0, y, k) + (y + 1)$, which is $x + (y + 1)$.
+  Case $n > 0$: $I$ gives $0 <= y$, so $-1 <= y$. For integers, $y < n$
+  is $y <= n - 1$. The equation $x = sum(k, 0, y, k)$ is part of $I$.
 
-  Case $n <= 0$: the invariant gives $y = 0$, and the condition gives
-  $y < n <= 0$. These contradict each other, so the case is impossible and
-  the implication holds.
+  Case $n <= 0$: $I$ gives $y = 0$, and $B$ gives $y < n <= 0$. These
+  contradict each other, so no state is in this case and the implication
+  holds.
 
-step: The postcondition at the exit
+step: Exit: I and not B imply Q
 rule: CONSEQUENCE, LOGIC
+text:
+  When the loop stops, $I$ holds and $B$ is false. This must imply the
+  postcondition $Q$.
+  >>> «(n > 0 ==> 0 <= y <= n && x = sum(k, 0, y, k)) && (n <= 0 ==> x = 0 && y = 0) : I» && «!(y < n) : ¬B» ==> «x = sum(k, 0, n, k) : Q»
 vc: I && !(y < n) ==> x = sum(k, 0, n, k)
 why:
-  Case $n > 0$: $y <= n$ and $y >= n$ give $y = n$. Case $n <= 0$: $x = 0$,
-  and $sum(k, 0, n, k) = 0$, since for $n = 0$ the only term is $0$ and for
-  $n < 0$ there is no term.
-result: The triple is valid. A variant for termination is $n - y$.
+  Case $n > 0$: $!(y < n)$ is $y >= n$, and with $y <= n$ it gives
+  $y = n$. Then $x = sum(k, 0, y, k)$ becomes $x = sum(k, 0, n, k)$.
+
+  Case $n <= 0$: $I$ gives $x = 0$, and $sum(k, 0, n, k) = 0$: for $n = 0$
+  the only term is $0$, and for $n < 0$ there is no term.
+result: The triple is valid.
+
+summary:
+  The loop also terminates: $n - y$ decreases by one in every iteration,
+  and it is positive whenever the body runs, since then $y < n$. So
+  $n - y$ is a variant.

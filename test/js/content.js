@@ -8,6 +8,8 @@
  *   $formula$        a formula, typeset with the notation of the slides
  *   `program`        a piece of program
  *   >> line          a displayed formula or triple, centred
+ *   >>> line         a displayed line whose parts «formula : label» show
+ *                    their label (I, B, Q, ...) under them
  *   !! text          a note
  *   - item           a list item
  *   | a | b |        a table row (the first row is the header)
@@ -518,7 +520,7 @@ instance: CONSEQUENCE
 
 ## Text
 
-In \`\`task\`\`, \`\`text\`\`, \`\`note\`\`, \`\`why\`\` and \`\`summary\`\`, write formulas between dollar signs, as in \`\`$x >= 0$\`\`, and program fragments between backquotes, as in \`\`\`x := x + 1\`\`\`. A blank line starts a new paragraph, a line that starts with \`\`- \`\` is a list item, and a line that starts with \`\`>> \`\` is a displayed formula or triple. Write \`\`**text**\`\` for bold text.
+In \`\`task\`\`, \`\`text\`\`, \`\`note\`\`, \`\`why\`\` and \`\`summary\`\`, write formulas between dollar signs, as in \`\`$x >= 0$\`\`, and program fragments between backquotes, as in \`\`\`x := x + 1\`\`\`. A blank line starts a new paragraph, a line that starts with \`\`- \`\` is a list item, and a line that starts with \`\`>> \`\` is a displayed formula or triple. A line that starts with \`\`>>> \`\` is a display in which each part written \`\`«formula : label»\`\` is shown with its label under it, to say where it comes from, as in \`\`>>> {«0 <= x <= 10 : I» && «x < 10 : B»} x := x + 1 {«0 <= x <= 10 : I»}\`\`. Write \`\`**text**\`\` for bold text.
 
 ## Testing an exercise
 

@@ -117,6 +117,51 @@
     return '<div class="disp">' + formulaSpan(src) + '</div>';
   }
 
+  // A line whose parts carry a label that says where they come from:
+  //   {«0 <= x <= 10 : I» && «x < 10 : B»} x := x + 1 {«0 <= x <= 10 : I»}
+  // Each «formula : label» is drawn with its label below it. The text
+  // between the labelled parts is drawn as braces, connectives and code.
+  function labelPiece(body) {
+    const k = body.lastIndexOf(':');
+    const f = k < 0 ? body : body.slice(0, k);
+    const label = k < 0 ? '' : body.slice(k + 1).trim();
+    return '<span class="lab"><span class="lab-f">' + HL.renderLine(f.trim()).html + '</span>' +
+      (label ? '<span class="lab-t">' + inline(label) + '</span>' : '') + '</span>';
+  }
+
+  function looseSegment(s) {
+    const t = s.trim();
+    if (!t) return '';
+    const ops = { '&&': '∧', '||': '∨', '==>': '⇒', '<=>': '⇔', '<==': '⇐' };
+    if (ops[t]) return '<span class="op">' + ops[t] + '</span>';
+    // A program is drawn as in the triples; anything else as a formula.
+    try {
+      const p = HL.parseProgram(t);
+      if (p.items.length && p.items.every((x) => x.k !== 'assert')) return '<span class="seg">' + HL.progInlineHTML(p) + '</span>';
+    } catch (e) { /* not a program */ }
+    return '<span class="seg">' + HL.renderLine(t).html + '</span>';
+  }
+
+  function labelledHTML(src) {
+    let out = '';
+    let rest = src;
+    while (rest.length) {
+      const a = rest.indexOf('«');
+      const b = a < 0 ? -1 : rest.indexOf('»', a);
+      const head = a < 0 || b < 0 ? rest : rest.slice(0, a);
+      // Braces in the text between labelled parts belong to triples.
+      head.split(/([{}])/).forEach((seg) => {
+        if (seg === '{' || seg === '}') out += '<span class="brace">' + seg + '</span>';
+        else if (seg) out += looseSegment(seg);
+      });
+      if (a < 0 || b < 0) break;
+      out += labelPiece(rest.slice(a + 1, b));
+      rest = rest.slice(b + 1);
+    }
+    return '<div class="disp"><span class="m labelled">' + out + '</span></div>';
+  }
+  HL.labelledHTML = labelledHTML;
+
   function codeBlock(body) {
     try {
       const prog = HL.parseProgram(body);
@@ -131,7 +176,7 @@
     }
   }
 
-  const BLOCK_START = /^(#{2,4} |>> |!! |::rule |\||[-*] |\d+\. |```)/;
+  const BLOCK_START = /^(#{2,4} |>>> |>> |!! |::rule |\||[-*] |\d+\. |```)/;
 
   function md(text) {
     if (!text) return '';
@@ -156,6 +201,12 @@
         const id = 'h-' + m[2].toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
         html += '<h' + level + ' id="' + id + '">' + inline(m[2]) + '</h' + level + '>';
         i++;
+        continue;
+      }
+      if (t.startsWith('>>> ')) {
+        let block = '';
+        while (i < lines.length && lines[i].trim().startsWith('>>> ')) block += labelledHTML(lines[i++].trim().slice(4));
+        html += '<div class="display stack">' + block + '</div>';
         continue;
       }
       if (t.startsWith('>> ')) {
@@ -556,18 +607,32 @@
   // ------------------------------------------------------------------
 
   // The Rules page shows one rule at a time, chosen in a scrollable list.
+  // A side panel chooses the section of the rule that is shown.
   let currentRule = null;
+  let currentSection = 'examples';
   const exampleState = {};
+
+  const RULE_SECTIONS = [
+    ['examples', 'Examples'],
+    ['semantics', 'Semantics'],
+    ['correctness', 'Correctness'],
+    ['wp', 'Weakest precondition'],
+    ['vcs', 'Verification conditions'],
+    ['note', 'Note']
+  ];
 
   function renderRulesPage() {
     $('#page-rules .page-body').innerHTML =
-      '<p class="lede">Choose a rule in the list. Each rule has a conclusion below the line and premises above it: to use the rule, you prove its premises. The examples go step by step from the triple to the end of the attempt, which is green when the rule derives the triple and red when it does not.</p>' +
       '<div class="rules-layout">' +
-      '<div class="rule-picker"><span class="kicker" id="rule-list-label">Rules</span>' +
+      '<aside class="rule-side">' +
+      '<div class="rule-picker"><span class="kicker" id="rule-list-label">Rule</span>' +
       '<div class="rule-list" role="listbox" aria-labelledby="rule-list-label">' +
       HL.RULES.map((r) => '<button type="button" role="option" class="rule-option" data-rule="' + esc(r.id) + '" aria-selected="false">' +
         '<span class="ro-name">' + esc(r.name) + '</span><span class="ro-id">' + esc(r.id) + '</span></button>').join('') +
-      '</div></div><div class="rule-view" id="rule-view"></div></div>';
+      '</div></div>' +
+      '<nav class="rule-sections" aria-label="Sections of the rule"><span class="kicker">Section</span>' +
+      '<div class="rs-list" id="rs-list"></div></nav>' +
+      '</aside><div class="rule-view" id="rule-view"></div></div>';
     const page = $('#page-rules');
     page.addEventListener('click', onRulesClick);
     $('.rule-list', page).addEventListener('keydown', (e) => {
@@ -584,22 +649,39 @@
   function onRulesClick(e) {
     const opt = e.target.closest('.rule-option');
     if (opt) { location.hash = '#rule-' + opt.dataset.rule; return; }
+    const sec = e.target.closest('.rs-item');
+    if (sec) { currentSection = sec.dataset.sec; showRule(currentRule); return; }
     const st = exampleState[currentRule];
     if (!st) return;
+    const steps = HL.RULE_EXAMPLES[currentRule][st.ex].steps;
     const tab = e.target.closest('.rx-tab');
     if (tab) { st.ex = Number(tab.dataset.ex); st.step = 0; renderExample(); return; }
-    const dot = e.target.closest('.rx-dot');
+    const dot = e.target.closest('[data-step]');
     if (dot) { st.step = Number(dot.dataset.step); renderExample(); return; }
+    const prem = e.target.closest('.rx-prem[data-part]');
+    if (prem) {
+      const k = steps.findIndex((x) => x.part === prem.dataset.part);
+      if (k >= 0) { st.step = k; renderExample(); }
+      return;
+    }
     if (e.target.closest('.rx-prev')) { st.step = Math.max(0, st.step - 1); renderExample(); return; }
-    if (e.target.closest('.rx-next')) {
-      const n = HL.RULE_EXAMPLES[currentRule][st.ex].steps.length;
-      st.step = Math.min(n - 1, st.step + 1);
-      renderExample();
+    if (e.target.closest('.rx-next')) { st.step = Math.min(steps.length - 1, st.step + 1); renderExample(); }
+  }
+
+  function sectionHTML(rule, sec) {
+    switch (sec) {
+      case 'examples': return '<div class="rx" id="rx"></div>';
+      case 'semantics': return '<div class="prose">' + md(rule.says) + '</div>';
+      case 'correctness': return '<div class="prose">' + md(rule.mechanism) + '</div>';
+      case 'wp': return '<div class="display">' + displayLine(rule.wp) + '</div>';
+      case 'vcs': return '<div class="prose">' + md(rule.check) + '</div>';
+      case 'note': return '<div class="prose">' + md(rule.note) + '</div>';
+      default: return '';
     }
   }
 
-  function ruleBlock(title, html) {
-    return '<div class="rg-block"><h4>' + title + '</h4>' + html + '</div>';
+  function ruleSections(rule) {
+    return RULE_SECTIONS.filter(([k]) => k !== 'wp' || rule.wp);
   }
 
   function showRule(id) {
@@ -615,29 +697,137 @@
         list.scrollTop = b.offsetTop - list.clientHeight / 2;
       }
     });
+    const sections = ruleSections(rule);
+    if (!sections.some(([k]) => k === currentSection)) currentSection = 'examples';
+    $('#rs-list').innerHTML = sections.map(([k, label]) =>
+      '<button type="button" class="rs-item' + (k === currentSection ? ' active' : '') + '" data-sec="' + k + '"' +
+      (k === currentSection ? ' aria-current="true"' : '') + '>' + esc(label) + '</button>').join('');
+    const title = sections.find(([k]) => k === currentSection)[1];
     const j = HL.RULES.indexOf(rule);
     const prev = HL.RULES[j - 1];
     const next = HL.RULES[j + 1];
     $('#rule-view').innerHTML = '<section class="rule-card">' +
       '<header><h2>' + esc(rule.name) + '</h2><span class="rule-id">' + esc(rule.id) + '</span></header>' +
       '<div class="display">' + ruleFigureFor(rule) + '</div>' +
-      '<div class="rule-grid">' +
-      ruleBlock('What the rule says', '<div class="prose">' + md(rule.says) + '</div>') +
-      ruleBlock('Why it is correct', '<div class="prose">' + md(rule.mechanism) + '</div>') +
-      ruleBlock('Examples', '<div class="rx" id="rx"></div>') +
-      (rule.wp ? ruleBlock('Weakest precondition', '<div class="display">' + displayLine(rule.wp) + '</div>') : '') +
-      ruleBlock('What you have to check', '<div class="prose">' + md(rule.check) + '</div>') +
-      ruleBlock('Note', '<div class="prose">' + md(rule.note) + '</div>') +
-      '</div>' +
+      '<div class="rg-block"><h3 class="rs-title">' + esc(title) + '</h3>' + sectionHTML(rule, currentSection) + '</div>' +
       '<nav class="rule-pager" aria-label="Other rules">' +
       (prev ? '<a href="#rule-' + esc(prev.id) + '">← ' + esc(prev.name) + '</a>' : '<span></span>') +
       (next ? '<a href="#rule-' + esc(next.id) + '">' + esc(next.name) + ' →</a>' : '<span></span>') +
       '</nav></section>';
-    renderExample();
+    if (currentSection === 'examples') renderExample();
   }
 
-  // An example starts from the triple, which always stays visible, and
-  // goes step by step to the end of the attempt.
+  // ------------------------------------------------------------------
+  // Interactive examples of the rules (data in rule-examples.js)
+  // ------------------------------------------------------------------
+
+  // The values of the named assertions ({{R}}, {{I}}, ...) known at step k.
+  function slotsAt(ex, k) {
+    const v = Object.assign({}, ex.slots || {});
+    for (let j = 0; j <= k; j++) Object.assign(v, ex.steps[j].set || {});
+    return v;
+  }
+
+  // Replace {{NAME}} by its value, in parentheses when the value could
+  // bind differently, or by the name itself when it is not known yet.
+  function fillSlots(src, slots) {
+    return src.replace(/\{\{(\w+'*)\}\}/g, (m, name) => {
+      if (!(name in slots)) return name;
+      const v = slots[name];
+      return /\|\||==>|<=>/.test(v) ? '(' + v + ')' : v;
+    });
+  }
+
+  function formulaOrLabelled(src) {
+    return src.includes('«') ? labelledHTML(src) : '<div class="disp">' + formulaSpan(src) + '</div>';
+  }
+
+  function calcLineParts(line) {
+    let t = line.trim();
+    let why = '';
+    const k = t.indexOf(' // ');
+    if (k >= 0) { why = t.slice(k + 4).trim(); t = t.slice(0, k).trim(); }
+    let rel = '';
+    const m = t.match(/^(<=>|==>|<==|=)\s+/);
+    if (m) { rel = m[1]; t = t.slice(m[0].length); }
+    return { rel, f: t, why };
+  }
+
+  const REL_HTML = { '=': '=', '<=>': '⇔', '==>': '⇒', '<==': '⇐' };
+
+  // A justification is plain text in which the operators are drawn as
+  // symbols, so that "x >= x" reads as in the formulas.
+  function whyHTML(t) {
+    let s = esc(t);
+    const rep = [['&lt;=&gt;', '⇔'], ['==&gt;', '⇒'], ['|-&gt;', '↦'], ['&lt;-', '←'], ['&amp;&amp;', '∧'], ['||', '∨'],
+      ['!=', '≠'], ['&lt;=', '≤'], ['&gt;=', '≥']];
+    for (const [a, b] of rep) s = s.split(a).join(b);
+    return s;
+  }
+
+  // The running calculation: the lines of the earlier steps, from the last
+  // step that starts a new calculation (calcNew), and the new lines of the
+  // current step, which are highlighted.
+  function calcHTML(ex, k, slots) {
+    let start = k;
+    while (start > 0 && !ex.steps[start].calcNew) start--;
+    const rows = [];
+    for (let j = start; j <= k; j++) {
+      (ex.steps[j].calc || []).forEach((line) => rows.push({ line, cur: j === k }));
+    }
+    if (!rows.length) return '';
+    return '<div class="rx-calc">' + rows.map(({ line, cur }) => {
+      const p = calcLineParts(fillSlots(line, slots));
+      return '<div class="rc-row' + (cur ? ' cur' : '') + '"><span class="rc-rel">' + (REL_HTML[p.rel] || '') + '</span>' +
+        '<span class="rc-f m">' + HL.renderLine(p.f).html + '</span>' +
+        '<span class="rc-why">' + (p.why ? whyHTML(p.why) : '') + '</span></div>';
+    }).join('') + '</div>';
+  }
+
+  function givenHTML(ex, slots) {
+    if (!ex.given || !ex.given.length) return '';
+    return '<dl class="rx-given">' + ex.given.map(([label, value]) => {
+      const m = value.match(/^\{\{(\w+'*)\}\}$/);
+      let v;
+      if (m) v = m[1] in slots ? formulaSpan(slots[m[1]]) : '<span class="muted">not known yet</span>';
+      else v = inline(fillSlots(value, slots));
+      return '<div><dt>' + inline(label) + '</dt><dd>' + v + '</dd></div>';
+    }).join('') + '</dl>';
+  }
+
+  function premiseHTML(p, slots, active) {
+    const src = fillSlots(p.f, slots);
+    const body = src.includes('«') ? labelledHTML(src).replace(/^<div class="disp">|<\/div>$/g, '') : HL.renderLine(src).html;
+    return '<button type="button" class="rx-prem' + (active ? ' hl' : '') + '"' + (p.part ? ' data-part="' + esc(p.part) + '"' : '') + '>' +
+      '<span class="rx-prem-f">' + body + '</span>' + (p.part ? '<span class="rx-prem-t">' + esc(p.part) + '</span>' : '') + '</button>';
+  }
+
+  function ruleInstanceHTML(ex, slots, part) {
+    if (!ex.rule) return '';
+    const prem = ex.rule.premises.map((p) => premiseHTML(p, slots, p.part && p.part === part)).join('');
+    return '<div class="rx-rule"><span class="kicker">The rule with the elements of the example</span>' +
+      '<div class="rulefig"><div class="rf-body"><div class="rf-prem">' + (prem || '<span class="rf-item rf-empty"></span>') +
+      '</div><div class="rf-bar"></div><div class="rf-concl"><span class="rf-item">' + HL.renderLine(fillSlots(ex.rule.conclusion, slots)).html +
+      '</span></div></div><div class="rf-name">[' + esc(currentRule) + ']</div></div></div>';
+  }
+
+  // The navigation: the steps grouped by the part of the proof they belong to.
+  function stepNavHTML(ex, k) {
+    const groups = [];
+    ex.steps.forEach((s, j) => {
+      const last = groups[groups.length - 1];
+      if (last && last.part === (s.part || '')) last.steps.push(j);
+      else groups.push({ part: s.part || '', steps: [j] });
+    });
+    return '<div class="rx-groups">' + groups.map((g) =>
+      '<div class="rx-group' + (g.steps.includes(k) ? ' cur' : '') + '">' +
+      (g.part ? '<button type="button" class="rx-glabel" data-step="' + g.steps[0] + '">' + esc(g.part) + '</button>' : '') +
+      '<span class="rx-gdots">' + g.steps.map((j) =>
+        '<button type="button" class="rx-dot' + (j === k ? ' cur' : j < k ? ' done' : '') + '" data-step="' + j +
+        '" aria-label="Step ' + (j + 1) + '"' + (j === k ? ' aria-current="step"' : '') + '></button>').join('') +
+      '</span></div>').join('') + '</div>';
+  }
+
   function renderExample() {
     const box = $('#rx');
     const list = (HL.RULE_EXAMPLES || {})[currentRule] || [];
@@ -646,24 +836,29 @@
     const st = exampleState[currentRule] || (exampleState[currentRule] = { ex: 0, step: 0 });
     const ex = list[st.ex];
     const n = ex.steps.length;
-    const last = st.step === n - 1;
+    const k = Math.min(st.step, n - 1);
+    const step = ex.steps[k];
+    const last = k === n - 1;
+    const slots = slotsAt(ex, k);
     const status = last ? (ex.derived ? 'rx-ok' : 'rx-bad') : 'rx-open';
-    const badge = last ? (ex.derived ? '✓ Derived' : '✗ Not derived') : 'Step ' + (st.step + 1) + ' of ' + n;
-    let dots = '';
-    for (let k = 0; k < n; k++) {
-      dots += '<button type="button" class="rx-dot' + (k === st.step ? ' cur' : k < st.step ? ' done' : '') +
-        '" data-step="' + k + '" aria-label="Step ' + (k + 1) + '"' + (k === st.step ? ' aria-current="step"' : '') + '></button>';
-    }
+    const badge = last ? (ex.derived ? '✓ Derived' : '✗ Not derived') : 'Step ' + (k + 1) + ' of ' + n;
     box.innerHTML =
-      (list.length > 1 ? '<div class="rx-tabs" role="tablist" aria-label="Examples">' + list.map((e, k) =>
-        '<button type="button" role="tab" class="rx-tab' + (k === st.ex ? ' active' : '') + '" aria-selected="' + (k === st.ex) +
-        '" data-ex="' + k + '">' + esc(e.title) + '</button>').join('') + '</div>' : '') +
+      (list.length > 1 ? '<div class="rx-tabs" role="tablist" aria-label="Examples">' + list.map((e, j) =>
+        '<button type="button" role="tab" class="rx-tab' + (j === st.ex ? ' active' : '') + '" aria-selected="' + (j === st.ex) +
+        '" data-ex="' + j + '">' + esc(e.title) + '</button>').join('') + '</div>' : '') +
       '<div class="rx-goal ' + status + '"><span class="kicker">Triple</span><span class="m">' + HL.renderLine(ex.goal).html + '</span>' +
       '<span class="rx-badge">' + badge + '</span></div>' +
-      '<div class="rx-step prose" aria-live="polite">' + md(ex.steps[st.step]) +
+      givenHTML(ex, slots) +
+      ruleInstanceHTML(ex, slots, step.part) +
+      stepNavHTML(ex, k) +
+      '<div class="rx-step" aria-live="polite">' +
+      (step.part ? '<div class="rx-part">' + esc(step.part) + '</div>' : '') +
+      '<p class="rx-head">' + inline(fillSlots(step.head, slots)) + '</p>' +
+      calcHTML(ex, k, slots) +
+      (step.show || []).map((src) => formulaOrLabelled(fillSlots(src, slots))).join('') +
+      (step.text ? '<div class="prose rx-text">' + md(fillSlots(step.text, slots)) + '</div>' : '') +
       (last ? '<div class="rx-result ' + status + '">' + inline(ex.result) + '</div>' : '') + '</div>' +
-      '<div class="rx-nav"><button type="button" class="btn ghost rx-prev"' + (st.step === 0 ? ' disabled' : '') + '>← Back</button>' +
-      '<div class="rx-dots">' + dots + '</div>' +
+      '<div class="rx-nav"><button type="button" class="btn ghost rx-prev"' + (k === 0 ? ' disabled' : '') + '>← Back</button>' +
       '<button type="button" class="btn ghost rx-next"' + (last ? ' disabled' : '') + '>Forward →</button></div>';
   }
 
@@ -711,7 +906,7 @@
     const n = EXERCISES.length;
     const topics = [...new Set(EXERCISES.map((e) => e.topic))].sort((a, b) => topicRank(a) - topicRank(b));
     $('#ex-view').innerHTML = '<div class="empty prose">' +
-      '<h2>Exercises</h2><p>There are ' + n + ' solved exercises, taken from the exercise lists and quizzes of the module, the slides and the reference document. Choose one in the list.</p>' +
+      '<h2>Exercises</h2><p>There are ' + n + ' solved exercises, taken from the exercise lists and quizzes of the module, the slides and the reference HoareLogic.pdf. Each one states everything you need to solve it. Choose one in the list.</p>' +
       '<p>Each solution is shown one step at a time. On the left, the annotated program shows the assertions that are known so far: the named assertions such as $R1$ or $I$ appear when a step computes them, and the statement that the step works on is highlighted. On the right, the step shows the rule that it applies, the calculation, and the verification conditions with their justification.</p>' +
       '<p>The summary of every exercise has a button that tests the solution on sample states.</p>' +
       '<div class="topic-grid">' + topics.map((t) => '<button type="button" class="topic-btn" data-topic="' + esc(t) + '"><span>' + esc(t) + '</span><span class="muted">' +

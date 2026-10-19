@@ -1,18 +1,25 @@
-# Source: Exercise list "ICT3101 Exercises - Deductive Verification", problem 3 b).
+# Source: HoareLogic Exercises.pdf ("ICT3101 Exercises, Deductive Verification"), problem 3 b), with its solution in "HoareLogic Exercises Solutions - problems 1 - 3.pdf".
 id: fill-precondition-false
-title: Fill in the precondition (b)
+title: Find the precondition when the postcondition cannot be reached
 topic: Sequential composition
 level: 2
-source: Exercise list "HoareLogic Exercises", problem 3 b
+source: HoareLogic Exercises, problem 3 b
 tags: assignment, sequence, wp, false
 
 task:
-  Fill in the weakest precondition of the following program.
+  Find the weakest precondition of the program for the postcondition $Q$.
+  Calculate it statement by statement from the last one. The variables
+  are integers.
+
+  The question only asks for the precondition. To have a complete triple,
+  the exercise uses the precondition $P$: $false$. At the end, the
+  consequence rule checks this precondition.
 
 pre: false
 post: x > z && y = 3
 
 program:
+  {P}
   {R3}
   z := x + 2;      // i1
   {R2}
@@ -23,59 +30,69 @@ program:
 
 verdict: valid
 
-step: The last statement, `x := z + y`
+step: R1, the weakest precondition of x := z + y
 rule: ASSIGN, WP
 focus: i3
+text:
+  The precondition of an assignment is obtained by substituting the
+  assigned variable ($x$) with the assignment expression ($z + y$) in the
+  postcondition $Q$.
 calc:
   wp(x := z + y, Q)
   = (x > z && y = 3)[x <- z + y]
-  = z + y > z && y = 3
-set: R1 = z + y > z && y = 3
+  = z + y > z && y = 3     // the x of Q is replaced by z + y
+  = y > 0 && y = 3         // subtract z from both sides of z + y > z
+  = y = 3                  // y = 3 already implies y > 0
+set: R1 = y = 3
 
-step: The second statement, `y := z + z`
+step: R2, the weakest precondition of y := z + z
 rule: ASSIGN, WP
 focus: i2
 text:
-  The variable $y$ occurs twice in $R1$, and both occurrences are replaced.
+  We substitute the assigned variable ($y$) with the assignment expression
+  ($z + z$) in the postcondition of this statement, which is $R1$.
 calc:
   wp(y := z + z, R1)
-  = (z + y > z && y = 3)[y <- z + z]
-  = z + (z + z) > z && z + z = 3
-set: R2 = z + (z + z) > z && z + z = 3
+  = (y = 3)[y <- z + z]
+  = z + z = 3              // the y of R1 is replaced by z + z
+  = 2 * z = 3              // z + z is 2 * z
+  = false                  // 2 * z is even and 3 is odd, so no integer z satisfies it
+set: R2 = false
 
-step: The first statement, `z := x + 2`
+step: R3, the weakest precondition of z := x + 2
 rule: ASSIGN, WP
 focus: i1
+text:
+  We substitute the assigned variable ($z$) with the assignment expression
+  ($x + 2$) in the postcondition of this statement, which is $R2$.
 calc:
   wp(z := x + 2, R2)
-  = (x + 2) + ((x + 2) + (x + 2)) > x + 2 && (x + 2) + (x + 2) = 3
-  = 3 * x + 6 > x + 2 && 2 * x + 4 = 3
-  = x > -2 && 2 * x = -1
-set: R3 = x > -2 && 2 * x = -1
-
-step: Simplify over the integers
-rule: LOGIC
-text:
-  The conjunct $2 * x = -1$ asks for an even number equal to $-1$. Over
-  the rationals the only solution is $x = -1/2$, which is the answer of the
-  original solution sheet. The program variables are integers, so no
-  value of $x$ satisfies it.
-calc:
-  x > -2 && 2 * x = -1
-  = false
+  = false[z <- x + 2]
+  = false                  // z does not occur in false, so nothing changes
 set: R3 = false
-note:
-  A weakest precondition equal to $false$ means that there is no start
-  state from which the program reaches the postcondition. The only valid
-  triple with this program and this postcondition has the precondition
-  $false$, which makes the triple trivially valid and says nothing useful.
-result: The weakest precondition is $false$ over the integers ($x = -1/2$ over the rationals).
+
+step: The precondition must imply the weakest precondition
+rule: CONSEQUENCE
+text:
+  $R3$ is the weakest precondition of the whole program for $Q$. It is
+  $false$: no initial state makes the program end in $Q$. By the
+  consequence rule, the triple is valid when the precondition $P$ implies
+  $R3$.
+  >>> «false : P» ==> «false : R3»
+vc: false ==> false
+why:
+  $false$ implies any formula. The triple is valid, but it says nothing
+  about the program, because no state satisfies $P$.
+result: The weakest precondition is $false$. The triple with the precondition $false$ is valid, but only trivially.
 
 summary:
-  At the end $y = z + z$ is even, so it can never be $3$. The weakest
-  precondition calculus finds this without running the program: the
-  conjunct $y = 3$ turns into $2 * x + 4 = 3$, which has no integer
-  solution.
+  At the end $y = z + z$, which is even, so it can never be $3$. The
+  calculation finds this without running the program: the conjunct
+  $y = 3$ of $Q$ becomes $z + z = 3$.
+
+  If the variables were rational numbers, $z + z = 3$ would give
+  $z = 3/2$, and the weakest precondition would be $x = -1/2$. Over the
+  integers there is no solution.
 
   The tests of this exercise are not conclusive on the specification: no
   state satisfies the precondition $false$, so there is nothing to run.

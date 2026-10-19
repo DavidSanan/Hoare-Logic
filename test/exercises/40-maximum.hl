@@ -7,22 +7,23 @@ source: HoareLogic.pdf, Exercises, "Maximum of two numbers"
 tags: conditional, wp, consequence
 
 task:
-  Compute by hand the weakest precondition of the following program,
-  which stores in $m$ the larger of $x$ and $y$. Deduce that the program
-  is correct with respect to its contract.
+  The program stores in $m$ the larger of $x$ and $y$. Calculate the
+  weakest precondition of the program for the postcondition $Q$: first
+  the weakest precondition of each branch, then the one of the
+  conditional. Then use the consequence rule to decide whether the triple
+  is valid.
 
 pre: true
 post: m >= x && m >= y && (m = x || m = y)
 
 program:
   {P}
+  {R3}
   if x >= y then {
-    {P && x >= y}
     {R1}
     m := x           // then
     {Q}
   } else {
-    {P && !(x >= y)}
     {R2}
     m := y           // else
     {Q}
@@ -31,58 +32,67 @@ program:
 
 verdict: valid
 
-step: The rule for the conditional
-rule: IF
-text:
-  The rule IF has two premises, one per branch. In the then branch we may
-  assume the condition $x >= y$, and in the else branch its negation.
-instance: IF
-  {true && x >= y} m := x {Q}
-  {true && !(x >= y)} m := y {Q}
-  ---
-  {true} if x >= y then m := x else m := y {Q}
-text:
-  We prove each premise with the assignment rule and the consequence rule.
-  The annotated program shows the two branch preconditions, followed by
-  the weakest preconditions $R1$ and $R2$ that we compute now.
-
-step: The then branch
+step: R1, the weakest precondition of the then branch m := x
 rule: ASSIGN, WP
 focus: then
+text:
+  Each branch ends where the conditional ends, so its postcondition is
+  $Q$. We substitute the assigned variable ($m$) with the assignment
+  expression ($x$) in $Q$.
 calc:
   wp(m := x, Q)
-  = x >= x && x >= y && (x = x || x = y)
-  = true && x >= y && true      // x >= x and x = x are always true
-  = x >= y
+  = (m >= x && m >= y && (m = x || m = y))[m <- x]
+  = x >= x && x >= y && (x = x || x = y)    // every m is replaced by x
+  = true && x >= y && (x = x || x = y)      // x >= x holds for every x
+  = true && x >= y && true                  // x = x is true, and true || A is true
+  = x >= y                                  // true && A is A, and A && true is A
 set: R1 = x >= y
-vc: true && x >= y ==> x >= y
-why:
-  In the then branch the condition $x >= y$ holds, which is exactly $R1$.
 
-step: The else branch
+step: R2, the weakest precondition of the else branch m := y
 rule: ASSIGN, WP
 focus: else
+text:
+  We substitute the assigned variable ($m$) with the assignment
+  expression ($y$) in the postcondition $Q$.
 calc:
   wp(m := y, Q)
-  = y >= x && y >= y && (y = x || y = y)
-  = y >= x
+  = (m >= x && m >= y && (m = x || m = y))[m <- y]
+  = y >= x && y >= y && (y = x || y = y)    // every m is replaced by y
+  = y >= x && true && (y = x || y = y)      // y >= y holds for every y
+  = y >= x && true && true                  // y = y is true, and A || true is true
+  = y >= x                                  // A && true is A
 set: R2 = y >= x
-vc: true && !(x >= y) ==> y >= x
-why:
-  $!(x >= y)$ means $x < y$, and $x < y$ implies $y >= x$.
 
-step: The same result with the wp of the conditional
-rule: WP, LOGIC
+step: R3, the weakest precondition of the conditional
+rule: IF, WP
+focus: if
 text:
-  The wp calculus combines the two branches into one formula. It gives the
-  same verification conditions, written as one implication.
+  The weakest precondition of `if B then c1 else c2` for $Q$ is
+  >> (B ==> wp(c1, Q)) && (!B ==> wp(c2, Q))
+  Here the condition $B$ is $x >= y$, $wp(c1, Q)$ is $R1$ and
+  $wp(c2, Q)$ is $R2$.
 calc:
   wp(if x >= y then m := x else m := y, Q)
-  = (x >= y ==> x >= y) && (!(x >= y) ==> y >= x)
-  = true && true
-  = true
-vc: true ==> (x >= y ==> x >= y) && (!(x >= y) ==> y >= x)
+  = (x >= y ==> x >= y) && (!(x >= y) ==> y >= x)   // B, R1 and R2 put in the formula
+  = true && (!(x >= y) ==> y >= x)                  // A ==> A is true
+  = !(x >= y) ==> y >= x                            // true && A is A
+  = x < y ==> y >= x                                // !(x >= y) is x < y
+  = true                                            // x < y implies y >= x
+set: R3 = true
+
+step: The precondition must imply the weakest precondition
+rule: CONSEQUENCE
+text:
+  $R3$ is the weakest precondition of the whole program for $Q$. By the
+  consequence rule, the triple is valid when the precondition $P$ implies
+  $R3$.
+vc: true ==> true
 why:
-  Both implications are true in every state, so the weakest precondition
-  is $true$ and any precondition implies it.
-result: The triple is valid for every initial state.
+  $R3$ is $true$, and every formula implies $true$.
+result: The triple is valid.
+
+summary:
+  In each branch, the assignment makes $m$ equal to $x$ or to $y$, so the
+  part $m = x || m = y$ of $Q$ always holds. What remains is the condition
+  of the branch, which is known to hold there. So the program works from
+  every initial state.

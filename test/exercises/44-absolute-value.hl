@@ -1,26 +1,33 @@
-# Source: HoareLogic.pdf, "A Quick Example" (the program abs), and exercise sheet "Hoare Logic 2", 2 a).
+# Source: built from HoareLogic.pdf, "A Quick Example" (the program abs), and exercise sheet "Hoare Logic 2", 2 a).
+# The sheet has the postcondition y >= 0 only. The postcondition here also fixes the value of y,
+# as in "A Quick Example" (where the first connective is printed as || by mistake; it is && here).
 id: absolute-value
 title: Absolute value
 topic: Conditional
 level: 1
-source: HoareLogic.pdf, "A Quick Example"; exercise sheet "Hoare Logic 2", 2 a
-tags: conditional, wp
+source: Built from HoareLogic.pdf, "A Quick Example", and exercise sheet "Hoare Logic 2", 2 a
+tags: conditional, wp, consequence
 
 task:
-  Prove that the program computes the absolute value of $x$ in $y$.
+  The program stores in $y$ the absolute value of $x$. The postcondition
+  $Q$ does not only ask for $y >= 0$: it also gives the value of $y$ in
+  each case, $y = x$ when $x >= 0$ and $y = -x$ when $x < 0$.
+
+  Calculate the weakest precondition of the program for $Q$: first the
+  weakest precondition of each branch, then the one of the conditional.
+  Then use the consequence rule to decide whether the triple is valid.
 
 pre: true
 post: y >= 0 && (x >= 0 ==> y = x) && (x < 0 ==> y = -x)
 
 program:
   {P}
+  {R3}
   if x < 0 then {
-    {P && x < 0}
     {R1}
     y := -x           // then
     {Q}
   } else {
-    {P && !(x < 0)}
     {R2}
     y := x            // else
     {Q}
@@ -29,42 +36,70 @@ program:
 
 verdict: valid
 
-step: The then branch
+step: R1, the weakest precondition of the then branch y := -x
 rule: ASSIGN, WP
 focus: then
+text:
+  Each branch ends where the conditional ends, so its postcondition is
+  $Q$. We substitute the assigned variable ($y$) with the assignment
+  expression ($-x$) in $Q$.
 calc:
   wp(y := -x, Q)
-  = -x >= 0 && (x >= 0 ==> -x = x) && (x < 0 ==> -x = -x)
-set: R1 = -x >= 0 && (x >= 0 ==> -x = x) && (x < 0 ==> -x = -x)
-vc: true && x < 0 ==> R1
-why:
-  Assume $x < 0$. Then $-x > 0$, so $-x >= 0$. The implication
-  $x >= 0 ==> -x = x$ holds because its left side is false. The last
-  conjunct holds because $-x = -x$ is always true.
+  = (y >= 0 && (x >= 0 ==> y = x) && (x < 0 ==> y = -x))[y <- -x]
+  = -x >= 0 && (x >= 0 ==> -x = x) && (x < 0 ==> -x = -x)   // every y is replaced by -x
+  = -x >= 0 && (x >= 0 ==> -x = x) && (x < 0 ==> true)      // -x = -x is true
+  = -x >= 0 && (x >= 0 ==> -x = x) && true                  // A ==> true is true
+  = -x >= 0 && (x >= 0 ==> -x = x)                          // A && true is A
+  = x <= 0 && (x >= 0 ==> -x = x)                           // multiply -x >= 0 by -1, which reverses it
+  = x <= 0 && (x >= 0 ==> x = 0)                            // -x = x holds exactly when x = 0
+  = x <= 0                                                  // with x <= 0, x >= 0 holds only for x = 0, so the implication is true
+set: R1 = x <= 0
 
-step: The else branch
+step: R2, the weakest precondition of the else branch y := x
 rule: ASSIGN, WP
 focus: else
+text:
+  We substitute the assigned variable ($y$) with the assignment
+  expression ($x$) in the postcondition $Q$.
 calc:
   wp(y := x, Q)
-  = x >= 0 && (x >= 0 ==> x = x) && (x < 0 ==> x = -x)
-set: R2 = x >= 0 && (x >= 0 ==> x = x) && (x < 0 ==> x = -x)
-vc: true && !(x < 0) ==> R2
-why:
-  Assume $!(x < 0)$, that is $x >= 0$. The first conjunct is the
-  assumption. The second holds since $x = x$. The third holds since its
-  left side $x < 0$ is false.
+  = (y >= 0 && (x >= 0 ==> y = x) && (x < 0 ==> y = -x))[y <- x]
+  = x >= 0 && (x >= 0 ==> x = x) && (x < 0 ==> x = -x)      // every y is replaced by x
+  = x >= 0 && (x >= 0 ==> true) && (x < 0 ==> x = -x)       // x = x is true
+  = x >= 0 && true && (x < 0 ==> x = -x)                    // A ==> true is true
+  = x >= 0 && (x < 0 ==> x = -x)                            // A && true is A
+  = x >= 0                                                  // with x >= 0, the left side x < 0 is false, so the implication is true
+set: R2 = x >= 0
 
-step: Conclude with the rule for the conditional
-rule: IF
-instance: IF
-  {true && x < 0} y := -x {Q}
-  {true && !(x < 0)} y := x {Q}
-  ---
-  {true} if x < 0 then y := -x else y := x {Q}
+step: R3, the weakest precondition of the conditional
+rule: IF, WP
+focus: if
+text:
+  The weakest precondition of `if B then c1 else c2` for $Q$ is
+  >> (B ==> wp(c1, Q)) && (!B ==> wp(c2, Q))
+  Here the condition $B$ is $x < 0$, $wp(c1, Q)$ is $R1$ and
+  $wp(c2, Q)$ is $R2$.
+calc:
+  wp(if x < 0 then y := -x else y := x, Q)
+  = (x < 0 ==> x <= 0) && (!(x < 0) ==> x >= 0)    // B, R1 and R2 put in the formula
+  = (x < 0 ==> x <= 0) && (x >= 0 ==> x >= 0)      // !(x < 0) is x >= 0
+  = (x < 0 ==> x <= 0) && true                     // A ==> A is true
+  = true && true                                   // x < 0 implies x <= 0
+  = true                                           // true && true is true
+set: R3 = true
+
+step: The precondition must imply the weakest precondition
+rule: CONSEQUENCE
+text:
+  $R3$ is the weakest precondition of the whole program for $Q$. By the
+  consequence rule, the triple is valid when the precondition $P$ implies
+  $R3$.
+vc: true ==> true
+why:
+  $R3$ is $true$, and every formula implies $true$.
 result: The triple is valid.
 
 summary:
-  In each branch, one of the two implications of the postcondition is
-  true because its left side contradicts the condition of the branch. This
-  is how the knowledge $B$ or $!B$ of the rule IF is used.
+  The then branch needs $x <= 0$ and the else branch needs $x >= 0$.
+  Each of these is implied by the condition under which the branch runs,
+  so the program computes the absolute value from every initial state.

@@ -4,14 +4,35 @@
  * The interactive examples of the Rules page. Each example has:
  *
  *   title    the name shown on its tab
- *   goal     the triple (or implication) that we try to derive
+ *   goal     the triple that we try to derive
  *   derived  true when the attempt succeeds (shown in green at the end),
  *            false when it fails (shown in red)
  *   valid    true or false: whether the triple itself is valid. It can be
  *            valid even when this rule alone cannot derive it. The command
  *            line tests check it by running the program; null skips the test.
  *   result   the sentence shown at the end
- *   steps    the explanation, one step at a time, in the markup of the site
+ *   given    the elements of the example, always shown under the triple:
+ *            a list of [label, value]; a value "{{R}}" shows the named
+ *            assertion R once a step has computed it
+ *   slots    the named assertions known from the start
+ *   rule     the rule with the elements of the example, always shown:
+ *            { premises: [{ f, part }], conclusion }. The premise whose
+ *            part is the part of the current step is highlighted.
+ *   steps    one object per step:
+ *              part     the part of the proof (Establishment, ...); the
+ *                       navigation groups the steps by part
+ *              head     what the step does, in one sentence
+ *              show     formulas to display; «formula : label» draws the
+ *                       label under the formula, to show where it comes from
+ *              calc     lines added to the running calculation, each one
+ *                       "= formula // justification"
+ *              calcNew  true when the step starts a new calculation
+ *              assume   a hypothesis under which the calculation lines of
+ *                       the step are equivalent (used by the tests)
+ *              set      named assertions computed by the step
+ *              text     a short explanation
+ *
+ * In all the strings, {{R}} is replaced by the value of R when it is known.
  */
 (function (root) {
   'use strict';
@@ -25,17 +46,17 @@
         derived: true,
         valid: true,
         result: 'The rule SKIP derives this triple.',
+        given: [['Precondition P', '$x > 0$'], ['Postcondition Q', '$x > 0$']],
         steps: [
-          `We want to know whether the rule SKIP, on its own, gives this triple.`,
-          `The rule SKIP gives every triple of this shape, for any assertion $Q$:
-
->> {Q} skip {Q}
-
-The same assertion must appear before and after \`skip\`.`,
-          `We match the triple with the rule. The postcondition is $x > 0$, so $Q$ is $x > 0$. The rule then gives:
-
->> {x > 0} skip {x > 0}`,
-          `The triple given by the rule is exactly the triple we wanted.`
+          {
+            head: 'The rule SKIP gives the triple in which the precondition is the postcondition $Q$.',
+            calc: ['wp(skip, x > 0)', '= x > 0 // wp(skip, Q) = Q']
+          },
+          {
+            head: 'The precondition $P$ is the formula given by the rule.',
+            show: ['«x > 0 : P» <=> «x > 0 : wp»'],
+            text: 'So the rule SKIP gives the triple directly.'
+          }
         ]
       },
       {
@@ -43,16 +64,22 @@ The same assertion must appear before and after \`skip\`.`,
         goal: '{x > 5} skip {x > 0}',
         derived: false,
         valid: true,
-        result: 'The rule SKIP alone cannot derive this triple. The triple is valid, and the consequence rule derives it.',
+        result: 'The rule SKIP alone does not derive this triple. With the consequence rule the triple is derived, so it is valid.',
+        given: [['Precondition P', '$x > 5$'], ['Postcondition Q', '$x > 0$']],
         steps: [
-          `We want to know whether the rule SKIP, on its own, gives this triple.`,
-          `The postcondition is $x > 0$, so the rule SKIP gives:
-
->> {x > 0} skip {x > 0}`,
-          `We compare it with the triple we want. The postconditions are the same, but the preconditions are different formulas: $x > 5$ and $x > 0$.`,
-          `The rule SKIP only gives triples with the same assertion on both sides, so it cannot give this triple.
-
-The triple is still valid: every state with $x > 5$ also has $x > 0$, and \`skip\` does not change the state. The consequence rule uses exactly this implication, $x > 5 ==> x > 0$.`
+          {
+            head: 'The rule SKIP gives the triple in which the precondition is the postcondition $Q$.',
+            calc: ['wp(skip, x > 0)', '= x > 0 // wp(skip, Q) = Q']
+          },
+          {
+            head: 'The precondition $P$ is a different formula, so the rule SKIP alone does not give the triple.',
+            text: 'The consequence rule gives it if $P$ implies the computed precondition.',
+            show: ['«x > 5 : P» ==> «x > 0 : wp»']
+          },
+          {
+            head: 'The implication holds: every integer greater than 5 is greater than 0.',
+            show: ['«x > 5 : P» ==> «x > 0 : wp»']
+          }
         ]
       },
       {
@@ -60,16 +87,21 @@ The triple is still valid: every state with $x > 5$ also has $x > 0$, and \`skip
         goal: '{x = 0} skip {x = 1}',
         derived: false,
         valid: false,
-        result: 'The rule SKIP cannot derive this triple, and the triple is not valid.',
+        result: 'The rule SKIP does not derive this triple, and the triple is not valid.',
+        given: [['Precondition P', '$x = 0$'], ['Postcondition Q', '$x = 1$']],
         steps: [
-          `We want to know whether the rule SKIP, on its own, gives this triple.`,
-          `The postcondition is $x = 1$, so the rule SKIP gives:
-
->> {x = 1} skip {x = 1}`,
-          `The precondition of the triple we want is $x = 0$, which is a different formula. So the rule SKIP does not give the triple.`,
-          `The consequence rule cannot help either: it would need $x = 0 ==> x = 1$, which is false.
-
-The triple is not valid. In the state $x = 0$ the precondition holds, \`skip\` does nothing, and $x = 1$ is false at the end.`
+          {
+            head: 'The rule SKIP gives the triple in which the precondition is the postcondition $Q$.',
+            calc: ['wp(skip, x = 1)', '= x = 1 // wp(skip, Q) = Q']
+          },
+          {
+            head: 'The precondition $P$ is a different formula. The consequence rule would need this implication:',
+            show: ['«x = 0 : P» ==> «x = 1 : wp»']
+          },
+          {
+            head: 'The implication is false in the state $x = 0$.',
+            text: 'From this state `skip` does not change $x$, so $x = 1$ is false at the end. The triple is not valid.'
+          }
         ]
       }
     ],
@@ -81,20 +113,25 @@ The triple is not valid. In the state $x = 0$ the precondition holds, \`skip\` d
         derived: true,
         valid: true,
         result: 'The rule ASSIGN derives this triple.',
+        given: [['Assigned variable', '$y$'], ['Assignment expression', '$y + 1$'], ['Postcondition Q', '$y = 2$'], ['Precondition P', '$y = 1$']],
         steps: [
-          `We want to know whether the rule ASSIGN gives this triple.`,
-          `The rule ASSIGN gives, for any assertion $Q$:
-
->> {Q[x <- E]} x := E {Q}
-
-The precondition is the postcondition with the assigned variable replaced by the expression.`,
-          `We match the triple with the rule. The assigned variable $x$ is $y$, the expression $E$ is $y + 1$, and $Q$ is $y = 2$.`,
-          `We compute the precondition that the rule gives:
-
->> (y = 2)[y <- y + 1]
->> y + 1 = 2
->> y = 1`,
-          `The rule gives $\\{y + 1 = 2\\}$ \`y := y + 1\` $\\{y = 2\\}$. For integers, $y + 1 = 2$ and $y = 1$ hold in exactly the same states, so this is the triple we wanted.`
+          {
+            head: 'The precondition is obtained by substituting the assigned variable ($y$) with the assignment expression ($y + 1$) in $Q$.',
+            calc: ['(y = 2)[y <- y + 1]']
+          },
+          {
+            head: 'We apply the substitution: every $y$ in $Q$ becomes $y + 1$.',
+            calc: ['= y + 1 = 2 // y replaced by y + 1']
+          },
+          {
+            head: 'We simplify: subtracting 1 from both sides of $y + 1 = 2$ gives $y = 1$.',
+            calc: ['= y = 1 // subtract 1 from both sides']
+          },
+          {
+            head: 'The precondition $P$ is the formula we obtained.',
+            show: ['«y = 1 : P» <=> «y = 1 : wp»'],
+            text: 'Strictly, the rule gives the precondition $y + 1 = 2$. The consequence rule replaces it by $P$, since $y = 1 ==> y + 1 = 2$.'
+          }
         ]
       },
       {
@@ -103,15 +140,25 @@ The precondition is the postcondition with the assigned variable replaced by the
         derived: false,
         valid: false,
         result: 'The rule ASSIGN does not derive this triple, and the triple is not valid.',
+        given: [['Assigned variable', '$y$'], ['Assignment expression', '$y + 1$'], ['Postcondition Q', '$y = 2$'], ['Precondition P', '$y = 2$']],
         steps: [
-          `We want to know whether the rule ASSIGN gives this triple.`,
-          `We match the triple with the rule: the variable is $y$, the expression is $y + 1$, and $Q$ is $y = 2$. The precondition given by the rule is:
-
->> (y = 2)[y <- y + 1]
->> y + 1 = 2
->> y = 1`,
-          `The rule gives the precondition $y = 1$, but the triple has $y = 2$. These formulas hold in different states, so the rule does not give the triple.`,
-          `The triple is not valid. From the state $y = 2$ the assignment gives $y = 3$, and $y = 2$ is false at the end.`
+          {
+            head: 'The precondition is obtained by substituting the assigned variable ($y$) with the assignment expression ($y + 1$) in $Q$.',
+            calc: ['(y = 2)[y <- y + 1]']
+          },
+          {
+            head: 'We apply the substitution: every $y$ in $Q$ becomes $y + 1$.',
+            calc: ['= y + 1 = 2 // y replaced by y + 1']
+          },
+          {
+            head: 'We simplify: subtracting 1 from both sides of $y + 1 = 2$ gives $y = 1$.',
+            calc: ['= y = 1 // subtract 1 from both sides']
+          },
+          {
+            head: 'The precondition $P$ is a different formula. The consequence rule would need this implication:',
+            show: ['«y = 2 : P» ==> «y = 1 : wp»'],
+            text: 'It is false in the state $y = 2$. From this state the assignment gives $y = 3$, so $Q$ is false at the end.'
+          }
         ]
       },
       {
@@ -120,17 +167,30 @@ The precondition is the postcondition with the assigned variable replaced by the
         derived: true,
         valid: true,
         result: 'The rule ASSIGN derives this triple.',
+        given: [['Assigned variable', '$y$'], ['Assignment expression', '$y + x$'], ['Postcondition Q', "$y = y' + x' && x = x'$"],
+          ['Precondition P', "$y = y' && x = x'$"], ['Logical variables', "$x'$ and $y'$: the program never assigns them"]],
         steps: [
-          `We want to know whether the rule ASSIGN gives this triple. The names $x'$ and $y'$ are logical variables: the program never assigns them.`,
-          `We match the triple with the rule. The assigned variable is $y$, the expression is $y + x$, and $Q$ is $y = y' + x' && x = x'$.`,
-          `We replace every $y$ in $Q$ by $y + x$. The variables $x$, $x'$ and $y'$ are different variables, so they stay as they are:
-
->> (y = y' + x' && x = x')[y <- y + x]
->> y + x = y' + x' && x = x'`,
-          `We simplify with the second conjunct: since $x = x'$, the first conjunct $y + x = y' + x'$ becomes $y = y'$.
-
->> y = y' && x = x'`,
-          `This is the precondition of the triple we wanted.`
+          {
+            head: 'The precondition is obtained by substituting the assigned variable ($y$) with the assignment expression ($y + x$) in $Q$.',
+            calc: ["(y = y' + x' && x = x')[y <- y + x]"]
+          },
+          {
+            head: "We apply the substitution. Only $y$ is replaced: $x$, $x'$ and $y'$ are other variables.",
+            calc: ["= y + x = y' + x' && x = x' // y replaced by y + x"]
+          },
+          {
+            head: "The second conjunct says $x = x'$, so in the first conjunct we can replace $x'$ by $x$.",
+            calc: ["= y + x = y' + x && x = x' // x' replaced by x, using x = x'"]
+          },
+          {
+            head: 'We subtract $x$ from both sides of the first conjunct.',
+            calc: ["= y = y' && x = x' // subtract x from both sides"]
+          },
+          {
+            head: 'The precondition $P$ is the formula we obtained.',
+            show: ["«y = y' && x = x' : P» <=> «y = y' && x = x' : wp»"],
+            text: "Strictly, the rule gives the first formula of the calculation. The consequence rule replaces it by the equivalent formula $P$."
+          }
         ]
       }
     ],
@@ -141,22 +201,44 @@ The precondition is the postcondition with the assigned variable replaced by the
         goal: '{x > 120} x := x + 1 {x > 101}',
         derived: true,
         valid: true,
-        result: 'The consequence rule derives this triple.',
+        result: 'The three premises hold, so the consequence rule derives the triple.',
+        given: [['Precondition P', '$x > 120$'], ['Program c', '`x := x + 1`'], ['Postcondition Q', '$x > 101$'],
+          ["Q'", '$x > 101$, the postcondition $Q$ itself'], ["P'", "{{P'}}"]],
+        slots: { "Q'": 'x > 101' },
+        rule: {
+          premises: [
+            { f: "x > 120 ==> {{P'}}", part: 'First premise' },
+            { f: "{{{P'}}} x := x + 1 {{{Q'}}}", part: 'Middle premise' },
+            { f: "{{Q'}} ==> x > 101", part: 'Last premise' }
+          ],
+          conclusion: '{x > 120} x := x + 1 {x > 101}'
+        },
         steps: [
-          `We want to derive this triple. We start with the assignment rule, which gives the weakest precondition of $x > 101$:
-
->> (x > 101)[x <- x + 1]
->> x + 1 > 101
->> x > 100`,
-          `So we have $\\{x > 100\\}$ \`x := x + 1\` $\\{x > 101\\}$. Its precondition, $x > 100$, is not the precondition of the triple we want, $x > 120$.`,
-          `The consequence rule links them. Its first premise is the implication from the precondition we want to the precondition we have:
-
->> x > 120 ==> x > 100
-
-It holds: every number greater than $120$ is greater than $100$.`,
-          `The postconditions are the same, so the last premise, $x > 101 ==> x > 101$, holds trivially. All premises hold:
-
->> x > 120 ==> x > 100   {x > 100} x := x + 1 {x > 101}   ---   {x > 120} x := x + 1 {x > 101}`
+          {
+            part: 'Middle premise',
+            head: "We take $Q' = Q$ and compute $P'$ with the rule ASSIGN: we substitute $x$ with $x + 1$ in $Q'$.",
+            calc: ['(x > 101)[x <- x + 1]', '= x + 1 > 101 // x replaced by x + 1']
+          },
+          {
+            part: 'Middle premise',
+            head: 'We subtract 1 from both sides.',
+            calc: ['= x > 100 // subtract 1 from both sides'],
+            set: { "P'": 'x > 100' },
+            text: "So $P' = x > 100$, and the rule ASSIGN gives the middle premise."
+          },
+          {
+            part: 'First premise',
+            calcNew: true,
+            head: "The precondition $P$ must imply $P'$.",
+            show: ["«x > 120 : P» ==> «x > 100 : P'»"],
+            text: 'It holds: every integer greater than 120 is greater than 100.'
+          },
+          {
+            part: 'Last premise',
+            head: "$Q'$ must imply $Q$.",
+            show: ["«x > 101 : Q'» ==> «x > 101 : Q»"],
+            text: 'It holds, since the two formulas are the same.'
+          }
         ]
       },
       {
@@ -164,48 +246,82 @@ It holds: every number greater than $120$ is greater than $100$.`,
         goal: '{x > 90} x := x + 1 {x > 101}',
         derived: false,
         valid: false,
-        result: 'The consequence rule cannot derive this triple, and the triple is not valid.',
+        result: 'The first premise does not hold, so the consequence rule cannot derive the triple. The triple is not valid.',
+        given: [['Precondition P', '$x > 90$'], ['Program c', '`x := x + 1`'], ['Postcondition Q', '$x > 101$'],
+          ["Q'", '$x > 101$, the postcondition $Q$ itself'], ["P'", "{{P'}}"]],
+        slots: { "Q'": 'x > 101' },
+        rule: {
+          premises: [
+            { f: "x > 90 ==> {{P'}}", part: 'First premise' },
+            { f: "{{{P'}}} x := x + 1 {{{Q'}}}", part: 'Middle premise' },
+            { f: "{{Q'}} ==> x > 101", part: 'Last premise' }
+          ],
+          conclusion: '{x > 90} x := x + 1 {x > 101}'
+        },
         steps: [
-          `As in the first example, the assignment rule gives:
-
->> {x > 100} x := x + 1 {x > 101}`,
-          `To use the consequence rule we need the implication:
-
->> x > 90 ==> x > 100`,
-          `This implication is false. The state $x = 95$ satisfies $x > 90$ and not $x > 100$. So the premise does not hold, and the rule cannot be applied.`,
-          `The state also shows that the triple is not valid: from $x = 95$ the program gives $x = 96$, and $x > 101$ is false at the end.`
+          {
+            part: 'Middle premise',
+            head: "We take $Q' = Q$ and compute $P'$ with the rule ASSIGN: we substitute $x$ with $x + 1$ in $Q'$.",
+            calc: ['(x > 101)[x <- x + 1]', '= x + 1 > 101 // x replaced by x + 1']
+          },
+          {
+            part: 'Middle premise',
+            head: 'We subtract 1 from both sides.',
+            calc: ['= x > 100 // subtract 1 from both sides'],
+            set: { "P'": 'x > 100' },
+            text: "So $P' = x > 100$, and the rule ASSIGN gives the middle premise."
+          },
+          {
+            part: 'First premise',
+            calcNew: true,
+            head: "The precondition $P$ must imply $P'$.",
+            show: ["«x > 90 : P» ==> «x > 100 : P'»"],
+            text: "It is false: the state $x = 95$ satisfies $P$ and not $P'$. From this state the program gives $x = 96$, so $Q$ is false at the end."
+          }
         ]
       },
       {
-        title: 'Both sides',
-        goal: '{2 <= x <= 8} y := x * 10 {0 <= y <= 100}',
+        title: 'Using a known triple',
+        goal: '{x = 3} y := x + 1 {y > 0}',
         derived: true,
         valid: true,
-        result: 'The consequence rule derives this triple.',
+        result: 'The three premises hold, so the consequence rule derives the triple from the known triple.',
+        given: [['Precondition P', '$x = 3$'], ['Program c', '`y := x + 1`'], ['Postcondition Q', '$y > 0$'],
+          ['Known triple', '$\\{x >= 0\\}$ `y := x + 1` $\\{y >= 1\\}$'], ["P'", '$x >= 0$, from the known triple'], ["Q'", '$y >= 1$, from the known triple']],
+        slots: { "P'": 'x >= 0', "Q'": 'y >= 1' },
+        rule: {
+          premises: [
+            { f: "x = 3 ==> {{P'}}", part: 'First premise' },
+            { f: "{{{P'}}} y := x + 1 {{{Q'}}}", part: 'Middle premise' },
+            { f: "{{Q'}} ==> y > 0", part: 'Last premise' }
+          ],
+          conclusion: '{x = 3} y := x + 1 {y > 0}'
+        },
         steps: [
-          `We use the full rule. We choose a stronger postcondition $Q'$ that is simpler to work with: the values of $y$ that the program can produce from $x$ between $1$ and $9$.
-
->> 10 <= y <= 90`,
-          `The assignment rule gives the precondition for $Q'$:
-
->> (10 <= y <= 90)[y <- x * 10]
->> 10 <= x * 10 <= 90
->> 1 <= x <= 9
-
-So $P'$ is $1 <= x <= 9$.`,
-          `First premise: the precondition we want implies $P'$.
-
->> 2 <= x <= 8 ==> 1 <= x <= 9
-
-It holds, since every number from 2 to 8 is also between 1 and 9.`,
-          `Third premise: $Q'$ implies the postcondition we want.
-
->> 10 <= y <= 90 ==> 0 <= y <= 100
-
-It holds, since every number from 10 to 90 is also between 0 and 100.`,
-          `All three premises hold:
-
->> 2 <= x <= 8 ==> 1 <= x <= 9   {1 <= x <= 9} y := x * 10 {10 <= y <= 90}   10 <= y <= 90 ==> 0 <= y <= 100   ---   {2 <= x <= 8} y := x * 10 {0 <= y <= 100}`
+          {
+            part: 'Middle premise',
+            head: "The middle premise is the known triple. We check it with the rule ASSIGN: we substitute $y$ with $x + 1$ in $Q'$.",
+            calc: ['(y >= 1)[y <- x + 1]', '= x + 1 >= 1 // y replaced by x + 1']
+          },
+          {
+            part: 'Middle premise',
+            head: 'We subtract 1 from both sides.',
+            calc: ['= x >= 0 // subtract 1 from both sides'],
+            text: "This is $P'$, so the known triple is given by the rule ASSIGN."
+          },
+          {
+            part: 'First premise',
+            calcNew: true,
+            head: "The precondition $P$ must imply $P'$.",
+            show: ["«x = 3 : P» ==> «x >= 0 : P'»"],
+            text: 'It holds: when $x = 3$, $x >= 0$ is true.'
+          },
+          {
+            part: 'Last premise',
+            head: "$Q'$ must imply $Q$.",
+            show: ["«y >= 1 : Q'» ==> «y > 0 : Q»"],
+            text: 'It holds: for integers, $y >= 1$ is the same as $y > 0$.'
+          }
         ]
       }
     ],
@@ -216,28 +332,46 @@ It holds, since every number from 10 to 90 is also between 0 and 100.`,
         goal: '{x = 0} x := x + 1; x := x + 2 {x = 3}',
         derived: true,
         valid: true,
-        result: 'The rule SEQ derives this triple.',
+        result: 'Both premises hold, so the rule SEQ derives the triple.',
+        given: [['Precondition P', '$x = 0$'], ['First statement c1', '`x := x + 1`'], ['Second statement c2', '`x := x + 2`'],
+          ['Postcondition Q', '$x = 3$'], ['Intermediate assertion R', '{{R}}']],
+        rule: {
+          premises: [
+            { f: '{x = 0} x := x + 1 {{{R}}}', part: 'First premise' },
+            { f: '{{{R}}} x := x + 2 {x = 3}', part: 'Second premise' }
+          ],
+          conclusion: '{x = 0} x := x + 1; x := x + 2 {x = 3}'
+        },
         steps: [
-          `The rule SEQ needs an intermediate assertion $R$ between the two assignments:
-
->> {x = 0} x := x + 1 {R}   {R} x := x + 2 {x = 3}   ---   {x = 0} x := x + 1; x := x + 2 {x = 3}`,
-          `We compute $R$ backwards, from the second assignment and the postcondition:
-
->> wp(x := x + 2, x = 3)
->> x + 2 = 3
->> x = 1
-
-So $R$ is $x = 1$, and the second premise holds by the assignment rule.`,
-          `We check the first premise, $\\{x = 0\\}$ \`x := x + 1\` $\\{x = 1\\}$, with the assignment rule:
-
->> (x = 1)[x <- x + 1]
->> x + 1 = 1
->> x = 0
-
-This is the precondition we have.`,
-          `Both premises hold:
-
->> {x = 0} x := x + 1 {x = 1}   {x = 1} x := x + 2 {x = 3}   ---   {x = 0} x := x + 1; x := x + 2 {x = 3}`
+          {
+            part: 'Second premise',
+            head: 'We compute $R$ backwards, from the second statement: we substitute $x$ with $x + 2$ in $Q$.',
+            calc: ['(x = 3)[x <- x + 2]', '= x + 2 = 3 // x replaced by x + 2']
+          },
+          {
+            part: 'Second premise',
+            head: 'We subtract 2 from both sides.',
+            calc: ['= x = 1 // subtract 2 from both sides'],
+            set: { R: 'x = 1' },
+            text: 'So $R = x = 1$, and the rule ASSIGN gives the second premise.'
+          },
+          {
+            part: 'First premise',
+            calcNew: true,
+            head: 'We compute the weakest precondition of the first statement for $R$: we substitute $x$ with $x + 1$ in $R$.',
+            calc: ['(x = 1)[x <- x + 1]', '= x + 1 = 1 // x replaced by x + 1']
+          },
+          {
+            part: 'First premise',
+            head: 'We subtract 1 from both sides.',
+            calc: ['= x = 0 // subtract 1 from both sides']
+          },
+          {
+            part: 'First premise',
+            head: 'By the consequence rule, the precondition $P$ must imply this formula.',
+            show: ['«x = 0 : P» ==> «x = 0 : wp(c1, R)»'],
+            text: 'The two formulas are the same, so the first premise holds.'
+          }
         ]
       },
       {
@@ -245,15 +379,41 @@ This is the precondition we have.`,
         goal: '{x = 0} x := x + 1; x := x * 2 {x = 3}',
         derived: false,
         valid: false,
-        result: 'The rule SEQ cannot derive this triple, and the triple is not valid.',
+        result: 'The first premise does not hold, so the rule SEQ cannot derive the triple. The triple is not valid.',
+        given: [['Precondition P', '$x = 0$'], ['First statement c1', '`x := x + 1`'], ['Second statement c2', '`x := x * 2`'],
+          ['Postcondition Q', '$x = 3$'], ['Intermediate assertion R', '{{R}}']],
+        rule: {
+          premises: [
+            { f: '{x = 0} x := x + 1 {{{R}}}', part: 'First premise' },
+            { f: '{{{R}}} x := x * 2 {x = 3}', part: 'Second premise' }
+          ],
+          conclusion: '{x = 0} x := x + 1; x := x * 2 {x = 3}'
+        },
         steps: [
-          `We look for an intermediate assertion $R$ and compute it backwards from the postcondition:
-
->> wp(x := x * 2, x = 3)
->> x * 2 = 3`,
-          `No integer $x$ satisfies $2 * x = 3$, so $R$ is $false$: no state before the second assignment leads to $x = 3$.`,
-          `The first premise would be $\\{x = 0\\}$ \`x := x + 1\` $\\{false\\}$. Its weakest precondition is $false$, and $x = 0$ does not imply $false$. So the first premise does not hold.`,
-          `The triple is not valid. From $x = 0$ the program computes $x = 1$ and then $x = 2$, and $x = 3$ is false at the end.`
+          {
+            part: 'Second premise',
+            head: 'We compute $R$ backwards, from the second statement: we substitute $x$ with $x * 2$ in $Q$.',
+            calc: ['(x = 3)[x <- x * 2]', '= x * 2 = 3 // x replaced by x * 2']
+          },
+          {
+            part: 'Second premise',
+            head: 'No integer $x$ satisfies $x * 2 = 3$, since $x * 2$ is even and 3 is odd.',
+            calc: ['= false // x * 2 is even and 3 is odd'],
+            set: { R: 'false' },
+            text: 'So $R = false$: no state before the second statement leads to $Q$.'
+          },
+          {
+            part: 'First premise',
+            calcNew: true,
+            head: 'We compute the weakest precondition of the first statement for $R$: we substitute $x$ with $x + 1$ in $R$.',
+            calc: ['(false)[x <- x + 1]', '= false // false contains no x']
+          },
+          {
+            part: 'First premise',
+            head: 'By the consequence rule, the precondition $P$ must imply this formula.',
+            show: ['«x = 0 : P» ==> «false : wp(c1, R)»'],
+            text: 'It is false in the state $x = 0$. From this state the program gives $x = 1$ and then $x = 2$, so $Q$ is false at the end.'
+          }
         ]
       }
     ],
@@ -264,24 +424,50 @@ This is the precondition we have.`,
         goal: '{true} if x >= y then m := x else m := y {m >= x && m >= y}',
         derived: true,
         valid: true,
-        result: 'The rule IF derives this triple.',
+        result: 'Both premises hold, so the rule IF derives the triple.',
+        given: [['Precondition P', '$true$'], ['Condition B', '$x >= y$'], ['Then branch c1', '`m := x`'], ['Else branch c2', '`m := y`'],
+          ['Postcondition Q', '$m >= x && m >= y$']],
+        rule: {
+          premises: [
+            { f: '{«true : P» && «x >= y : B»} m := x {«m >= x && m >= y : Q»}', part: 'Then branch' },
+            { f: '{«true : P» && «!(x >= y) : ¬B»} m := y {«m >= x && m >= y : Q»}', part: 'Else branch' }
+          ],
+          conclusion: '{true} if x >= y then m := x else m := y {m >= x && m >= y}'
+        },
         steps: [
-          `The rule IF has one premise per branch. In the then branch we may also assume the condition, and in the else branch its negation:
-
->> {true && x >= y} m := x {m >= x && m >= y}   {true && !(x >= y)} m := y {m >= x && m >= y}   ---   {true} if x >= y then m := x else m := y {m >= x && m >= y}`,
-          `Then branch. The assignment rule gives the precondition:
-
->> (m >= x && m >= y)[m <- x]
->> x >= x && x >= y
-
-The condition of the branch gives $x >= y$, and $x >= x$ always holds. So the first premise holds.`,
-          `Else branch. The assignment rule gives:
-
->> (m >= x && m >= y)[m <- y]
->> y >= x && y >= y
-
-The negated condition $!(x >= y)$ means $x < y$, which gives $y >= x$. So the second premise holds.`,
-          `Both premises hold, so the rule IF gives the triple.`
+          {
+            part: 'Then branch',
+            head: 'We compute the weakest precondition of `m := x` for $Q$: we substitute $m$ with $x$.',
+            calc: ['(m >= x && m >= y)[m <- x]', '= x >= x && x >= y // m replaced by x']
+          },
+          {
+            part: 'Then branch',
+            head: 'The comparison $x >= x$ is always true.',
+            calc: ['= x >= y // x >= x is true, and true && A is A']
+          },
+          {
+            part: 'Then branch',
+            head: 'By the consequence rule, the precondition of the branch must imply this formula.',
+            show: ['«true : P» && «x >= y : B» ==> «x >= y : wp»'],
+            text: 'It holds: the right side is the condition $B$ itself.'
+          },
+          {
+            part: 'Else branch',
+            calcNew: true,
+            head: 'We compute the weakest precondition of `m := y` for $Q$: we substitute $m$ with $y$.',
+            calc: ['(m >= x && m >= y)[m <- y]', '= y >= x && y >= y // m replaced by y']
+          },
+          {
+            part: 'Else branch',
+            head: 'The comparison $y >= y$ is always true.',
+            calc: ['= y >= x // y >= y is true, and A && true is A']
+          },
+          {
+            part: 'Else branch',
+            head: 'By the consequence rule, the precondition of the branch must imply this formula.',
+            show: ['«true : P» && «!(x >= y) : ¬B» ==> «y >= x : wp»'],
+            text: 'It holds: $!(x >= y)$ means $x < y$, which gives $y >= x$.'
+          }
         ]
       },
       {
@@ -289,20 +475,45 @@ The negated condition $!(x >= y)$ means $x < y$, which gives $y >= x$. So the se
         goal: '{true} if x > 0 then y := x else y := 0 {y > 0}',
         derived: false,
         valid: false,
-        result: 'The rule IF cannot derive this triple, and the triple is not valid.',
+        result: 'The second premise does not hold, so the rule IF cannot derive the triple. The triple is not valid.',
+        given: [['Precondition P', '$true$'], ['Condition B', '$x > 0$'], ['Then branch c1', '`y := x`'], ['Else branch c2', '`y := 0`'],
+          ['Postcondition Q', '$y > 0$']],
+        rule: {
+          premises: [
+            { f: '{«true : P» && «x > 0 : B»} y := x {«y > 0 : Q»}', part: 'Then branch' },
+            { f: '{«true : P» && «!(x > 0) : ¬B»} y := 0 {«y > 0 : Q»}', part: 'Else branch' }
+          ],
+          conclusion: '{true} if x > 0 then y := x else y := 0 {y > 0}'
+        },
         steps: [
-          `The two premises are:
-
->> {true && x > 0} y := x {y > 0}   {true && !(x > 0)} y := 0 {y > 0}   ---   {true} if x > 0 then y := x else y := 0 {y > 0}`,
-          `Then branch. The assignment rule gives $(y > 0)[y <- x]$, that is $x > 0$, which is exactly the condition of the branch. The first premise holds.`,
-          `Else branch. The assignment rule gives:
-
->> (y > 0)[y <- 0]
->> 0 > 0
->> false
-
-The precondition of the branch, $true && !(x > 0)$, does not imply $false$. The second premise does not hold.`,
-          `The triple is not valid: from $x = 0$ the else branch sets $y$ to $0$, and $y > 0$ is false at the end.`
+          {
+            part: 'Then branch',
+            head: 'We compute the weakest precondition of `y := x` for $Q$: we substitute $y$ with $x$.',
+            calc: ['(y > 0)[y <- x]', '= x > 0 // y replaced by x']
+          },
+          {
+            part: 'Then branch',
+            head: 'By the consequence rule, the precondition of the branch must imply this formula.',
+            show: ['«true : P» && «x > 0 : B» ==> «x > 0 : wp»'],
+            text: 'It holds: the right side is the condition $B$ itself.'
+          },
+          {
+            part: 'Else branch',
+            calcNew: true,
+            head: 'We compute the weakest precondition of `y := 0` for $Q$: we substitute $y$ with $0$.',
+            calc: ['(y > 0)[y <- 0]', '= 0 > 0 // y replaced by 0']
+          },
+          {
+            part: 'Else branch',
+            head: 'The comparison $0 > 0$ is false.',
+            calc: ['= false // 0 > 0 is false']
+          },
+          {
+            part: 'Else branch',
+            head: 'By the consequence rule, the precondition of the branch must imply this formula.',
+            show: ['«true : P» && «!(x > 0) : ¬B» ==> «false : wp»'],
+            text: 'It is false in the state $x = 0$, which satisfies the left side. From this state the else branch sets $y$ to 0, so $Q$ is false at the end.'
+          }
         ]
       }
     ],
@@ -313,18 +524,39 @@ The precondition of the branch, $true && !(x > 0)$, does not imply $false$. The 
         goal: '{x >= 0} while x > 0 do x := x - 1 {x >= 0 && !(x > 0)}',
         derived: true,
         valid: true,
-        result: 'The rule WHILE derives this triple with the invariant x ≥ 0.',
+        result: 'The rule WHILE derives this triple with the invariant $x >= 0$.',
+        given: [['Invariant I', '$x >= 0$'], ['Condition B', '$x > 0$'], ['Body c', '`x := x - 1`']],
+        rule: {
+          premises: [{ f: '{«x >= 0 : I» && «x > 0 : B»} x := x - 1 {«x >= 0 : I»}', part: 'Preservation' }],
+          conclusion: '{x >= 0} while x > 0 do x := x - 1 {x >= 0 && !(x > 0)}'
+        },
         steps: [
-          `We try the invariant $I = (x >= 0)$. The rule WHILE has one premise: one iteration of the body keeps $I$ when the condition holds.
-
->> {x >= 0 && x > 0} x := x - 1 {x >= 0}   ---   {x >= 0} while x > 0 do x := x - 1 {x >= 0 && !(x > 0)}`,
-          `We compute the weakest precondition of the body for $I$:
-
->> (x >= 0)[x <- x - 1]
->> x - 1 >= 0
->> x >= 1`,
-          `The premise holds if $x >= 0 && x > 0$ implies $x >= 1$. For integers, $x > 0$ is the same as $x >= 1$, so the implication holds.`,
-          `The premise holds, so the rule gives the triple. Its postcondition $x >= 0 && !(x > 0)$ says that the loop stops with $x = 0$, if it stops.`
+          {
+            part: 'Preservation',
+            head: 'The only premise is preservation: from a state that satisfies $I$ and $B$, one execution of the body must give a state that satisfies $I$.',
+            show: ['{«x >= 0 : I» && «x > 0 : B»} x := x - 1 {«x >= 0 : I»}']
+          },
+          {
+            part: 'Preservation',
+            head: 'We compute the weakest precondition of the body for $I$: we substitute $x$ with $x - 1$.',
+            calc: ['(x >= 0)[x <- x - 1]', '= x - 1 >= 0 // x replaced by x - 1']
+          },
+          {
+            part: 'Preservation',
+            head: 'We add 1 to both sides.',
+            calc: ['= x >= 1 // add 1 to both sides']
+          },
+          {
+            part: 'Preservation',
+            head: 'By the consequence rule, $I$ and $B$ together must imply this formula.',
+            show: ['«x >= 0 : I» && «x > 0 : B» ==> «x >= 1 : wp»'],
+            text: 'It holds: for integers, $x > 0$ is the same as $x >= 1$.'
+          },
+          {
+            part: 'Conclusion',
+            head: 'The premise holds, so the rule gives its conclusion, which is the triple.',
+            text: 'The postcondition $x >= 0 && !(x > 0)$ says that the loop ends with $x = 0$, if it ends.'
+          }
         ]
       },
       {
@@ -332,18 +564,34 @@ The precondition of the branch, $true && !(x > 0)$, does not imply $false$. The 
         goal: '{x > 0} while x > 0 do x := x - 1 {x > 0 && !(x > 0)}',
         derived: false,
         valid: false,
-        result: 'The rule WHILE cannot be applied with the invariant x > 0.',
+        result: 'Preservation does not hold, so the rule WHILE cannot be applied with the candidate $x > 0$.',
+        given: [['Candidate invariant I', '$x > 0$'], ['Condition B', '$x > 0$'], ['Body c', '`x := x - 1`']],
+        rule: {
+          premises: [{ f: '{«x > 0 : I» && «x > 0 : B»} x := x - 1 {«x > 0 : I»}', part: 'Preservation' }],
+          conclusion: '{x > 0} while x > 0 do x := x - 1 {x > 0 && !(x > 0)}'
+        },
         steps: [
-          `We try the invariant $I = (x > 0)$. The premise is:
-
->> {x > 0 && x > 0} x := x - 1 {x > 0}`,
-          `We compute the weakest precondition of the body for $I$:
-
->> (x > 0)[x <- x - 1]
->> x - 1 > 0
->> x > 1`,
-          `The premise holds if $x > 0$ implies $x > 1$. It does not: the state $x = 1$ satisfies $x > 0$, and the body makes it $x = 0$, which leaves the candidate.`,
-          `The candidate is not an invariant, since the last iteration takes $x$ from $1$ to $0$. The rule cannot be applied with it. The previous example shows a candidate that works.`
+          {
+            part: 'Preservation',
+            head: 'The only premise is preservation: from a state that satisfies $I$ and $B$, one execution of the body must give a state that satisfies $I$.',
+            show: ['{«x > 0 : I» && «x > 0 : B»} x := x - 1 {«x > 0 : I»}']
+          },
+          {
+            part: 'Preservation',
+            head: 'We compute the weakest precondition of the body for $I$: we substitute $x$ with $x - 1$.',
+            calc: ['(x > 0)[x <- x - 1]', '= x - 1 > 0 // x replaced by x - 1']
+          },
+          {
+            part: 'Preservation',
+            head: 'We add 1 to both sides.',
+            calc: ['= x > 1 // add 1 to both sides']
+          },
+          {
+            part: 'Preservation',
+            head: 'By the consequence rule, $I$ and $B$ together must imply this formula.',
+            show: ['«x > 0 : I» && «x > 0 : B» ==> «x > 1 : wp»'],
+            text: 'It is false in the state $x = 1$: the body gives $x = 0$, which does not satisfy $I$. The last iteration always leaves the candidate.'
+          }
         ]
       }
     ],
@@ -354,27 +602,75 @@ The precondition of the branch, $true && !(x > 0)$, does not imply $false$. The 
         goal: '{x = 0} while x < 10 do x := x + 1 {x = 10}',
         derived: true,
         valid: true,
-        result: 'The rule derives this triple with the invariant 0 ≤ x ≤ 10.',
+        result: 'The three premises hold, so the rule derives the triple with the invariant $0 <= x <= 10$.',
+        given: [['Precondition P', '$x = 0$'], ['Invariant I', '$0 <= x <= 10$'], ['Condition B', '$x < 10$'], ['Body c', '`x := x + 1`'],
+          ['Postcondition Q', '$x = 10$']],
+        rule: {
+          premises: [
+            { f: '«x = 0 : P» ==> «0 <= x <= 10 : I»', part: 'Establishment' },
+            { f: '{«0 <= x <= 10 : I» && «x < 10 : B»} x := x + 1 {«0 <= x <= 10 : I»}', part: 'Preservation' },
+            { f: '«0 <= x <= 10 : I» && «!(x < 10) : ¬B» ==> «x = 10 : Q»', part: 'Exit' }
+          ],
+          conclusion: '{x = 0} while x < 10 do x := x + 1 {x = 10}'
+        },
         steps: [
-          `We try the invariant $I = (0 <= x <= 10)$. The rule has three premises: establishment, preservation and the postcondition at the exit.
-
->> x = 0 ==> I   {I && x < 10} x := x + 1 {I}   I && !(x < 10) ==> x = 10   ---   {x = 0} while x < 10 do x := x + 1 {x = 10}`,
-          `Establishment:
-
->> x = 0 ==> 0 <= x <= 10
-
-It holds: $0$ is between $0$ and $10$.`,
-          `Preservation. The weakest precondition of the body for $I$ is:
-
->> (0 <= x <= 10)[x <- x + 1]
->> 0 <= x + 1 <= 10
-
-From $0 <= x$ we get $0 <= x + 1$, and from $x < 10$ we get $x + 1 <= 10$. So $I && x < 10$ implies it.`,
-          `Exit:
-
->> 0 <= x <= 10 && !(x < 10) ==> x = 10
-
-$!(x < 10)$ is $x >= 10$, and with $x <= 10$ it gives $x = 10$. All three premises hold.`
+          {
+            part: 'Establishment',
+            head: 'The invariant must hold when the loop starts, so the precondition $P$ must imply $I$.',
+            show: ['«x = 0 : P» ==> «0 <= x <= 10 : I»']
+          },
+          {
+            part: 'Establishment',
+            head: 'The precondition $P$ says $x = 0$, so we replace $x$ by 0 in $I$.',
+            assume: 'x = 0',
+            calc: ['0 <= x <= 10', '= 0 <= 0 <= 10 // x = 0, by P']
+          },
+          {
+            part: 'Establishment',
+            head: 'Both comparisons are true.',
+            assume: 'x = 0',
+            calc: ['= true // 0 <= 0 and 0 <= 10'],
+            text: 'So $P$ implies $I$, and establishment holds.'
+          },
+          {
+            part: 'Preservation',
+            calcNew: true,
+            head: 'From a state that satisfies $I$ and $B$, one execution of the body must give a state that satisfies $I$.',
+            show: ['{«0 <= x <= 10 : I» && «x < 10 : B»} x := x + 1 {«0 <= x <= 10 : I»}']
+          },
+          {
+            part: 'Preservation',
+            head: 'We compute the weakest precondition of the body for $I$: we substitute $x$ with $x + 1$.',
+            calc: ['(0 <= x <= 10)[x <- x + 1]', '= 0 <= x + 1 <= 10 // x replaced by x + 1']
+          },
+          {
+            part: 'Preservation',
+            head: 'By the consequence rule, $I$ and $B$ together must imply this formula.',
+            show: ['«0 <= x <= 10 : I» && «x < 10 : B» ==> «0 <= x + 1 <= 10 : wp»']
+          },
+          {
+            part: 'Preservation',
+            head: 'We prove the two bounds of the right side separately.',
+            show: ['«0 <= x <= 10 : I» && «x < 10 : B» ==> «0 <= x + 1 <= 10 : wp»'],
+            text: '- Lower bound: from $0 <= x$, in $I$, we get $0 <= x + 1$.\n- Upper bound: from $x < 10$, which is $B$, we get $x + 1 <= 10$, since $x$ is an integer.\n\nSo preservation holds.'
+          },
+          {
+            part: 'Exit',
+            calcNew: true,
+            head: 'When the loop stops, $I$ holds and $B$ is false. Together they must imply $Q$.',
+            show: ['«0 <= x <= 10 : I» && «!(x < 10) : ¬B» ==> «x = 10 : Q»']
+          },
+          {
+            part: 'Exit',
+            head: 'We simplify the left side.',
+            calc: ['0 <= x <= 10 && !(x < 10)', '= 0 <= x <= 10 && x >= 10 // !(x < 10) is x >= 10']
+          },
+          {
+            part: 'Exit',
+            head: 'The bounds $x <= 10$ and $x >= 10$ together give $x = 10$.',
+            calc: ['= x = 10 // x <= 10 and x >= 10'],
+            text: 'The left side is $Q$ itself, so exit holds.'
+          }
         ]
       },
       {
@@ -382,16 +678,58 @@ $!(x < 10)$ is $x >= 10$, and with $x <= 10$ it gives $x = 10$. All three premis
         goal: '{x = 0} while x < 10 do x := x + 1 {x = 10}',
         derived: false,
         valid: true,
-        result: 'The rule cannot derive the triple with the invariant 0 ≤ x. The triple is valid, and the invariant 0 ≤ x ≤ 10 works.',
+        result: 'Exit does not hold, so the rule cannot derive the triple with the invariant $0 <= x$. The triple is valid: the invariant $0 <= x <= 10$ of the first example works.',
+        given: [['Precondition P', '$x = 0$'], ['Candidate invariant I', '$0 <= x$'], ['Condition B', '$x < 10$'], ['Body c', '`x := x + 1`'],
+          ['Postcondition Q', '$x = 10$']],
+        rule: {
+          premises: [
+            { f: '«x = 0 : P» ==> «0 <= x : I»', part: 'Establishment' },
+            { f: '{«0 <= x : I» && «x < 10 : B»} x := x + 1 {«0 <= x : I»}', part: 'Preservation' },
+            { f: '«0 <= x : I» && «!(x < 10) : ¬B» ==> «x = 10 : Q»', part: 'Exit' }
+          ],
+          conclusion: '{x = 0} while x < 10 do x := x + 1 {x = 10}'
+        },
         steps: [
-          `We try the invariant $I = (0 <= x)$, without the upper bound.`,
-          `Establishment, $x = 0 ==> 0 <= x$, holds. Preservation also holds: the body gives $0 <= x + 1$, which follows from $0 <= x$.`,
-          `Exit:
-
->> 0 <= x && !(x < 10) ==> x = 10
-
-It does not hold. The state $x = 11$ satisfies $0 <= x$ and $x >= 10$, but not $x = 10$.`,
-          `The candidate is an invariant, but it is too weak to give the postcondition. The bound $x <= 10$ is the missing fact that turns $x >= 10$ into $x = 10$.`
+          {
+            part: 'Establishment',
+            head: 'The precondition $P$ must imply $I$. $P$ says $x = 0$, so we replace $x$ by 0 in $I$.',
+            assume: 'x = 0',
+            calc: ['0 <= x', '= 0 <= 0 // x = 0, by P', '= true // 0 <= 0'],
+            text: 'Establishment holds.'
+          },
+          {
+            part: 'Preservation',
+            calcNew: true,
+            head: 'From a state that satisfies $I$ and $B$, one execution of the body must give a state that satisfies $I$.',
+            show: ['{«0 <= x : I» && «x < 10 : B»} x := x + 1 {«0 <= x : I»}']
+          },
+          {
+            part: 'Preservation',
+            head: 'We compute the weakest precondition of the body for $I$: we substitute $x$ with $x + 1$.',
+            calc: ['(0 <= x)[x <- x + 1]', '= 0 <= x + 1 // x replaced by x + 1']
+          },
+          {
+            part: 'Preservation',
+            head: 'By the consequence rule, $I$ and $B$ together must imply this formula.',
+            show: ['«0 <= x : I» && «x < 10 : B» ==> «0 <= x + 1 : wp»'],
+            text: 'It holds: from $0 <= x$ we get $0 <= x + 1$. So preservation holds.'
+          },
+          {
+            part: 'Exit',
+            calcNew: true,
+            head: 'When the loop stops, $I$ holds and $B$ is false. Together they must imply $Q$.',
+            show: ['«0 <= x : I» && «!(x < 10) : ¬B» ==> «x = 10 : Q»']
+          },
+          {
+            part: 'Exit',
+            head: 'We simplify the left side.',
+            calc: ['0 <= x && !(x < 10)', '= 0 <= x && x >= 10 // !(x < 10) is x >= 10', '= x >= 10 // x >= 10 gives 0 <= x']
+          },
+          {
+            part: 'Exit',
+            head: 'The left side, $x >= 10$, does not imply $Q$.',
+            text: 'The state $x = 11$ satisfies $x >= 10$ and not $x = 10$. The candidate is an invariant, but it is too weak: the bound $x <= 10$ is missing.'
+          }
         ]
       }
     ],
@@ -402,21 +740,50 @@ It does not hold. The state $x = 11$ satisfies $0 <= x$ and $x >= 10$, but not $
         goal: '{i <= 10} while i < 10 do i := i + 1 {i <= 10 && !(i < 10)}',
         derived: true,
         valid: true,
-        result: 'The loop stops: the variant 10 − i works.',
+        result: 'Both premises hold, so the loop terminates, with the variant $10 - i$.',
+        given: [['Invariant I', '$i <= 10$'], ['Condition B', '$i < 10$'], ['Body c', '`i := i + 1`'], ['Variant E', '$10 - i$'],
+          ['n', 'a logical variable for the value of $E$ when an iteration starts']],
+        rule: {
+          premises: [
+            { f: '{«i <= 10 : I» && «i < 10 : B» && «10 - i = n : E = n»} i := i + 1 {«i <= 10 : I» && «10 - i < n : E < n»}', part: 'Body' },
+            { f: '«i <= 10 : I» && «i < 10 : B» ==> «10 - i >= 0 : E ≥ 0»', part: 'Variant not negative' }
+          ],
+          conclusion: '{i <= 10} while i < 10 do i := i + 1 {i <= 10 && !(i < 10)}'
+        },
         steps: [
-          `We use the invariant $I = (i <= 10)$ and try the variant $E = 10 - i$. $n$ is a logical variable for the value of $E$ at the start of an iteration.
-
->> {i <= 10 && i < 10 && 10 - i = n} i := i + 1 {i <= 10 && 10 - i < n}   i <= 10 && i < 10 ==> 10 - i >= 0   ---   {i <= 10} while i < 10 do i := i + 1 {i <= 10 && !(i < 10)}`,
-          `The variant is not negative when an iteration starts:
-
->> i <= 10 && i < 10 ==> 10 - i >= 0
-
-It holds, since $i < 10$ gives $10 - i > 0$.`,
-          `The body keeps the invariant and decreases the variant. The weakest precondition of the postcondition of the first premise is:
-
->> (i <= 10 && 10 - i < n)[i <- i + 1]
->> i + 1 <= 10 && 10 - (i + 1) < n`,
-          `From $i < 10$ we get $i + 1 <= 10$. From $10 - i = n$ we get $10 - (i + 1) = n - 1 < n$. Both premises hold, so the loop stops.`
+          {
+            part: 'Variant not negative',
+            head: 'When an iteration starts, the variant must not be negative.',
+            show: ['«i <= 10 : I» && «i < 10 : B» ==> «10 - i >= 0 : E ≥ 0»']
+          },
+          {
+            part: 'Variant not negative',
+            head: 'We simplify the right side.',
+            calc: ['10 - i >= 0', '= i <= 10 // add i to both sides'],
+            text: 'The right side is $I$ itself, so the implication holds.'
+          },
+          {
+            part: 'Body',
+            calcNew: true,
+            head: 'One iteration must keep $I$ and make the variant smaller than its value $n$ at the start of the iteration.',
+            show: ['{«i <= 10 : I» && «i < 10 : B» && «10 - i = n : E = n»} i := i + 1 {«i <= 10 : I» && «10 - i < n : E < n»}']
+          },
+          {
+            part: 'Body',
+            head: 'We compute the weakest precondition of the body for the postcondition: we substitute $i$ with $i + 1$.',
+            calc: ['(i <= 10 && 10 - i < n)[i <- i + 1]', '= i + 1 <= 10 && 10 - (i + 1) < n // i replaced by i + 1']
+          },
+          {
+            part: 'Body',
+            head: 'We simplify the two conjuncts.',
+            calc: ['= i < 10 && 10 - (i + 1) < n // i + 1 <= 10 is i < 10, for integers', '= i < 10 && 9 - i < n // 10 - (i + 1) = 9 - i']
+          },
+          {
+            part: 'Body',
+            head: 'By the consequence rule, the precondition of the triple must imply this formula.',
+            show: ['«i <= 10 : I» && «i < 10 : B» && «10 - i = n : E = n» ==> «i < 10 && 9 - i < n : wp»'],
+            text: 'The conjunct $i < 10$ is $B$. From $10 - i = n$ we get $9 - i = n - 1$, which is smaller than $n$. So the premise holds.'
+          }
         ]
       },
       {
@@ -424,12 +791,40 @@ It holds, since $i < 10$ gives $10 - i > 0$.`,
         goal: '{x >= 0} while x >= 0 do x := x + 1 {x >= 0 && !(x >= 0)}',
         derived: false,
         valid: null,
-        result: 'No variant works: this loop never stops.',
+        result: 'No variant works: this loop does not terminate.',
+        given: [['Invariant I', '$x >= 0$'], ['Condition B', '$x >= 0$'], ['Body c', '`x := x + 1`'], ['Candidate variant E', '{{E}}'],
+          ['n', 'a logical variable for the value of $E$ when an iteration starts']],
+        rule: {
+          premises: [
+            { f: '{«x >= 0 : I» && «x >= 0 : B» && «{{E}} = n : E = n»} x := x + 1 {«x >= 0 : I» && «{{E}} < n : E < n»}', part: 'Body' },
+            { f: '«x >= 0 : I» && «x >= 0 : B» ==> «{{E}} >= 0 : E ≥ 0»', part: 'Variant not negative' }
+          ],
+          conclusion: '{x >= 0} while x >= 0 do x := x + 1 {x >= 0 && !(x >= 0)}'
+        },
         steps: [
-          `We use the invariant $I = (x >= 0)$ and look for a variant.`,
-          `First try, $E = x$. It is not negative while the loop runs, but the body increases it: from $x = n$ we get $x = n + 1$, which is not smaller than $n$. The first premise fails.`,
-          `Second try, $E = -x$. It decreases in every iteration, but it is negative: the state $x = 1$ satisfies $I && x >= 0$, and $-x = -1$. The second premise fails.`,
-          `No variant can work, since the loop never stops: $x$ only grows, so the condition $x >= 0$ stays true. The rule for partial correctness still gives the triple, because a loop that never stops satisfies any postcondition.`
+          {
+            part: 'Body',
+            set: { E: 'x' },
+            head: 'First try: $E = x$. We compute the weakest precondition of the body for the postcondition: we substitute $x$ with $x + 1$.',
+            calc: ['(x >= 0 && x < n)[x <- x + 1]', '= x + 1 >= 0 && x + 1 < n // x replaced by x + 1']
+          },
+          {
+            part: 'Body',
+            head: 'The premise needs $x = n ==> x + 1 < n$, which is false: $x + 1 = n + 1$ is not smaller than $n$.',
+            text: 'The body increases $x$, so $E = x$ does not decrease.'
+          },
+          {
+            part: 'Variant not negative',
+            calcNew: true,
+            set: { E: '-x' },
+            head: 'Second try: $E = -x$. It decreases in every iteration, but it must also not be negative when an iteration starts.',
+            show: ['«x >= 0 : I» && «x >= 0 : B» ==> «-x >= 0 : E ≥ 0»']
+          },
+          {
+            part: 'Variant not negative',
+            head: 'The implication is false in the state $x = 1$, where $-x = -1$.',
+            text: 'No variant can work, because the loop never stops: $x$ only grows, so the condition $x >= 0$ stays true.'
+          }
         ]
       }
     ],
@@ -441,16 +836,23 @@ It holds, since $i < 10$ gives $10 - i > 0$.`,
         derived: true,
         valid: true,
         result: 'The rule ARRAY-READ derives this triple.',
+        given: [['Assigned variable', '$x$'], ['Assignment expression', '$a[i]$'], ['Postcondition Q', '$x > 0$'],
+          ['Precondition P', '$a[i] > 0 && 0 <= i < sizeof(a)$']],
         steps: [
-          `The expression $a[i]$ reads the array once, at position $i$. The rule ARRAY-READ substitutes as the assignment rule does, and adds one condition for the read.`,
-          `Substitution:
-
->> (x > 0)[x <- a[i]]
->> a[i] > 0`,
-          `Definedness of the read:
-
->> def(a[i]) <=> 0 <= i < sizeof(a)`,
-          `The rule gives the precondition $a[i] > 0 && 0 <= i < sizeof(a)$, which is the precondition we have.`
+          {
+            head: 'The precondition is obtained by substituting the assigned variable ($x$) with the assignment expression ($a[i]$) in $Q$.',
+            calc: ['(x > 0)[x <- a[i]]', '= a[i] > 0 // x replaced by a[i]']
+          },
+          {
+            calcNew: true,
+            head: 'The expression reads the array at position $i$, so the rule ARRAY-READ adds $def(a[i])$: position $i$ must exist.',
+            calc: ['def(a[i])', '= 0 <= i < sizeof(a) // the positions of a are 0, ..., sizeof(a) - 1']
+          },
+          {
+            head: 'The precondition given by the rule is the conjunction of the two parts.',
+            show: ['«a[i] > 0 : substitution» && «0 <= i < sizeof(a) : def(a[i])»'],
+            text: 'This is the precondition $P$, so the rule derives the triple.'
+          }
         ]
       },
       {
@@ -459,13 +861,22 @@ It holds, since $i < 10$ gives $10 - i > 0$.`,
         derived: false,
         valid: null,
         result: 'The rule ARRAY-READ cannot derive this triple: the read may be outside the array.',
+        given: [['Assigned variable', '$x$'], ['Assignment expression', '$a[i]$'], ['Postcondition Q', '$x > 0$'], ['Precondition P', '$a[i] > 0$']],
         steps: [
-          `The rule gives the precondition $a[i] > 0 && def(a[i])$, as in the previous example.`,
-          `To use it, the precondition we have must imply it. In particular it must imply that the read is defined:
-
->> a[i] > 0 ==> 0 <= i < sizeof(a)`,
-          `Nothing in $a[i] > 0$ says that position $i$ exists. Take the array 4, 0, 9 and $i = 7$: the read $a[7]$ has no value. In Java it raises an exception, and in C its behaviour is undefined.`,
-          `The precondition does not exclude this state, so the rule cannot derive the triple. Adding $0 <= i < sizeof(a)$ to the precondition repairs it, as in the previous example.`
+          {
+            head: 'The precondition is obtained by substituting the assigned variable ($x$) with the assignment expression ($a[i]$) in $Q$.',
+            calc: ['(x > 0)[x <- a[i]]', '= a[i] > 0 // x replaced by a[i]']
+          },
+          {
+            calcNew: true,
+            head: 'The expression reads the array at position $i$, so the rule ARRAY-READ adds $def(a[i])$: position $i$ must exist.',
+            calc: ['def(a[i])', '= 0 <= i < sizeof(a) // the positions of a are 0, ..., sizeof(a) - 1']
+          },
+          {
+            head: 'By the consequence rule, the precondition $P$ must imply the precondition given by the rule.',
+            show: ['«a[i] > 0 : P» ==> «a[i] > 0 && 0 <= i < sizeof(a) : wp»'],
+            text: 'Nothing in $P$ says that position $i$ exists. Take the array $a$ with the values 4, 0, 9 and $i = 7$: position 7 does not exist, so the read $a[7]$ has no value.'
+          }
         ]
       }
     ],
@@ -477,18 +888,26 @@ It holds, since $i < 10$ gives $10 - i > 0$.`,
         derived: true,
         valid: true,
         result: 'The rule ARRAY-ASSIGN derives this triple.',
+        given: [['Array', '$a$'], ['Position written', '$i$'], ['Value written', '$1$'], ['Postcondition Q', '$a[j] = 0$'],
+          ['Precondition P', '$j != i && a[j] = 0 && 0 <= i < sizeof(a)$']],
         steps: [
-          `The write is at position $i$ and the value is $1$. The rule replaces the array $a$ in the postcondition by the updated array $a[i |-> 1]$.
-
->> (a[j] = 0)[a <- a[i |-> 1]]
->> a[i |-> 1][j] = 0`,
-          `We do not know whether $j$ is equal to $i$, so the select-store axioms keep both cases:
-
->> (j = i && 1 = 0) || (j != i && a[j] = 0)`,
-          `The first case is $false$, since $1 = 0$ is false. What remains is:
-
->> j != i && a[j] = 0`,
-          `We add the definedness of the write, $0 <= i < sizeof(a)$. The rule gives the precondition $j != i && a[j] = 0 && 0 <= i < sizeof(a)$, which is the precondition we have.`
+          {
+            head: 'The rule replaces the array $a$ in $Q$ by the updated array $a[i |-> 1]$, which is $a$ with the value 1 at position $i$.',
+            calc: ['(a[j] = 0)[a <- a[i |-> 1]]', '= a[i |-> 1][j] = 0 // a replaced by a[i |-> 1]']
+          },
+          {
+            head: 'We do not know whether $j$ is equal to $i$, so we use the two cases of a read in an updated array: at position $i$ the value is 1, at any other position $j$ it is $a[j]$.',
+            calc: ['= (j = i && 1 = 0) || (j != i && a[j] = 0) // read of a[i |-> 1] at position j']
+          },
+          {
+            head: 'The first case is false, since $1 = 0$ is false.',
+            calc: ['= j != i && a[j] = 0 // false || A is A']
+          },
+          {
+            head: 'The write is at position $i$, so the rule also adds $def(a[i])$: position $i$ must exist.',
+            show: ['«j != i && a[j] = 0 : substitution» && «0 <= i < sizeof(a) : def(a[i])»'],
+            text: 'This is the precondition $P$, so the rule derives the triple.'
+          }
         ]
       },
       {
@@ -497,13 +916,30 @@ It holds, since $i < 10$ gives $10 - i > 0$.`,
         derived: false,
         valid: false,
         result: 'The rule ARRAY-ASSIGN does not derive this triple, and the triple is not valid.',
+        given: [['Array', '$a$'], ['Position written', '$i$'], ['Value written', '$1$'], ['Postcondition Q', '$a[j] = 0$'],
+          ['Precondition P', '$a[j] = 0 && 0 <= i < sizeof(a)$']],
         steps: [
-          `This is the precondition that the naive rule gives: it replaces the text $a[i]$ in the postcondition, and $a[j] = 0$ does not contain it.`,
-          `The rule ARRAY-ASSIGN gives the precondition $j != i && a[j] = 0 && 0 <= i < sizeof(a)$, as in the previous example. To use it, we need:
-
->> a[j] = 0 && 0 <= i < sizeof(a) ==> j != i`,
-          `This implication is false. Take the array 4, 0, 9 and $i = j = 1$: $a[1] = 0$ and position $1$ exists, but $j = i$.`,
-          `The same state shows that the triple is not valid: the write sets $a[1]$ to $1$, so $a[j] = 0$ is false at the end. When $i = j$, $a[i]$ and $a[j]$ are the same cell.`
+          {
+            head: 'The rule replaces the array $a$ in $Q$ by the updated array $a[i |-> 1]$, which is $a$ with the value 1 at position $i$.',
+            calc: ['(a[j] = 0)[a <- a[i |-> 1]]', '= a[i |-> 1][j] = 0 // a replaced by a[i |-> 1]']
+          },
+          {
+            head: 'We do not know whether $j$ is equal to $i$, so we use the two cases of a read in an updated array: at position $i$ the value is 1, at any other position $j$ it is $a[j]$.',
+            calc: ['= (j = i && 1 = 0) || (j != i && a[j] = 0) // read of a[i |-> 1] at position j']
+          },
+          {
+            head: 'The first case is false, since $1 = 0$ is false.',
+            calc: ['= j != i && a[j] = 0 // false || A is A']
+          },
+          {
+            head: 'The write is at position $i$, so the rule also adds $def(a[i])$: position $i$ must exist.',
+            show: ['«j != i && a[j] = 0 : substitution» && «0 <= i < sizeof(a) : def(a[i])»']
+          },
+          {
+            head: 'By the consequence rule, the precondition $P$ must imply the precondition given by the rule.',
+            show: ['«a[j] = 0 && 0 <= i < sizeof(a) : P» ==> «j != i && a[j] = 0 && 0 <= i < sizeof(a) : wp»'],
+            text: 'It is false for the array $a$ with the values 4, 0, 9 and $i = j = 1$: $P$ holds, but $j != i$ does not. Here $a[i]$ and $a[j]$ are the same cell, so the write sets $a[j]$ to 1, and $Q$ is false at the end.'
+          }
         ]
       }
     ]

@@ -1,33 +1,37 @@
-# Source: Slides "ICT3112 - 7 - Recepy for Loop Invariants - exercises", Exercise 2; exercise sheet "Hoare Logic 2", 3 a).
+# Source: Slides "ICT3112 - 7 - Recepy for Loop Invariants - exercises", Exercise 2. The exercise sheet
+# "Hoare Logic 2", 3 a), has the same loop, with f = 1 and i = 0 in the precondition instead of the
+# initialisation.
 id: factorial
-title: Factorial, with the recipe
+title: Factorial
 topic: Loop invariants
 level: 2
 source: Slides 7, Recipe exercises, Exercise 2; exercise sheet "Hoare Logic 2", 3 a
-tags: recipe, invariant, factorial
+tags: recipe, invariant, factorial, variant
 
 task:
-  Use the recipe to find the invariant $I$. Check establishment and
-  preservation, show that $Q$ holds at the exit, and give a variant.
+  Find a loop invariant $I$. Prove establishment, preservation and the
+  postcondition at the exit. Then give a variant and show that the loop
+  terminates. $fact(n)$ is $n!$, with $fact(0) = 1$.
 
-  Hint: look at the order of the two statements in the body. The variable
-  $i$ is increased before it is used.
+hint:
+  Look at the order of the two statements in the body. The variable $i$
+  is increased before it is used.
 
 pre: n >= 0
 post: f = fact(n)
 
 program:
   {P}
-  {R4}
+  {R2}
   i := 0;            // i1
-  {R3}
+  {R1}
   f := 1;            // i2
   {I}
   while (i < n) do {
     {I && i < n}
-    {R2}
+    {R4}
     i := i + 1;      // b1
-    {R1}
+    {R3}
     f := f * i       // b2
     {I}
   }
@@ -36,7 +40,7 @@ program:
 
 verdict: valid
 
-step: Trace and generalise
+step: The invariant I
 rule: WHILE-CONSEQUENCE
 focus: while
 text:
@@ -47,46 +51,124 @@ text:
   | before iteration 3 | $2$ | $2$ |
   | before iteration 4 | $3$ | $6$ |
 
-  The values are $f = i!$. Replacing $n$ by $i$ in $f = n!$ gives the same
-  formula. With the bounds of $i$:
+  The trace gives $f = fact(i)$. It is the postcondition $Q$ with $n$
+  replaced by the counter $i$. We add the bounds $0 <= i <= n$ of the
+  counter, which the exit needs.
 set: I = f = fact(i) && 0 <= i <= n
 note:
-  If you wrote $f = (i + 1)!$ or $f = (i - 1)!$, check the trace: at the
-  first loop head $i = 0$ and $f = 1 = 0!$.
+  If you wrote $f = fact(i + 1)$ or $f = fact(i - 1)$, check the first row
+  of the trace: $i = 0$ and $f = 1 = fact(0)$.
 
-step: Establishment
-rule: ASSIGN, SEQ, WP
-focus: i1, i2
+step: Establishment: R1, the weakest precondition of f := 1
+rule: ASSIGN, WP
+focus: i2
+text:
+  The loop is preceded by `i := 0; f := 1`, so establishment is the
+  triple
+  >>> {«n >= 0 : P»} i := 0; f := 1 {«f = fact(i) && 0 <= i <= n : I»}
+  We compute its weakest precondition from the last statement. We
+  substitute $f$ with $1$ in its postcondition, the invariant $I$.
 calc:
   wp(f := 1, I)
-  = 1 = fact(i) && 0 <= i <= n
-set: R3 = 1 = fact(i) && 0 <= i <= n
-calc:
-  wp(i := 0, R3)
-  = 1 = fact(0) && 0 <= 0 <= n
-  = 0 <= n                         // 0! = 1
-set: R4 = 0 <= n
-vc: n >= 0 ==> 0 <= n
+  = (f = fact(i) && 0 <= i <= n)[f <- 1]
+  = 1 = fact(i) && 0 <= i <= n       // every f is replaced by 1
+set: R1 = 1 = fact(i) && 0 <= i <= n
 
-step: Preservation
-rule: ASSIGN, SEQ, CONSEQUENCE
-focus: b1, b2
+step: Establishment: R2, the weakest precondition of i := 0
+rule: ASSIGN, WP
+focus: i1
+text:
+  We substitute $i$ with $0$ in $R1$, computed in the previous step.
+calc:
+  wp(i := 0, R1)
+  = (1 = fact(i) && 0 <= i <= n)[i <- 0]
+  = 1 = fact(0) && 0 <= 0 <= n       // every i is replaced by 0
+  = 1 = 1 && 0 <= 0 <= n             // fact(0) = 1
+  = 0 <= n                           // 1 = 1 and 0 <= 0 are true
+set: R2 = 0 <= n
+
+step: Establishment: the precondition implies R2
+rule: CONSEQUENCE
+text:
+  $R2$ is the weakest precondition of `i := 0; f := 1` for $I$. By the
+  consequence rule, establishment holds when the precondition $P$ implies
+  $R2$.
+vc: n >= 0 ==> 0 <= n
+why:
+  Both sides say the same thing.
+
+step: Preservation: R3, the weakest precondition of f := f * i
+rule: ASSIGN, WP
+focus: b2
+text:
+  Preservation is the triple below, where the loop body is
+  `i := i + 1; f := f * i`.
+  >>> {«f = fact(i) && 0 <= i <= n : I» && «i < n : B»} i := i + 1; f := f * i {«f = fact(i) && 0 <= i <= n : I»}
+  We compute the weakest precondition of the body for $I$, from the last
+  statement. We substitute $f$ with $f * i$ in $I$.
 calc:
   wp(f := f * i, I)
-  = f * i = fact(i) && 0 <= i <= n
-set: R1 = f * i = fact(i) && 0 <= i <= n
+  = (f = fact(i) && 0 <= i <= n)[f <- f * i]
+  = f * i = fact(i) && 0 <= i <= n       // every f is replaced by f * i
+set: R3 = f * i = fact(i) && 0 <= i <= n
+
+step: Preservation: R4, the weakest precondition of i := i + 1
+rule: ASSIGN, WP
+focus: b1
+text:
+  We substitute $i$ with $i + 1$ in $R3$, computed in the previous step.
 calc:
-  wp(i := i + 1, R1)
-  = f * (i + 1) = fact(i + 1) && 0 <= i + 1 <= n
-set: R2 = f * (i + 1) = fact(i + 1) && 0 <= i + 1 <= n
+  wp(i := i + 1, R3)
+  = (f * i = fact(i) && 0 <= i <= n)[i <- i + 1]
+  = f * (i + 1) = fact(i + 1) && 0 <= i + 1 <= n     // every i is replaced by i + 1
+set: R4 = f * (i + 1) = fact(i + 1) && 0 <= i + 1 <= n
+
+step: Preservation: I and B imply R4
+rule: CONSEQUENCE
+text:
+  $R4$ is the weakest precondition of the body for $I$. By the consequence
+  rule, preservation holds when the invariant $I$ and the loop condition
+  $B$ together imply $R4$.
 vc: f = fact(i) && 0 <= i <= n && i < n ==> f * (i + 1) = fact(i + 1) && 0 <= i + 1 <= n
 why:
-  $(i + 1)! = i! * (i + 1)$, and $f = i!$, so $f * (i + 1) = (i + 1)!$. The
-  bounds follow from $0 <= i$ and $i < n$.
+  First conjunct: $fact(i + 1) = fact(i) * (i + 1)$, and $f = fact(i)$ by
+  $I$, so $f * (i + 1) = fact(i + 1)$.
+
+  Second conjunct: $0 <= i$ gives $0 <= i + 1$, and $i < n$ gives
+  $i + 1 <= n$.
 
 step: The postcondition at the exit
 rule: CONSEQUENCE, LOGIC
+text:
+  When the loop stops, $I$ holds and the loop condition $B$ is false. The
+  postcondition $Q$ must follow from them.
 vc: f = fact(i) && 0 <= i <= n && !(i < n) ==> f = fact(n)
 why:
-  $i >= n$ and $i <= n$ give $i = n$, so $f = n!$.
-result: The triple is valid. A variant for termination is $n - i$.
+  $!(i < n)$ is $i >= n$. With $i <= n$ from $I$ it gives $i = n$, so
+  $f = fact(i)$ becomes $f = fact(n)$.
+
+step: Termination with the variant n - i
+rule: WHILE-TOTAL
+text:
+  The counter $i$ goes up to $n$, so $n - i$ is the number of iterations
+  left. We use the variant $E = n - i$. The rule WHILE-TOTAL asks two
+  things.
+
+  First, the variant is not negative when an iteration starts.
+vc: f = fact(i) && 0 <= i <= n && i < n ==> n - i >= 0
+why:
+  $i < n$ from $B$ gives $n - i > 0$.
+text:
+  Second, the body decreases the variant. We write $E0$ for the value of
+  $n - i$ before the iteration, and compute the weakest precondition of
+  the body for $n - i < E0$, from the last statement.
+calc:
+  wp(f := f * i, n - i < E0)
+  = n - i < E0                // f does not occur, so nothing changes
+calc:
+  wp(i := i + 1, n - i < E0)
+  = n - (i + 1) < E0          // i is replaced by i + 1
+vc: f = fact(i) && 0 <= i <= n && i < n && n - i = E0 ==> n - (i + 1) < E0
+why:
+  $n - (i + 1) = (n - i) - 1 = E0 - 1$, which is smaller than $E0$.
+result: The triple is valid, and the loop terminates.

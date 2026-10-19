@@ -1,13 +1,16 @@
-# Source: Exercise list "ICT3101 Exercises - Deductive Verification", problem 4 c), with its solution sheet.
+# Source: HoareLogic Exercises.pdf ("ICT3101 Exercises, Deductive Verification"), problem 4 c), with its solution in "HoareLogic Exercises Solutions - Problem 4.pdf".
 id: prove-sequence-c
-title: A triple that turns out to be invalid
+title: Two assignments whose triple is not valid
 topic: Sequential composition
 level: 2
-source: Exercise list "HoareLogic Exercises", problem 4 c
+source: HoareLogic Exercises, problem 4 c
 tags: assignment, sequence, counterexample
 
 task:
-  Prove the following Hoare triple, or show that it is not valid.
+  Calculate the weakest precondition of the program for the postcondition
+  $Q$, statement by statement from the last one. Then use the consequence
+  rule to decide whether the triple is valid. If it is not valid, give a
+  counterexample.
 
 pre: y >= z && z >= y
 post: x = 4 * y
@@ -22,46 +25,52 @@ program:
 
 verdict: invalid
 
-step: The last statement, `x := 3 * z + y`
+step: R1, the weakest precondition of x := 3 * z + y
 rule: ASSIGN, WP
 focus: i2
+text:
+  The precondition of an assignment is obtained by substituting the
+  assigned variable ($x$) with the assignment expression ($3 * z + y$) in
+  the postcondition $Q$.
 calc:
   wp(x := 3 * z + y, Q)
   = (x = 4 * y)[x <- 3 * z + y]
-  = 3 * z + y = 4 * y
+  = 3 * z + y = 4 * y      // the x of Q is replaced by 3 * z + y
 set: R1 = 3 * z + y = 4 * y
 
-step: The first statement, `z := z + y`
+step: R2, the weakest precondition of z := z + y
 rule: ASSIGN, WP
 focus: i1
+text:
+  We substitute the assigned variable ($z$) with the assignment expression
+  ($z + y$) in the postcondition of this statement, which is $R1$.
 calc:
   wp(z := z + y, R1)
   = (3 * z + y = 4 * y)[z <- z + y]
-  = 3 * (z + y) + y = 4 * y
-  = 3 * z + 4 * y = 4 * y      // multiply out and add 3 * y + y
-  = z = 0                      // subtract 4 * y and divide by 3
+  = 3 * (z + y) + y = 4 * y      // the z of R1 is replaced by z + y
+  = 3 * z + 3 * y + y = 4 * y    // multiply out 3 * (z + y)
+  = 3 * z + 4 * y = 4 * y        // add 3 * y + y
+  = 3 * z = 0                    // subtract 4 * y from both sides
+  = z = 0                        // divide both sides by 3
 set: R2 = z = 0
 
-step: Compare with the precondition
+step: The precondition must imply the weakest precondition
 rule: CONSEQUENCE, LOGIC
+text:
+  $R2$ is the weakest precondition of the whole program for $Q$. By the
+  consequence rule, the triple is valid when the precondition $P$ implies
+  $R2$.
+  >>> «y >= z && z >= y : P» ==> «z = 0 : R2»
+  First we simplify $P$.
 calc:
   y >= z && z >= y
-  = y = z
+  = y = z                  // y >= z and y <= z together mean y = z
 vc: y >= z && z >= y ==> z = 0
 status: fails
 counterexample: y = 1, z = 1
 why:
-  The precondition says that $y = z$, which allows any common value. The
-  weakest precondition needs $z = 0$. The state $y = z = 1$ satisfies the
-  first but not the second, so the precondition is weaker than the
-  weakest precondition, and the consequence rule cannot be applied.
-
-step: Confirm with an execution
-rule: LOGIC
-text:
-  From $y = 1$, $z = 1$, the program computes $z = 2$ and then
-  $x = 3 * 2 + 1 = 7$. The postcondition asks for $x = 4 * 1 = 4$.
-vc: {y >= z && z >= y} z := z + y; x := 3 * z + y {x = 4 * y}
-status: fails
-counterexample: x = 0, y = 1, z = 1
-result: The triple is not valid. It only holds from states with $y = z = 0$.
+  $P$ only says that $y = z$, for any common value. $R2$ needs $z = 0$.
+  The state $y = 1$, $z = 1$ satisfies $P$ and does not satisfy $R2$.
+  From this state the program computes $z = 2$ and then
+  $x = 3 * 2 + 1 = 7$, while $Q$ asks for $x = 4 * 1 = 4$.
+result: The triple is not valid. Among the states that satisfy $P$, the program establishes $Q$ only from $y = z = 0$.

@@ -1,14 +1,19 @@
-# Source: Lecture Quiz 1 (solutions) and exercise sheet "Hoare Logic 2", 1 c).
+# Source: "Lecture Quiz 1 solutions.pdf" (the same program with x' and y'), and "Hoare Logic 2.docx", exercise 1 c), solved in "Hoare Logic 2 Solved.docx" (with a, b, A, B).
 id: swap-arithmetic
 title: Swapping with additions and subtractions
 topic: Sequential composition
 level: 2
-source: Lecture Quiz 1; exercise sheet "Hoare Logic 2" 1 c
+source: Lecture Quiz 1; Hoare Logic 2, exercise 1 c
 tags: assignment, sequence, logical variables, signs
 
 task:
-  Show that the following program swaps $x$ and $y$ without a temporary
-  variable.
+  The program should swap $x$ and $y$ without a temporary variable.
+  Calculate the weakest precondition of the program for the postcondition
+  $Q$, statement by statement from the last one. Then use the consequence
+  rule to decide whether the triple is valid.
+
+  The variables $x'$ and $y'$ are logical variables: they record the
+  initial values of $x$ and $y$, and the program does not change them.
 
 pre: x = x' && y = y'
 post: x = y' && y = x'
@@ -25,42 +30,57 @@ program:
 
 verdict: valid
 
-step: The last statement, `x := x - y`
+step: R1, the weakest precondition of x := x - y
 rule: ASSIGN, WP
 focus: i3
+text:
+  The precondition of an assignment is obtained by substituting the
+  assigned variable ($x$) with the assignment expression ($x - y$) in the
+  postcondition $Q$. Only $x$ is replaced. $x'$ is a different variable,
+  so $y = x'$ does not change.
 calc:
   wp(x := x - y, Q)
   = (x = y' && y = x')[x <- x - y]
-  = x - y = y' && y = x'
+  = x - y = y' && y = x'      // the x of Q is replaced by x - y
 set: R1 = x - y = y' && y = x'
-note:
-  Only $x$ is replaced. $x'$ is another variable, so $y = x'$ does not
-  change.
 
-step: The second statement, `y := x - y`
+step: R2, the weakest precondition of y := x - y
 rule: ASSIGN, WP
 focus: i2
+text:
+  We substitute the assigned variable ($y$) with the assignment expression
+  ($x - y$) in the postcondition of this statement, which is $R1$. $y$
+  occurs twice in $R1$, so both occurrences are replaced.
 calc:
   wp(y := x - y, R1)
   = (x - y = y' && y = x')[y <- x - y]
-  = x - (x - y) = y' && x - y = x'
-  = y = y' && x - y = x'          // x - (x - y) = x - x + y = y
+  = x - (x - y) = y' && x - y = x'    // both y of R1 are replaced by x - y
+  = x - x + y = y' && x - y = x'      // the minus in front of (x - y) changes the sign of x and of y
+  = y = y' && x - y = x'              // x - x cancels
 set: R2 = y = y' && x - y = x'
 
-step: The first statement, `x := x + y`
+step: R3, the weakest precondition of x := x + y
 rule: ASSIGN, WP
 focus: i1
+text:
+  We substitute the assigned variable ($x$) with the assignment expression
+  ($x + y$) in the postcondition of this statement, which is $R2$.
 calc:
   wp(x := x + y, R2)
   = (y = y' && x - y = x')[x <- x + y]
-  = y = y' && (x + y) - y = x'
-  = y = y' && x = x'
+  = y = y' && (x + y) - y = x'        // the x of R2 is replaced by x + y
+  = y = y' && x = x'                  // + y and - y cancel
 set: R3 = y = y' && x = x'
 
-step: Compare with the precondition
+step: The precondition must imply the weakest precondition
 rule: CONSEQUENCE, LOGIC
+text:
+  $R3$ is the weakest precondition of the whole program for $Q$. By the
+  consequence rule, the triple is valid when the precondition $P$ implies
+  $R3$.
+  >>> «x = x' && y = y' : P» ==> «y = y' && x = x' : R3»
 vc: x = x' && y = y' ==> y = y' && x = x'
 why:
-  The two sides are the same conjunction with the conjuncts in a
-  different order.
-result: The triple is valid.
+  $R3$ has the same two conjuncts as $P$, in a different order, and
+  $A && B$ is equivalent to $B && A$.
+result: The triple is valid: the program swaps $x$ and $y$.

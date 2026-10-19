@@ -1,18 +1,25 @@
-# Source: Exercise list "ICT3101 Exercises - Deductive Verification", problem 3 a).
+# Source: HoareLogic Exercises.pdf ("ICT3101 Exercises, Deductive Verification"), problem 3 a), with its solution in "HoareLogic Exercises Solutions - problems 1 - 3.pdf".
 id: fill-precondition-true
-title: Fill in the precondition (a)
+title: Find the precondition of two assignments to y
 topic: Sequential composition
 level: 1
-source: Exercise list "HoareLogic Exercises", problem 3 a
+source: HoareLogic Exercises, problem 3 a
 tags: assignment, sequence, wp
 
 task:
-  Fill in the weakest precondition of the following program.
+  Find the weakest precondition of the program for the postcondition $Q$.
+  Calculate it statement by statement from the last one.
+
+  The question only asks for the precondition. To have a complete triple,
+  the exercise uses the precondition $P$: $true$, which places no
+  condition on the initial state. At the end, the consequence rule checks
+  this precondition.
 
 pre: true
 post: y = 3 * x
 
 program:
+  {P}
   {R2}
   y := x;            // i1
   {R1}
@@ -21,38 +28,47 @@ program:
 
 verdict: valid
 
-step: Always start from the postcondition
-rule: SEQ
-text:
-  We do not know the precondition yet: it is what we must find. So the
-  only starting point is the postcondition, and we compute backwards.
-
-step: The last statement, `y := x + x + y`
+step: R1, the weakest precondition of y := x + x + y
 rule: ASSIGN, WP
 focus: i2
+text:
+  The precondition of an assignment is obtained by substituting the
+  assigned variable ($y$) with the assignment expression ($x + x + y$) in
+  the postcondition $Q$. The $y$ inside $x + x + y$ is the value of $y$
+  before the assignment, so it stays as it is.
 calc:
   wp(y := x + x + y, Q)
   = (y = 3 * x)[y <- x + x + y]
-  = x + x + y = 3 * x
-  = y = x                  // subtract 2 * x from both sides
+  = x + x + y = 3 * x      // the y of Q is replaced by x + x + y
+  = y = x                  // subtract x + x from both sides
 set: R1 = y = x
-text:
-  Only the $y$ of the postcondition is replaced. The $y$ inside the
-  expression $x + x + y$ is the old value of $y$, which is the value in
-  the state before the assignment.
 
-step: The first statement, `y := x`
+step: R2, the weakest precondition of y := x
 rule: ASSIGN, WP
 focus: i1
+text:
+  We substitute the assigned variable ($y$) with the assignment expression
+  ($x$) in the postcondition of this statement, which is $R1$.
 calc:
   wp(y := x, R1)
   = (y = x)[y <- x]
-  = x = x
-  = true
+  = x = x                  // the y of R1 is replaced by x
+  = true                   // x = x holds for every x
 set: R2 = true
-result: The weakest precondition is $true$: the program establishes $y = 3 * x$ from any initial state.
+
+step: The precondition must imply the weakest precondition
+rule: CONSEQUENCE
+text:
+  $R2$ is the weakest precondition of the whole program for $Q$. By the
+  consequence rule, the triple is valid when the precondition $P$ implies
+  $R2$.
+  >>> «true : P» ==> «true : R2»
+vc: true ==> true
+why:
+  Any formula implies $true$.
+result: The weakest precondition is $true$. The program establishes $y = 3 * x$ from any initial state, and the triple is valid.
 
 summary:
-  The first assignment makes $y$ equal to $x$, and the second one then
-  computes $x + x + x$. The weakest precondition $true$ confirms that no
-  assumption about the initial state is needed.
+  The first assignment makes $y$ equal to $x$. The second one then gives
+  $y$ the value $x + x + x$, which is $3 * x$. This is why no condition on
+  the initial state is needed.

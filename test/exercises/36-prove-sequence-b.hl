@@ -1,13 +1,19 @@
-# Source: Exercise list "ICT3101 Exercises - Deductive Verification", problem 4 b), with its solution sheet.
+# Source: HoareLogic Exercises.pdf ("ICT3101 Exercises, Deductive Verification"), problem 4 b), with its solution in "HoareLogic Exercises Solutions - Problem 4.pdf".
 id: prove-sequence-b
-title: Prove a triple with logical variables (b)
+title: Three assignments with logical variables (b)
 topic: Sequential composition
 level: 2
-source: Exercise list "HoareLogic Exercises", problem 4 b
+source: HoareLogic Exercises, problem 4 b
 tags: assignment, sequence, logical variables, signs
 
 task:
-  Prove the following Hoare triple.
+  Calculate the weakest precondition of the program for the postcondition
+  $Q$, statement by statement from the last one. Then use the consequence
+  rule to decide whether the triple is valid.
+
+  The variables $x'$ and $y'$ are logical variables: they record the
+  initial values of $x$ and $y$, and the program does not change them.
+  The program does not assign $n$ and $m$ either.
 
 pre: x = x' && y = y'
 post: x = -m && y = x' + n + y'
@@ -24,45 +30,62 @@ program:
 
 verdict: valid
 
-step: The last statement, `x := x - y + n - m`
+step: R1, the weakest precondition of x := x - y + n - m
 rule: ASSIGN, WP
 focus: i3
+text:
+  The precondition of an assignment is obtained by substituting the
+  assigned variable ($x$) with the assignment expression ($x - y + n - m$)
+  in the postcondition $Q$. $x'$ is a different variable and does not
+  change.
 calc:
   wp(x := x - y + n - m, Q)
   = (x = -m && y = x' + n + y')[x <- x - y + n - m]
-  = x - y + n - m = -m && y = x' + n + y'
+  = x - y + n - m = -m && y = x' + n + y'     // the x of Q is replaced by x - y + n - m
 set: R1 = x - y + n - m = -m && y = x' + n + y'
 
-step: The second statement, `y := x + n`
+step: R2, the weakest precondition of y := x + n
 rule: ASSIGN, WP
 focus: i2
 text:
-  The variable $y$ occurs twice in $R1$, so it is replaced twice. The
-  parentheses matter: the minus sign in front of $y$ applies to the whole
-  expression $x + n$.
+  We substitute the assigned variable ($y$) with the assignment expression
+  ($x + n$) in the postcondition of this statement, which is $R1$. $y$
+  occurs twice in $R1$, so both occurrences are replaced. The parentheses
+  matter: the minus in front of $y$ applies to the whole of $x + n$.
 calc:
   wp(y := x + n, R1)
-  = x - (x + n) + n - m = -m && x + n = x' + n + y'
-  = x - x - n + n - m = -m && x + n = x' + n + y'    // open the parentheses: the minus changes both signs
-  = -m = -m && x = x' + y'
-  = x = x' + y'                                       // -m = -m is true, and true && A is A
+  = (x - y + n - m = -m && y = x' + n + y')[y <- x + n]
+  = x - (x + n) + n - m = -m && x + n = x' + n + y'   // both y of R1 are replaced by x + n
+  = x - x - n + n - m = -m && x + n = x' + n + y'     // the minus in front of (x + n) changes the sign of x and of n
+  = -m = -m && x + n = x' + n + y'                    // x - x and -n + n cancel
+  = true && x + n = x' + n + y'                       // -m = -m has the form A = A, so it is true
+  = x + n = x' + n + y'                               // true && A is A
+  = x = x' + y'                                       // subtract n from both sides
 set: R2 = x = x' + y'
 
-step: The first statement, `x := x + y`
+step: R3, the weakest precondition of x := x + y
 rule: ASSIGN, WP
 focus: i1
+text:
+  We substitute the assigned variable ($x$) with the assignment expression
+  ($x + y$) in the postcondition of this statement, which is $R2$.
 calc:
   wp(x := x + y, R2)
   = (x = x' + y')[x <- x + y]
-  = x + y = x' + y'
+  = x + y = x' + y'      // the x of R2 is replaced by x + y
 set: R3 = x + y = x' + y'
 
-step: Compare with the precondition
+step: The precondition must imply the weakest precondition
 rule: CONSEQUENCE, LOGIC
+text:
+  $R3$ is the weakest precondition of the whole program for $Q$. By the
+  consequence rule, the triple is valid when the precondition $P$ implies
+  $R3$.
+  >>> «x = x' && y = y' : P» ==> «x + y = x' + y' : R3»
 vc: x = x' && y = y' ==> x + y = x' + y'
 why:
-  Replace $x$ by $x'$ and $y$ by $y'$ using the assumption: the right-hand
-  side becomes $x' + y' = x' + y'$, which is true.
+  Assume $P$. Replace $x$ by $x'$ and $y$ by $y'$ in $R3$. It becomes
+  $x' + y' = x' + y'$, which is true.
 result: The triple is valid.
 
 summary:
