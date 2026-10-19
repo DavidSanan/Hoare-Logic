@@ -246,10 +246,11 @@
         ctx.bound = saved;
         const unit = n.f === 'sum' ? '0' : '1';
         const op = n.f === 'sum' ? '+' : '*';
-        // A declared function with its defining axiom. (Recursive
-        // definitions with define-fun-rec inside push/pop scopes make the
-        // WebAssembly build of Z3 crash.) The pattern lets the solver unfold
-        // the definition on the terms of the query.
+        // A declared function, with one step of its definition. It is not
+        // given with define-fun-rec, because Z3 crashes when such
+        // definitions are given again in successive push/pop scopes (see
+        // tools/z3-bugs). The axiom with a pattern is only used for terms
+        // under a quantifier (see below).
         const formals = fv.map((v) => (arrays.has(v) ? sym(v) + ' ' + lenSym(v) : sym(v))).join(' ');
         const sorts = ['Int', 'Int'].concat(fv.map((v) => (arrays.has(v) ? '(Array Int Int) Int' : 'Int'))).join(' ');
         const app = '(' + name + ' |hl#lo| |hl#hi|' + (formals ? ' ' + formals : '') + ')';

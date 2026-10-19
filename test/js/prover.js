@@ -55,6 +55,14 @@
     if (r.status === 'refuted') {
       const v = confirm(hyps, goal, r.state);
       r.confirmed = v === false ? true : v === true ? false : null;
+      if (r.confirmed === null && r.partial) {
+        // The evaluator cannot compute the claim in that state (a sum over
+        // more than 2000 numbers, for example), and the solver only knows a
+        // few steps of the definitions: the state may not be a real
+        // counterexample, so the claim is not decided.
+        r.status = 'unknown';
+        r.reason = 'Not decided: the solver gave a state that the site cannot evaluate, and it only unfolds the definitions of sum, prod, fib, fact and pow a few steps.';
+      }
       if (r.confirmed === false) {
         // The claim holds in the state found by the solver. With recursive
         // definitions this is the limit of their unfolding: not decided.
