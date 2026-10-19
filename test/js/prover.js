@@ -107,7 +107,7 @@
           for (let j = 1; j < it.rows.length; j++) {
             const a = it.rows[j - 1];
             const b = it.rows[j];
-            const where = { group, item: 'Calculation' + (calcNo > 1 ? ' ' + calcNo : '') + ', line ' + (j + 1), line: b.line, expect: 'holds' };
+            const where = { group, item: 'Calculation' + (calcNo > 1 ? ' ' + calcNo : '') + ', line ' + (j + 1), line: b.line, expect: 'holds', ref: b };
             if (!a.f || !b.f) { skip(where, 'One of the two lines could not be read.'); continue; }
             const pa = prepare(a.f);
             const pb = prepare(b.f);
@@ -122,7 +122,7 @@
             : it.premises.map((p, j) => ({ e: p, name: 'Rule instance, premise ' + (j + 1), expect: 'holds' }))
               .concat(it.conclusion ? [{ e: it.conclusion, name: 'Rule instance, conclusion', expect: 'holds' }] : []);
           for (const { e, name, expect } of lines) {
-            const where = { group, item: name, line: e.line, expect };
+            const where = { group, item: name, line: e.line, expect, ref: e };
             if (!e.node) { skip(where, 'The line could not be read.'); continue; }
             const p = HL.Checker.prepareLine(e.node, res);
             if (p.skip) { skip(where, p.skip); continue; }

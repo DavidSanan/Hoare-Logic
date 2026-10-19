@@ -79,7 +79,7 @@
 
     <section class="page" id="page-wp" hidden>
       <div class="page-head"><h1>Weakest precondition calculator</h1>
-        <p class="lede">Type a program, its precondition and its postcondition, and an invariant for each loop. The calculator computes the weakest precondition backwards, one statement at a time, and shows the annotated program with every intermediate assertion. For each loop it shows the initialisation, the preservation and the conclusion. The last step uses the consequence rule to compare the precondition with the weakest precondition.</p></div>
+        <p class="lede">Type a program, its precondition and its postcondition, and an invariant for each loop. The calculator computes the weakest precondition backwards, one statement at a time, and shows the annotated program with every intermediate assertion. For each loop it shows the initialisation, the preservation and the conclusion. The last step uses the consequence rule to compare the precondition with the weakest precondition. Every implication is proved with the SMT solver Z3.</p></div>
       <div class="page-body">
         <form id="wp-form" class="wp-form">
           <div class="field">

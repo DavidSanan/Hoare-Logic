@@ -17,8 +17,8 @@
  *     I && B ==> wp(body, I)) and the conclusion (I && !B ==> Q);
  *   - the last step uses the consequence rule: P ==> wp(program, Q).
  *
- * The implications are tested on sample states, as in the exercises: the
- * result says whether a counterexample was found.
+ * The implications are proved by the prover of the site (prover.js, with
+ * Z3) when the viewer shows the proof.
  */
 (function (root) {
   'use strict';
@@ -59,7 +59,6 @@
 
     let nSlot = 0;
     const slot = () => 'R' + (++nSlot);
-    let allHold = true;
 
     const stepText = [];
     const step = (o) => {
@@ -71,20 +70,9 @@
       if (o.set0) lines.push('set: ' + o.set0);
       if (o.calc) lines.push('calc:', ...o.calc.map((l) => '  ' + l));
       if (o.set) lines.push('set: ' + o.set);
-      if (o.vc) {
-        lines.push('vc: ' + T(o.vc.h) + ' ==> ' + T(o.vc.c));
-        const r = HL.Checker.checkImplication(o.vc.h, o.vc.c, { range: 5 });
-        if (r.status === 'fail') {
-          allHold = false;
-          lines.push('status: fails');
-          lines.push('counterexample: ' + Object.entries(r.cex).map(([k, v]) => k + ' = ' + HL.valueText(v)).join(', '));
-          lines.push('why:', '  The tests found a state that satisfies the left side and not the right side.');
-        } else if (r.status === 'pass') {
-          lines.push('why:', '  No counterexample among ' + r.sat + ' tested states. This is evidence, not a proof: the implication still has to be proved.');
-        } else {
-          lines.push('why:', '  Not conclusive: no tested state satisfied the left side.');
-        }
-      }
+      // The implication is proved by the prover of the site (Z3) when the
+      // proof is shown; its status is not decided here.
+      if (o.vc) lines.push('vc: ' + T(o.vc.h) + ' ==> ' + T(o.vc.c));
       return lines.join('\n');
     };
 
@@ -281,10 +269,8 @@
     ].join('\n');
     const ex = HL.parseExercise(text, 'wp-calculator');
     ex.noPre = !pre;
-    ex.outcome = pre
-      ? (allHold ? { ok: true, text: '✓ Every implication of the proof holds on the tested states.' }
-        : { ok: false, text: '✗ An implication of the proof has a counterexample.' })
-      : { ok: true, text: 'The weakest precondition of the program is ' + top.pre.name + '.' };
+    // The result of the last step comes from the proof of its implications.
+    ex.generated = true;
     return { ex, text };
   };
 })(typeof window !== 'undefined' ? window : globalThis);

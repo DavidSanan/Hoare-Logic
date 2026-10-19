@@ -419,18 +419,34 @@
           ' <span class="op">≡</span> ' + (it.f ? HL.toHTML(it.f) : HL.looseHTML(it.src)) + '</span></div>';
       case 'calc':
         // The last line of a calculation is its result, and is highlighted.
+        // The last column shows whether the prover proved the line.
         return '<div class="calc table-wrap"><table>' + it.rows.map((r, j) => '<tr' + (j && j === it.rows.length - 1 ? ' class="last"' : '') + '>' +
           '<td class="rel">' + (j ? (REL_DISPLAY[r.sym] || '=') : '') + '</td>' +
           '<td class="fm"><span class="m">' + (r.f ? HL.toHTML(r.f) : HL.looseHTML(r.src)) + '</span></td>' +
-          '<td class="why">' + (r.why ? whyHTML(r.why) : '') + '</td></tr>').join('') + '</table></div>';
+          '<td class="why">' + (r.why ? whyHTML(r.why) : '') + '</td>' +
+          '<td class="pst">' + (j ? proofMark(r) : '') + '</td></tr>').join('') + '</table></div>';
       case 'vc': {
         const body = it.node ? (it.node.k === 'triple' ? HL.tripleHTML(it.node) : HL.toHTML(it.node.f)) : HL.looseHTML(it.src);
-        const holds = it.status !== 'fails';
-        let s = '<div class="vc ' + (holds ? 'holds' : 'fails') + '"><div class="vc-head"><span class="kicker">Verification condition</span>' +
-          '<span class="badge ' + (holds ? 'ok' : 'bad') + '">' + (holds ? 'holds' : 'does not hold') + '</span></div>' +
-          '<div class="vc-body"><span class="m">' + body + '</span></div>';
+        // The badge gives the answer of the prover. Before it is known, or
+        // when the prover cannot run, it gives the answer of the exercise.
+        const pr = proofOf(it);
+        let holds, badge;
+        if (pr && pr.status === 'proved') { holds = true; badge = '<span class="badge ok">proved</span>'; }
+        else if (pr && pr.status === 'refuted' && pr.confirmed) { holds = false; badge = '<span class="badge bad">does not hold</span>'; }
+        else if (pr && pr.status === 'pending') { holds = it.status !== 'fails'; badge = '<span class="badge muted-badge">proving…</span>'; }
+        else if (pr) { holds = null; badge = '<span class="badge warn">not decided</span>'; }
+        else if (activeGenerated) { holds = null; badge = '<span class="badge warn">not proved</span>'; }
+        else { holds = it.status !== 'fails'; badge = '<span class="badge ' + (holds ? 'ok' : 'bad') + '">' + (holds ? 'holds' : 'does not hold') + '</span>'; }
+        let s = '<div class="vc ' + (holds === false ? 'fails' : holds ? 'holds' : 'open') + '"><div class="vc-head"><span class="kicker">Verification condition</span>' +
+          badge + '</div><div class="vc-body"><span class="m">' + body + '</span></div>';
         if (it.why) s += '<div class="prose">' + md(it.why) + '</div>';
-        if (it.counterexample) s += '<div class="cex"><span class="kicker">Counterexample</span> ' + stateHTML(it.counterexample) + '</div>';
+        if (pr && pr.status === 'refuted' && pr.confirmed) {
+          s += '<div class="cex"><span class="kicker">Counterexample found by Z3</span> ' + stateHTML(pr.state) + '</div>';
+        } else if (it.counterexample) {
+          s += '<div class="cex"><span class="kicker">Counterexample</span> ' + stateHTML(it.counterexample) + '</div>';
+        }
+        if (pr && pr.ok === false) s += '<p class="bad small">The prover does not agree with the exercise on this condition.</p>';
+        if (pr && (pr.status === 'unknown' || pr.status === 'error' || pr.status === 'skip') && pr.reason) s += '<p class="muted small">' + esc(pr.reason) + '</p>';
         return s + '</div>';
       }
       case 'instance': {
@@ -464,12 +480,16 @@
 
   function stepCardHTML(ex, step, final) {
     activeSlots = slotValuesAt(ex, step.index);
+    activeProofState = proofs.get(ex.orig || ex) || null;
+    activeGenerated = !!ex.generated;
     const html = '<article class="step-card">' +
       '<header><span class="kicker">Step ' + esc(step.number || String(step.index)) + (step.part ? ' · ' + esc(step.part) : '') + '</span>' +
       '<h3>' + inline(step.title) + '</h3>' +
       (step.rules.length ? '<div class="chips">' + step.rules.map(ruleChip).join('') + '</div>' : '') + '</header>' +
       step.items.map((it) => itemHTML(it, step)).join('') + (final || '') + '</article>';
     activeSlots = null;
+    activeProofState = null;
+    activeGenerated = false;
     return html;
   }
 
@@ -510,7 +530,9 @@
     }
     if (rules.length) s += '<h4>Rules used</h4><div class="chips">' + rules.map(ruleChip).join('') + '</div>';
     if (ex.summary) s += '<div class="prose">' + md(ex.summary) + '</div>';
-    s += proofBlockHTML();
+    const st = proofs.get(ex.orig || ex);
+    s += '<div class="test-block proof-block"><h4>Proof of this solution</h4><p class="muted">Every claim of the solution is proved with the SMT solver Z3: every line of every calculation, every verification condition, and every check of the annotated program, which are those of the rules of the course. A proved claim holds in every state.</p>' +
+      (st && st.state === 'done' ? proofReportHTML(st.results) : st && st.state === 'error' ? '<p class="bad">' + esc(st.message) + '</p>' : '<p class="muted">The proof is running.</p>') + '</div>';
     s += '<div class="test-block"><h4>Test this solution</h4><p class="muted">The test runs the program and evaluates every claim of the steps on many small states. It does not prove anything: a passing test means that no counterexample was found among the states that were tried.</p>' +
       '<button type="button" class="btn ghost run-tests">Run the tests</button><div class="test-report"></div></div>';
     return s + '</article>';
@@ -610,30 +632,92 @@
     return solverPromise;
   }
 
-  function proofBlockHTML(compact) {
-    return '<div class="test-block proof-block">' + (compact ? '' : '<h4>Prove this solution</h4><p class="muted">The prover sends every claim of the solution to the SMT solver Z3: every line of every calculation, every verification condition, and every check of the annotated program, which are those of the rules of the course. A proved claim holds in every state. The first use downloads Z3 (about 32 MB).</p>') +
-      '<button type="button" class="btn run-proof">Prove with Z3</button><div class="proof-report" aria-live="polite"></div></div>';
+  // The proofs, computed once per exercise, in the background. The state
+  // of a proof: { state: 'running' | 'done' | 'error', results, byRef,
+  // message }. byRef gives the result of each claim of a step (a line of a
+  // calculation, a verification condition, a line of a rule instance).
+  const proofs = new WeakMap();
+  let activeProofState = null;
+  // True while a step of the wp calculator is drawn: its conditions have no
+  // answer of their own, only the one of the prover.
+  let activeGenerated = false;
+
+  function proofOf(ref) {
+    if (!activeProofState) return null;
+    if (activeProofState.state === 'running') return activeProofState.byRef.get(ref) || { status: 'pending' };
+    return activeProofState.byRef.get(ref) || null;
   }
 
-  function runProof(ex, button) {
-    const out = $('.proof-report', button.parentElement);
-    button.disabled = true;
-    button.textContent = solverPromise ? 'Proving…' : 'Loading Z3…';
+  function proofMark(row) {
+    const pr = proofOf(row);
+    if (!pr) return '';
+    if (pr.status === 'pending') return '<span class="pmark pending" title="Proving">…</span>';
+    if (pr.status === 'proved') return '<span class="pmark ok" title="Proved by Z3">✓</span>';
+    if (pr.status === 'refuted' && pr.confirmed) return '<span class="pmark bad" title="Refuted by Z3">✗</span>';
+    return '<span class="pmark warn" title="' + esc(pr.reason || 'Not decided') + '">?</span>';
+  }
+
+  // Start the proof of an exercise; onChange is called when it progresses
+  // and when it ends.
+  function ensureProof(ex, onChange) {
+    let st = proofs.get(ex);
+    if (st) return st;
+    st = { state: 'running', results: [], byRef: new Map(), listeners: onChange ? [onChange] : [], viewers: new Set() };
+    proofs.set(ex, st);
+    const notify = () => st.listeners.forEach((f) => f());
     proofQueue = proofQueue.then(async () => {
       try {
         const solver = await getSolver();
-        button.textContent = 'Proving…';
-        const results = await HL.Prover.proveExercise(ex, solver, {
+        let last = 0;
+        st.results = await HL.Prover.proveExercise(ex, solver, {
           timeout: 4000,
-          onProgress: (rs) => { button.textContent = 'Proving… ' + rs.length; }
+          onProgress: (rs) => {
+            rs.forEach((r) => { if (r.ref) st.byRef.set(r.ref, r); });
+            st.results = rs;
+            if (Date.now() - last > 400) { last = Date.now(); notify(); }
+          }
         });
-        out.innerHTML = proofReportHTML(results);
+        st.results.forEach((r) => { if (r.ref) st.byRef.set(r.ref, r); });
+        st.state = 'done';
       } catch (err) {
-        out.innerHTML = '<p class="bad">' + esc(err.message) + '</p>';
+        st.state = 'error';
+        st.message = err.message;
       }
-      button.disabled = false;
-      button.textContent = 'Prove again';
+      notify();
     });
+    return st;
+  }
+
+  function proofCounts(results) {
+    return {
+      proved: results.filter((r) => r.status === 'proved').length,
+      stated: results.filter((r) => (r.status === 'refuted' && r.ok) || r.status === 'expected').length,
+      refuted: results.filter((r) => r.status === 'refuted' && r.confirmed).length,
+      wrong: results.filter((r) => r.ok === false).length,
+      open: results.filter((r) => r.status === 'unknown' || r.status === 'error').length
+    };
+  }
+
+  // The line above the steps that says where the proof is.
+  function proofStatusHTML(st, generated) {
+    if (!st) return '';
+    if (st.state === 'running') {
+      return '<div class="proof-status running"><span class="spinner" aria-hidden="true"></span>' +
+        (solverPromise ? 'Proving every claim with Z3' : 'Loading Z3 (about 32 MB the first time) to prove every claim') +
+        (st.results.length ? ': ' + st.results.length + ' done' : '') + '…</div>';
+    }
+    if (st.state === 'error') {
+      return '<div class="proof-status error">The claims were not proved: ' + esc(st.message) + '</div>';
+    }
+    const c = proofCounts(st.results);
+    const parts = [c.proved + ' proved'];
+    if (generated) {
+      if (c.refuted) parts.push(c.refuted + ' refuted');
+    } else if (c.stated) parts.push(c.stated + ' refuted, as the exercise states');
+    if (!generated && c.wrong) parts.push(c.wrong + ' where the prover disagrees with the exercise');
+    if (c.open) parts.push(c.open + ' not decided');
+    const bad = generated ? c.refuted : c.wrong;
+    return '<div class="proof-status ' + (bad ? 'bad' : c.open ? 'warn' : 'ok') + '">Proved with Z3: ' + parts.join(', ') + '.</div>';
   }
 
   function proofReportHTML(results) {
@@ -689,7 +773,7 @@
     // The exercise with the steps of the current choice.
     view() {
       const choice = this.ex.choices[this.c] || this.ex.choices[0];
-      return Object.assign({}, this.ex, { steps: choice.steps, choice });
+      return Object.assign({}, this.ex, { steps: choice.steps, choice, orig: this.ex });
     }
 
     last() {
@@ -729,7 +813,7 @@
       else if (b.classList.contains('next')) this.go(this.k + 1);
       else if (b.classList.contains('toggle-all')) { this.all = !this.all; this.render(); }
       else if (b.classList.contains('run-tests')) this.runTests(b);
-      else if (b.classList.contains('run-proof')) runProof(this.ex, b);
+
     }
 
     runTests(button) {
@@ -791,9 +875,17 @@
       if (!this.opts.compact) return '';
       let ok;
       let text;
-      if (ex.outcome) {
-        ok = ex.outcome.ok;
-        text = ex.outcome.text;
+      if (ex.generated) {
+        // The proof of the calculator succeeds when Z3 proves every
+        // implication.
+        const st = proofs.get(ex.orig || ex);
+        const c = st && st.state === 'done' ? proofCounts(st.results) : null;
+        if (!st || st.state === 'running') { ok = 'pending'; text = 'Proving the implications with Z3…'; }
+        else if (st.state === 'error') { ok = null; text = 'The implications were not proved: ' + st.message; }
+        else if (c.refuted) { ok = false; text = '✗ An implication of the proof does not hold: Z3 found a counterexample.'; }
+        else if (c.open) { ok = null; text = '? Z3 did not decide every implication of the proof.'; }
+        else if (ex.noPre) { ok = true; text = '✓ Every implication of the proof is proved by Z3. The weakest precondition of the program is the first assertion.'; }
+        else { ok = true; text = '✓ Every implication of the proof is proved by Z3, so the triple is proved.'; }
       } else if (ex.derived != null && ex.choices.length < 2) {
         ok = ex.derived;
         text = ok ? '✓ The rule derives the triple.' : '✗ The rule does not derive the triple.';
@@ -804,7 +896,11 @@
         ok = ex.verdict !== 'invalid';
         text = ok ? '✓ The triple is proved.' : '✗ The triple is not valid.';
       }
-      return '<div class="final ' + (ok ? 'ok' : 'bad') + '">' + text + '</div>' + proofBlockHTML(true);
+      const st = proofs.get(ex.orig || ex);
+      const report = st && st.state === 'done'
+        ? '<details class="proof-details"><summary>All the claims proved by Z3</summary>' + proofReportHTML(st.results) + '</details>' : '';
+      if (ok === 'pending') return '<div class="final open">' + text + '</div>';
+      return '<div class="final ' + (ok ? 'ok' : ok === false ? 'bad' : 'open') + '">' + text + '</div>' + report;
     }
 
     render() {
@@ -837,7 +933,18 @@
         ? '<div class="errors"><strong>This exercise has errors:</strong><ul>' + ex.errors.map((e) => '<li>line ' + e.line + ': ' + esc(e.msg) + '</li>').join('') + '</ul></div>'
         : '';
       this.el.innerHTML = head + problems + this.choicesHTML() + schemeHTML(ex, this.all ? 0 : Math.min(k, n)) +
-        this.stepperHTML(ex, k) + '<div class="ex-body">' + outline + '<div class="step-pane">' + main + '</div></div>';
+        this.stepperHTML(ex, k) + proofStatusHTML(proofs.get(this.ex), ex.generated) +
+        '<div class="ex-body">' + outline + '<div class="step-pane">' + main + '</div></div>';
+      // Every claim is proved by default, in the background; the view is
+      // drawn again when the proof progresses.
+      if (HL.Prover && !this.opts.noProof && !ex.errors.length) {
+        const exObj = this.ex;
+        const st = ensureProof(exObj);
+        if (!st.viewers.has(this)) {
+          st.viewers.add(this);
+          st.listeners.push(() => { if (this.ex === exObj && this.el.isConnected) this.render(); });
+        }
+      }
     }
   }
 
@@ -1078,8 +1185,11 @@
     };
     sel.addEventListener('change', () => load(Number(sel.value)));
     $('#wp-form').addEventListener('submit', (e) => { e.preventDefault(); computeWp(); });
-    load(0);
+    // The first example is computed when the page of the calculator is
+    // first shown, so that the other pages do not start the prover.
+    loadFirstWp = () => { loadFirstWp = null; load(0); };
   }
+  let loadFirstWp = null;
 
   // The calculator builds the proof with the method of the exercises and
   // shows it with the step viewer.
@@ -1095,7 +1205,7 @@
       return;
     }
     out.innerHTML = '<div class="wp-viewer"></div>' +
-      '<p class="muted small">' + inline('The calculator simplifies only with the laws $(true && A) <=> A$, $(false || A) <=> A$, $(A ==> true) <=> true$ and the arithmetic on constants. The implications are tested on sample states; a passing test is evidence, not a proof.') + '</p>';
+      '<p class="muted small">' + inline('The calculator simplifies only with the laws $(true && A) <=> A$, $(false || A) <=> A$, $(A ==> true) <=> true$ and the arithmetic on constants. Every implication of the proof is proved with the SMT solver Z3; when it does not hold, Z3 gives a counterexample.') + '</p>';
     wpViewer = new Viewer($('.wp-viewer', out), { compact: true });
     wpViewer.show(r.ex, 1);
   }
@@ -1213,6 +1323,7 @@
     lastPage = page;
     PAGES.forEach((p) => { $('#page-' + p).hidden = p !== page; });
     if (page === 'rules') showRule(rule || currentRule || store.get('hl-rule') || HL.RULES[0].id);
+    if (page === 'wp' && loadFirstWp) loadFirstWp();
     $$('.site-nav a').forEach((a) => a.setAttribute('aria-current', a.getAttribute('href') === '#' + page ? 'page' : 'false'));
     if (page === 'exercises') {
       if (h.startsWith('ex-')) {

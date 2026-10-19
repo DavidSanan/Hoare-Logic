@@ -148,10 +148,15 @@ remainder (rounding down), so `x mod 2` is always 0 or 1.
 ## The prover (test site only)
 
 The test site (`test/`) has a first version of a prover that replaces the
-tests on sample states by proofs. The button **Prove with Z3**, in the
-summary of an exercise and at the last step of the examples of the rules
-and of the wp calculator, sends every claim of the solution to the SMT
-solver Z3, which runs in the browser (WebAssembly).
+tests on sample states by proofs. Every claim of a solution is proved by
+default with the SMT solver Z3, which runs in the browser (WebAssembly):
+when an exercise, an example of a rule or a proof of the wp calculator is
+shown, the prover runs in the background, a line above the steps gives its
+progress and its result, every verification condition shows "proved",
+"does not hold" (with the counterexample found by Z3) or "not decided", and
+every line of a calculation shows ✓, ✗ or ?. The summary of an exercise
+lists all the claims. The wp calculator decides its implications only with
+the prover. The tests on sample states remain available in the summary.
 
 What does not change: the language of the programs, the specification
 language and the rules are those of the course. The prover checks the same
