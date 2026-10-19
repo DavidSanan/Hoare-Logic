@@ -302,6 +302,90 @@ i.fn { font-style: italic; }
 .rg-block { display: grid; gap: 8px; align-content: start; min-width: 0; }
 .rg-block h4 { font-size: .78rem; text-transform: uppercase; letter-spacing: .07em; color: var(--accent); }
 
+/* One rule at a time, chosen in a scrollable list. */
+.rules-layout { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 28px; align-items: start; margin-top: 24px; }
+.rule-picker { position: sticky; top: 60px; display: grid; gap: 6px; }
+.rule-list {
+  position: relative;
+  max-height: calc(100vh - 140px);
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 4px;
+  display: grid;
+  gap: 2px;
+}
+.rule-option {
+  font: inherit;
+  font-size: .9375rem;
+  text-align: left;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+.rule-option:hover { background: var(--surface-2); }
+.rule-option.active { background: var(--accent-soft); color: var(--accent); font-weight: 500; }
+.ro-id { font-family: var(--f-mono); font-size: .68rem; color: var(--muted); white-space: nowrap; }
+.rule-view { min-width: 0; }
+.rule-pager { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; border-top: 1px solid var(--line); padding-top: 12px; }
+
+/* Interactive examples */
+.rx { display: grid; gap: 12px; }
+.rx-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.rx-tab {
+  font: inherit;
+  font-size: var(--fs-small);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 3px 12px;
+  cursor: pointer;
+}
+.rx-tab:hover { border-color: var(--accent); }
+.rx-tab.active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 500; }
+.rx-goal {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 6px 14px;
+  align-items: center;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  background: var(--surface-2);
+}
+.rx-goal .m { font-size: 1.15rem; overflow-x: auto; }
+.rx-goal.rx-ok { border-color: var(--ok); background: var(--ok-soft); }
+.rx-goal.rx-bad { border-color: var(--bad); background: var(--bad-soft); }
+.rx-badge { font-size: .75rem; font-weight: 600; color: var(--muted); white-space: nowrap; }
+.rx-goal.rx-ok .rx-badge { color: var(--ok); }
+.rx-goal.rx-bad .rx-badge { color: var(--bad); }
+.rx-step { min-height: 9rem; align-content: start; }
+.rx-result { font-weight: 600; padding: 8px 12px; border-radius: 6px; }
+.rx-result.rx-ok { background: var(--ok-soft); color: var(--ok); }
+.rx-result.rx-bad { background: var(--bad-soft); color: var(--bad); }
+.rx-nav { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.rx-dots { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.rx-dot { width: 11px; height: 11px; border-radius: 50%; border: 1px solid var(--muted); background: transparent; padding: 0; cursor: pointer; }
+.rx-dot.done { background: var(--muted); }
+.rx-dot.cur { background: var(--accent); border-color: var(--accent); }
+@media (max-width: 900px) {
+  .rules-layout { grid-template-columns: minmax(0, 1fr); }
+  .rule-picker { position: static; }
+  .rule-list { max-height: 11.5rem; }
+}
+@media (max-width: 560px) {
+  .rx-goal { grid-template-columns: minmax(0, 1fr); }
+}
+
 /* ---- exercises ---------------------------------------------------------- */
 
 .ex-layout { display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: 28px; align-items: start; }

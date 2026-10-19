@@ -37,14 +37,8 @@
 \`skip\` is the command that does nothing. It changes no variable, so the state after it is the state before it. Since an assertion is a property of the state, any assertion that is true before \`skip\` is still true after it.
 
 The command exists for two reasons. First, it is the program that is left when an execution has finished. Second, it fills a missing branch: \`if B then c\` is the same program as \`if B then c else skip\`.`,
-      example: `
->> {x > 0} skip {x > 0}
-
-The rule only allows the same assertion on both sides. As a consequence, the rule alone cannot prove $\\{x > 5\\}$ \`skip\` $\\{x > 0\\}$, although this triple is valid. To prove it we also need the consequence rule, which accepts a precondition that implies the postcondition.
-
-The triple $\\{x = 0\\}$ \`skip\` $\\{x = 1\\}$ is not valid. In the state $x = 0$ the precondition holds, \`skip\` does nothing, and $x = 1$ is false after it.`,
       check: 'Nothing. In practice the useful form is the one combined with the consequence rule: to prove $\\{P\\}$ `skip` $\\{Q\\}$, we prove $P ==> Q$.',
-      limits: 'The rule does not let the precondition and the postcondition differ. Any difference has to be bridged by the consequence rule.'
+      note: 'The rule only gives triples with the same assertion before and after `skip`. To prove $\\{P\\}$ `skip` $\\{Q\\}$ with two different assertions, use the consequence rule with the implication $P ==> Q$.'
     },
     {
       id: 'ASSIGN',
@@ -59,21 +53,8 @@ $Q[x <- E]$ is the formula $Q$ in which every occurrence of the variable $x$ is 
 The reason is the following. After \`x := E\`, the new value of $x$ is the value that $E$ had before the assignment, and every other variable keeps its value. So a statement about $x$ after the assignment is the same statement about $E$ before it. The substitution rewrites the statement in terms of the state before the assignment.
 
 The rule is applied backwards: we know the postcondition and we compute the precondition. This is why the rule looks reversed the first time one reads it.`,
-      example: `
->> {(y = 2)[y <- y + 1]} y := y + 1 {y = 2}
->> {y + 1 = 2} y := y + 1 {y = 2}
->> {y = 1} y := y + 1 {y = 2}
-
-Concretely, if $y = 1$ before the assignment, then $y$ is $1 + 1 = 2$ after it. The substitution found exactly this condition.
-
-With two variables, only the assigned one is replaced:
-
->> {(y = y' + x' && x = x')[y <- y + x]} y := y + x {y = y' + x' && x = x'}
->> {y + x = y' + x' && x = x'} y := y + x {y = y' + x' && x = x'}
-
-The variable $x$ in the conjunct $x = x'$ is not touched, since the assignment changes $y$ only.`,
       check: 'Nothing. The rule is an axiom. The work is to do the substitution correctly and then to simplify the result.',
-      limits: 'The rule gives exactly one precondition, the weakest one. If the specification gives another precondition $P$, we still have to prove $P ==> Q[x <- E]$ with the consequence rule. The rule is only for simple variables; arrays need ARRAY-ASSIGN.'
+      note: 'The rule gives one precondition, $Q[x <- E]$, which is the weakest one. If the specification gives another precondition $P$, prove $P ==> Q[x <- E]$ and use the consequence rule. For an assignment to an array cell, use ARRAY-ASSIGN.'
     },
     {
       id: 'CONSEQUENCE',
@@ -91,14 +72,8 @@ The two halves can be used alone. Weakening the precondition of the rule (premis
 
 >> P ==> P'   {P'} c {Q}   ---   {P} c {Q}
 >> {P} c {Q'}   Q' ==> Q   ---   {P} c {Q}`,
-      example: `
-We want $\\{x > 120\\}$ \`x := x + 1\` $\\{x > 101\\}$. The assignment rule gives $\\{x + 1 > 101\\}$, which is $\\{x > 100\\}$. This is not the precondition of the specification, so we use the consequence rule:
-
->> x > 120 ==> x > 100   {x > 100} x := x + 1 {x > 101}   ---   {x > 120} x := x + 1 {x > 101}
-
-The first premise is true: every number greater than $120$ is greater than $100$. In terms of sets, $\\{121, 122, ...\\}$ is included in $\\{101, 102, ...\\}$.`,
       check: 'The two implications $P ==> P\'$ and $Q\' ==> Q$. They are formulas of logic and arithmetic, with no program in them. We call them verification conditions.',
-      limits: 'The rule never makes a precondition weaker or a postcondition stronger. If $P$ does not imply the computed $P\'$, the rule cannot be used, and the triple may well be invalid. In that case, look for a state that satisfies $P$ but not $P\'$: it is often a counterexample to the triple.'
+      note: 'The rule only allows a stronger precondition and a weaker postcondition. If $P$ does not imply $P\'$, look for a state that satisfies $P$ and not $P\'$. Running the program from that state often shows that the triple is not valid.'
     },
     {
       id: 'SEQ',
@@ -115,12 +90,8 @@ The rule does not say how to find $R$. The weakest precondition calculus gives a
 For $n$ commands the rule is applied $n - 1$ times, and we need $n - 1$ intermediate assertions:
 
 >> wp(c1; c2; c3, Q) = wp(c1, wp(c2, wp(c3, Q)))`,
-      example: `
->> {x = 0} x := x + 1 {x = 1}   {x = 1} x := x + 2 {x = 3}   ---   {x = 0} x := x + 1; x := x + 2 {x = 3}
-
-Here $R$ is $x = 1$. With the wp calculus: $wp(x := x + 2, x = 3) = (x + 2 = 3)$, which is $x = 1$, and $wp(x := x + 1, x = 1) = (x + 1 = 1)$, which is $x = 0$.`,
       check: 'The two triples of the premises. In a backward proof each of them is obtained by the rule of the corresponding command, so the only remaining check is, at the very start, that the precondition of the specification implies the computed weakest precondition.',
-      limits: 'A badly chosen $R$ can make one of the premises false even when the sequence is correct. The weakest precondition avoids this problem, since it is the weakest assertion that works for the second command.'
+      note: 'If the intermediate assertion $R$ is badly chosen, one of the premises can be false even when the program is correct. The choice $R = wp(c2, Q)$ avoids this.'
     },
     {
       id: 'IF',
@@ -138,21 +109,8 @@ Take a start state that satisfies $P$. There are two cases.
 In both cases the final state satisfies $Q$. The extra knowledge $B$ or $!B$ is often what makes a branch provable.
 
 The weakest precondition expresses the same case split as two implications. A state satisfies it when, in the case where $B$ is true, it satisfies $wp(c1, Q)$, and in the case where $B$ is false, it satisfies $wp(c2, Q)$.`,
-      example: `
-For \`if x = y then x := y + 1 else x := 1 - x\` with $Q$ equal to $x = y + 1$:
-
->> wp(x := y + 1, x = y + 1) = (y + 1 = y + 1)
->> wp(x := 1 - x, x = y + 1) = (1 - x = y + 1)
-
-so the weakest precondition of the conditional is
-
->> (x = y ==> y + 1 = y + 1) && (!(x = y) ==> 1 - x = y + 1)
-
-With the precondition $x + y = 0$ the first implication is trivially true, and the second one holds since $x + y = 0$ gives $1 - x = 1 + y$.
-
-**Missing else branch.** \`if B then c\` means \`if B then c else skip\`. The second premise becomes $\\{P && !B\\}$ \`skip\` $\\{Q\\}$, and with the consequence rule this is the implication $P && !B ==> Q$: when the condition is false, the postcondition must already hold.`,
       check: 'One triple for each branch. With the wp calculus, one implication from the precondition to the formula above.',
-      limits: 'Forgetting one branch is the classic mistake: the triple of the else branch is a real obligation, even when the else branch is `skip`.'
+      note: 'Both premises must be proved, including the one for the else branch. When the else branch is missing, the second premise becomes $P && !B ==> Q$.'
     },
     {
       id: 'WHILE',
@@ -171,18 +129,8 @@ We cannot know in advance how many times the body runs, so we cannot apply SEQ a
 The rule says nothing about termination. If the loop never stops, there is no final state, and the triple is true for any postcondition. This is the meaning of partial correctness.
 
 The weakest precondition formula above assumes that someone gave the invariant $I$. The calculus cannot compute it.`,
-      example: `
-For \`while x > 0 do x := x - 1\` we take $I$ equal to $x >= 0$.
-
->> {x >= 0 && x > 0} x := x - 1 {x >= 0}
-
-The assignment rule gives the precondition $x - 1 >= 0$, which is $x >= 1$, and $x >= 0 && x > 0 ==> x >= 1$ holds for integers. So the rule gives
-
->> {x >= 0} while x > 0 do x := x - 1 {x >= 0 && !(x > 0)}
-
-and the postcondition simplifies to $x = 0$.`,
       check: 'The premise $\\{I && B\\}$ `c` $\\{I\\}$. This is called preservation.',
-      limits: 'The rule needs an invariant, and finding it is the hard part of the proof. No algorithm finds invariants for every loop. The rule also gives no guarantee that the loop stops.'
+      note: 'The rule needs an invariant, which you have to find yourself. It does not show that the loop stops. For that, use a variant, as in the rule WHILE-TOTAL.'
     },
     {
       id: 'WHILE-CONSEQUENCE',
@@ -197,16 +145,8 @@ The plain loop rule forces the precondition to be $I$ and the postcondition to b
 - **Establishment**, $P ==> I$: the invariant is true when the loop is reached. When the loop comes after some initialisation code, this check is a triple for that code, $\\{P\\}$ \`init\` $\\{I\\}$.
 - **Preservation**, $\\{I && B\\}$ \`c\` $\\{I\\}$: one iteration of the body keeps the invariant.
 - **Exit**, $I && !B ==> Q$: when the loop stops, the invariant and the negated condition give the postcondition.`,
-      example: `
->> {x = 0} while x < 10 do x := x + 1 {x = 10}
-
-With $I$ equal to $0 <= x <= 10$:
-
-- Establishment: $x = 0 ==> 0 <= x <= 10$.
-- Preservation: $wp(x := x + 1, I) = (0 <= x + 1 <= 10)$, and $0 <= x <= 10 && x < 10$ implies it.
-- Exit: $0 <= x <= 10 && !(x < 10)$ gives $x = 10$.`,
       check: 'The three premises. A failing check comes with a state that breaks it, and this state tells us how to change the candidate invariant (see the page on loop invariants).',
-      limits: 'Same as the loop rule: partial correctness only.'
+      note: 'As with the loop rule, the three checks do not show that the loop stops.'
     },
     {
       id: 'WHILE-TOTAL',
@@ -224,14 +164,8 @@ Typical variants:
 
 - A loop that decreases $i$ while $i > 0$: the variant is $i$.
 - A loop that increases $i$ while $i < n$: the variant is $n - i$.`,
-      example: `
-For \`while i < 10 do i := i + 1\` with invariant $i <= 10$ and variant $10 - i$:
-
->> {i <= 10 && i < 10 && 10 - i = n} i := i + 1 {i <= 10 && 10 - i < n}
-
-The assignment rule gives $i + 1 <= 10 && 10 - (i + 1) < n$, and the precondition implies it since $10 - (i + 1) = n - 1$.`,
       check: 'Both premises. Together with the three checks of the invariant, they give total correctness: the loop stops and the postcondition holds.',
-      limits: 'The variant must be bounded below. A decreasing expression that can become negative, such as $-i$ in a loop that increases $i$ for ever, proves nothing.'
+      note: 'The variant must be an integer that stays at $0$ or above while the loop runs. An expression that decreases but can become negative does not show that the loop stops.'
     },
     {
       id: 'ARRAY-READ',
@@ -248,12 +182,8 @@ The rule above shows the case of one read $a[I]$ in $E$. In general we add one c
 The positions of an array go from $0$ to $sizeof(a) - 1$. A read at another position has no value: Java raises an exception, and C has undefined behaviour. In both cases nothing can be promised about the state after the assignment. The condition $def$ removes these states from the precondition, so the triple makes no promise about them.
 
 When $E$ reads no array, there is no condition to add, and the rule is the assignment rule.`,
-      example: `
->> {a[i] + a[j] > 0 && def(a[i]) && def(a[j])} x := a[i] + a[j] {x > 0}
-
-With the array $4, 0, 9$, $i = 2$ and $j = 7$, the read $a[j]$ does not exist. The precondition is false in this state, which is correct, since the program fails there.`,
       check: 'Nothing beyond the substitution, as for the assignment rule. Do not forget the definedness conditions when simplifying.',
-      limits: 'The rule is for reads. A write into an array changes the whole array and needs ARRAY-ASSIGN.'
+      note: 'Every read in $E$ needs its own condition, including a read inside an index, such as $b[j]$ in $a[b[j]]$. Writes into an array use ARRAY-ASSIGN.'
     },
     {
       id: 'ARRAY-ASSIGN',
@@ -275,12 +205,8 @@ The correct rule replaces every occurrence of $a$ in $Q$. Every read of the upda
 When we cannot know whether $J = I$, we keep both cases: a formula $P(a[I |-> E][J])$ becomes $(J = I && P(E)) || (J != I && P(a[J]))$.
 
 The array $a$ inside $E$ is not replaced. $E$ is evaluated before the write, so it refers to the old array, which is the array of the precondition.`,
-      example: `
->> wp(a[i] := 1, a[j] = 0) = (a[i |-> 1][j] = 0) && def(a[i])
-
-The select-store step gives $(j = i && 1 = 0) || (j != i && a[j] = 0)$, which simplifies to $j != i && a[j] = 0$. The condition $j != i$ is exactly what the naive rule missed.`,
       check: 'The three steps: substitution, select-store simplification, and the definedness conditions for the write and for every read in $E$.',
-      limits: 'The same idea is the basis for reasoning about pointers, where two pointers can hold the same address. The rule handles one array; if two array variables may be the same array, that aliasing has to be modelled as well.'
+      note: 'The same idea is used for pointers, since two pointers can hold the same address.'
     }
   ];
 

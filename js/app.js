@@ -555,22 +555,116 @@
   // Pages
   // ------------------------------------------------------------------
 
+  // The Rules page shows one rule at a time, chosen in a scrollable list.
+  let currentRule = null;
+  const exampleState = {};
+
   function renderRulesPage() {
-    const toc = '<nav class="rule-toc" aria-label="Rules">' + HL.RULES.map((r) => '<a href="#rule-' + r.id + '">' + esc(r.name) + '</a>').join('') + '</nav>';
-    const cards = HL.RULES.map((r) => '<section class="rule-card" id="rule-' + r.id + '">' +
-      '<header><h2>' + esc(r.name) + '</h2><span class="rule-id">' + esc(r.id) + '</span></header>' +
-      '<div class="display">' + ruleFigureFor(r) + '</div>' +
-      '<div class="rule-grid">' +
-      '<div class="rg-block"><h4>What the rule says</h4><div class="prose">' + md(r.says) + '</div></div>' +
-      '<div class="rg-block"><h4>Why it is correct</h4><div class="prose">' + md(r.mechanism) + '</div></div>' +
-      '<div class="rg-block"><h4>Example</h4><div class="prose">' + md(r.example) + '</div></div>' +
-      (r.wp ? '<div class="rg-block"><h4>Weakest precondition</h4><div class="display">' + displayLine(r.wp) + '</div></div>' : '') +
-      '<div class="rg-block"><h4>What you have to check</h4><div class="prose">' + md(r.check) + '</div></div>' +
-      '<div class="rg-block"><h4>What it does not tell you</h4><div class="prose">' + md(r.limits) + '</div></div>' +
-      '</div></section>').join('');
     $('#page-rules .page-body').innerHTML =
-      '<p class="lede">Each rule has a conclusion below the line and premises above it. To use a rule, you prove its premises. The figures use the notation of the slides; the names in brackets are the names used in the steps of the exercises.</p>' +
-      '<div class="display summary-rules">' + HL.RULES.slice(0, 6).map(ruleFigureFor).join('') + '</div>' + toc + cards;
+      '<p class="lede">Choose a rule in the list. Each rule has a conclusion below the line and premises above it: to use the rule, you prove its premises. The examples go step by step from the triple to the end of the attempt, which is green when the rule derives the triple and red when it does not.</p>' +
+      '<div class="rules-layout">' +
+      '<div class="rule-picker"><span class="kicker" id="rule-list-label">Rules</span>' +
+      '<div class="rule-list" role="listbox" aria-labelledby="rule-list-label">' +
+      HL.RULES.map((r) => '<button type="button" role="option" class="rule-option" data-rule="' + esc(r.id) + '" aria-selected="false">' +
+        '<span class="ro-name">' + esc(r.name) + '</span><span class="ro-id">' + esc(r.id) + '</span></button>').join('') +
+      '</div></div><div class="rule-view" id="rule-view"></div></div>';
+    const page = $('#page-rules');
+    page.addEventListener('click', onRulesClick);
+    $('.rule-list', page).addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+      e.preventDefault();
+      const j = HL.RULES.findIndex((r) => r.id === currentRule) + (e.key === 'ArrowDown' ? 1 : -1);
+      if (j < 0 || j >= HL.RULES.length) return;
+      location.hash = '#rule-' + HL.RULES[j].id;
+      const b = $('.rule-option[data-rule="' + HL.RULES[j].id + '"]');
+      if (b) b.focus();
+    });
+  }
+
+  function onRulesClick(e) {
+    const opt = e.target.closest('.rule-option');
+    if (opt) { location.hash = '#rule-' + opt.dataset.rule; return; }
+    const st = exampleState[currentRule];
+    if (!st) return;
+    const tab = e.target.closest('.rx-tab');
+    if (tab) { st.ex = Number(tab.dataset.ex); st.step = 0; renderExample(); return; }
+    const dot = e.target.closest('.rx-dot');
+    if (dot) { st.step = Number(dot.dataset.step); renderExample(); return; }
+    if (e.target.closest('.rx-prev')) { st.step = Math.max(0, st.step - 1); renderExample(); return; }
+    if (e.target.closest('.rx-next')) {
+      const n = HL.RULE_EXAMPLES[currentRule][st.ex].steps.length;
+      st.step = Math.min(n - 1, st.step + 1);
+      renderExample();
+    }
+  }
+
+  function ruleBlock(title, html) {
+    return '<div class="rg-block"><h4>' + title + '</h4>' + html + '</div>';
+  }
+
+  function showRule(id) {
+    const rule = HL.RULES.find((r) => r.id === id) || HL.RULES[0];
+    currentRule = rule.id;
+    store.set('hl-rule', rule.id);
+    const list = $('.rule-list');
+    $$('.rule-option').forEach((b) => {
+      const on = b.dataset.rule === rule.id;
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+      b.classList.toggle('active', on);
+      if (on && list && (b.offsetTop < list.scrollTop || b.offsetTop + b.offsetHeight > list.scrollTop + list.clientHeight)) {
+        list.scrollTop = b.offsetTop - list.clientHeight / 2;
+      }
+    });
+    const j = HL.RULES.indexOf(rule);
+    const prev = HL.RULES[j - 1];
+    const next = HL.RULES[j + 1];
+    $('#rule-view').innerHTML = '<section class="rule-card">' +
+      '<header><h2>' + esc(rule.name) + '</h2><span class="rule-id">' + esc(rule.id) + '</span></header>' +
+      '<div class="display">' + ruleFigureFor(rule) + '</div>' +
+      '<div class="rule-grid">' +
+      ruleBlock('What the rule says', '<div class="prose">' + md(rule.says) + '</div>') +
+      ruleBlock('Why it is correct', '<div class="prose">' + md(rule.mechanism) + '</div>') +
+      ruleBlock('Examples', '<div class="rx" id="rx"></div>') +
+      (rule.wp ? ruleBlock('Weakest precondition', '<div class="display">' + displayLine(rule.wp) + '</div>') : '') +
+      ruleBlock('What you have to check', '<div class="prose">' + md(rule.check) + '</div>') +
+      ruleBlock('Note', '<div class="prose">' + md(rule.note) + '</div>') +
+      '</div>' +
+      '<nav class="rule-pager" aria-label="Other rules">' +
+      (prev ? '<a href="#rule-' + esc(prev.id) + '">← ' + esc(prev.name) + '</a>' : '<span></span>') +
+      (next ? '<a href="#rule-' + esc(next.id) + '">' + esc(next.name) + ' →</a>' : '<span></span>') +
+      '</nav></section>';
+    renderExample();
+  }
+
+  // An example starts from the triple, which always stays visible, and
+  // goes step by step to the end of the attempt.
+  function renderExample() {
+    const box = $('#rx');
+    const list = (HL.RULE_EXAMPLES || {})[currentRule] || [];
+    if (!box) return;
+    if (!list.length) { box.innerHTML = '<p class="muted">There is no example for this rule yet.</p>'; return; }
+    const st = exampleState[currentRule] || (exampleState[currentRule] = { ex: 0, step: 0 });
+    const ex = list[st.ex];
+    const n = ex.steps.length;
+    const last = st.step === n - 1;
+    const status = last ? (ex.derived ? 'rx-ok' : 'rx-bad') : 'rx-open';
+    const badge = last ? (ex.derived ? '✓ Derived' : '✗ Not derived') : 'Step ' + (st.step + 1) + ' of ' + n;
+    let dots = '';
+    for (let k = 0; k < n; k++) {
+      dots += '<button type="button" class="rx-dot' + (k === st.step ? ' cur' : k < st.step ? ' done' : '') +
+        '" data-step="' + k + '" aria-label="Step ' + (k + 1) + '"' + (k === st.step ? ' aria-current="step"' : '') + '></button>';
+    }
+    box.innerHTML =
+      (list.length > 1 ? '<div class="rx-tabs" role="tablist" aria-label="Examples">' + list.map((e, k) =>
+        '<button type="button" role="tab" class="rx-tab' + (k === st.ex ? ' active' : '') + '" aria-selected="' + (k === st.ex) +
+        '" data-ex="' + k + '">' + esc(e.title) + '</button>').join('') + '</div>' : '') +
+      '<div class="rx-goal ' + status + '"><span class="kicker">Triple</span><span class="m">' + HL.renderLine(ex.goal).html + '</span>' +
+      '<span class="rx-badge">' + badge + '</span></div>' +
+      '<div class="rx-step prose" aria-live="polite">' + md(ex.steps[st.step]) +
+      (last ? '<div class="rx-result ' + status + '">' + inline(ex.result) + '</div>' : '') + '</div>' +
+      '<div class="rx-nav"><button type="button" class="btn ghost rx-prev"' + (st.step === 0 ? ' disabled' : '') + '>← Back</button>' +
+      '<div class="rx-dots">' + dots + '</div>' +
+      '<button type="button" class="btn ghost rx-next"' + (last ? ' disabled' : '') + '>Forward →</button></div>';
   }
 
   function renderProse(id) {
@@ -800,20 +894,25 @@
   // ------------------------------------------------------------------
 
   const PAGES = ['intro', 'language', 'rules', 'invariants', 'exercises', 'wp', 'author'];
+  let lastPage = null;
 
   function route() {
     const h = decodeURIComponent(location.hash.replace(/^#/, ''));
     let page = 'intro';
     let target = null;
+    let rule = null;
     if (PAGES.includes(h)) page = h;
-    else if (h.startsWith('rule-')) { page = 'rules'; target = h; }
+    else if (h.startsWith('rule-')) { page = 'rules'; rule = h.slice(5); }
     else if (h.startsWith('ex-')) page = 'exercises';
     else if (h.startsWith('h-')) {
       const el = document.getElementById(h);
       const sec = el && el.closest('.page');
       if (sec) { page = sec.id.replace('page-', ''); target = h; }
     }
+    const samePage = page === lastPage;
+    lastPage = page;
     PAGES.forEach((p) => { $('#page-' + p).hidden = p !== page; });
+    if (page === 'rules') showRule(rule || currentRule || store.get('hl-rule') || HL.RULES[0].id);
     $$('.site-nav a').forEach((a) => a.setAttribute('aria-current', a.getAttribute('href') === '#' + page ? 'page' : 'false'));
     if (page === 'exercises') {
       if (h.startsWith('ex-')) {
@@ -829,6 +928,8 @@
     if (target) {
       const el = document.getElementById(target);
       if (el) setTimeout(() => el.scrollIntoView({ block: 'start' }), 0);
+    } else if (page === 'rules' && samePage) {
+      // Choosing another rule keeps the list where it is.
     } else if (!h.startsWith('ex-') || !mainViewer.ex) window.scrollTo(0, 0);
   }
 
