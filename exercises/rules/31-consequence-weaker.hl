@@ -1,0 +1,67 @@
+id: rule-consequence-weaker
+title: Weaker precondition
+topic: Consequence
+example-of: CONSEQUENCE
+derived: false
+
+task:
+  Use the consequence rule to try to derive this triple. We take $Q'$
+  equal to $Q$ and compute $P'$ with the rule ASSIGN.
+
+pre: x > 90
+post: x > 101
+
+scheme: CONSEQUENCE
+  First premise: «P» ==> «P'»
+  Middle premise: {«P'»} x := x + 1 {«Q'»}
+  Last premise: «Q'» ==> «Q»
+  ---
+  {«P»} x := x + 1 {«Q»}
+
+program:
+  {P}
+  {P'}
+  x := x + 1     // i1
+  {Q'}
+  {Q}
+
+verdict: invalid
+
+step: Q' and the substitution
+part: Middle premise
+rule: ASSIGN
+focus: i1
+text:
+  We take $Q' = Q$. Then $P'$ is obtained by substituting the variable $x$
+  with the assignment expression $x + 1$ in $Q'$.
+set: Q' = x > 101
+calc:
+  wp(x := x + 1, Q')
+  = (x > 101)[x <- x + 1]     // Q' is x > 101
+  = x + 1 > 101               // x replaced by x + 1
+set: P' = x + 1 > 101
+
+step: Simplify P'
+part: Middle premise
+rule: LOGIC
+focus: P'
+text:
+  We subtract 1 from both sides.
+calc:
+  x + 1 > 101
+  = x > 100                   // subtract 1 from both sides
+set: P' = x > 100
+
+step: P does not imply P'
+part: First premise
+rule: CONSEQUENCE
+focus: P, P'
+text:
+  >>> «P» ==> «P'»
+vc: x > 90 ==> x > 100
+status: fails
+counterexample: x = 95
+why:
+  The state $x = 95$ satisfies $P$ and not $P'$. From this state the
+  program gives $x = 96$, so $Q$ is false at the end. The triple is not
+  valid.

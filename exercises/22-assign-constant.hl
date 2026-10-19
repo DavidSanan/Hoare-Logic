@@ -1,14 +1,15 @@
-# Source: HoareLogic.pdf, section "Exercises", "Single assignments", items 3 and 4.
+# Source: built from HoareLogic.pdf, section "Exercises", "Single assignments", items 3 and 4 (the two assignments are put in sequence).
 id: assign-constant
-title: Assignments whose weakest precondition is true
+title: Two assignments to the same variable
 topic: Assignment
 level: 1
-source: HoareLogic.pdf, Exercises, "Single assignments" 3 and 4
-tags: assignment, wp, true
+source: Built from HoareLogic.pdf, Exercises, "Single assignments" 3 and 4
+tags: assignment, sequence, wp, consequence
 
 task:
-  Compute the weakest precondition of the program for the given
-  postcondition, and decide whether the triple is valid.
+  Calculate the weakest precondition of the program for the postcondition
+  $Q$, statement by statement from the last one. Then use the consequence
+  rule to decide whether the triple is valid.
 
 pre: y = 2
 post: x = 7 && x > y
@@ -23,81 +24,52 @@ program:
 
 verdict: invalid
 
-step: Look at the two parts of the exercise
-text:
-  The reference document asks for two separate triples:
-  $\{true\}$ `x := 7` $\{x = 7\}$ and $\{y = 2\}$ `x := y + 1` $\{x > y\}$.
-  Both are valid, and both have the weakest precondition $true$. We first
-  solve them one by one. Then we look at what happens when the two
-  assignments are put in sequence with the conjunction of the two
-  postconditions, which is the program shown here.
-
-step: The first triple, x := 7
-rule: ASSIGN, WP
-calc:
-  wp(x := 7, x = 7)
-  = (x = 7)[x <- 7]
-  = 7 = 7
-  = true
-text:
-  The formula $7 = 7$ is true in every state. So the triple
-  $\{true\}$ `x := 7` $\{x = 7\}$ is valid: whatever the initial state, the
-  assignment of a constant makes $x$ equal to that constant.
-
-step: The second triple, x := y + 1
-rule: ASSIGN, WP
-calc:
-  wp(x := y + 1, x > y)
-  = (x > y)[x <- y + 1]
-  = y + 1 > y
-  = true
-text:
-  Again the weakest precondition is $true$, so $\{y = 2\}$ `x := y + 1`
-  $\{x > y\}$ is valid, and the precondition $y = 2$ is not even needed.
-vc: y = 2 ==> y + 1 > y
-why:
-  $y + 1 > y$ holds for every integer $y$.
-
-step: The sequence, last statement first
+step: R1, the weakest precondition of x := y + 1
 rule: ASSIGN, WP
 focus: i2
+text:
+  The precondition of an assignment is obtained by substituting the
+  assigned variable ($x$) with the assignment expression ($y + 1$) in the
+  postcondition $Q$.
 calc:
   wp(x := y + 1, Q)
   = (x = 7 && x > y)[x <- y + 1]
-  = y + 1 = 7 && y + 1 > y
-  = y = 6
+  = y + 1 = 7 && y + 1 > y     // every x is replaced by y + 1
+  = y = 6 && y + 1 > y         // subtract 1 from both sides of y + 1 = 7
+  = y = 6 && true              // y + 1 > y holds for every integer y
+  = y = 6                      // A && true is A
 set: R1 = y = 6
-text:
-  The second conjunct is always true, so only $y + 1 = 7$ remains.
 
-step: The first statement of the sequence
+step: R2, the weakest precondition of x := 7
 rule: ASSIGN, WP
 focus: i1
+text:
+  We substitute the assigned variable ($x$) with the assignment expression
+  ($7$) in the postcondition of this statement, which is $R1$.
 calc:
   wp(x := 7, R1)
   = (y = 6)[x <- 7]
-  = y = 6           // x does not occur in the formula
+  = y = 6           // x does not occur in y = 6, so nothing changes
 set: R2 = y = 6
-text:
-  The assignment `x := 7` does not change $y$, so the formula does not
-  change. The value $7$ given to $x$ is overwritten by the next statement
-  anyway.
 
-step: Compare with the precondition
-rule: CONSEQUENCE, LOGIC
+step: P implies R2
+rule: CONSEQUENCE
+focus: P, R2
+text:
+  $R2$ is the weakest precondition of the whole program for $Q$. By the
+  consequence rule, the triple is valid when the precondition $P$ implies
+  $R2$.
+
+  >>> «P» ==> «R2»
 vc: y = 2 ==> y = 6
 status: fails
 counterexample: y = 2
 why:
-  In the state $y = 2$ the precondition holds and $y = 6$ does not.
-  Running the program from that state gives $x = 3$, and $x = 7$ is false.
-vc: {y = 2} x := 7; x := y + 1 {x = 7 && x > y}
-status: fails
-counterexample: y = 2, x = 0
-result: Each original triple is valid, but their combination is not.
+  The state $y = 2$ satisfies $P$ and does not satisfy $y = 6$. From this
+  state the program ends with $x = 3$, so $x = 7$ is false at the end.
+result: The triple is not valid.
 
 summary:
-  An assignment of a constant has the weakest precondition $true$ for a
-  postcondition about that constant. When another assignment to the same
-  variable follows, the first value is lost, and the weakest precondition
-  is computed from the last assignment.
+  The value $7$ given to $x$ by the first assignment is overwritten by the
+  second one, so it does not appear in the weakest precondition. The
+  program establishes $Q$ only when $y = 6$ at the start.

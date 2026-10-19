@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Collect every exercise file (exercises/*.hl) into exercises/bundle.js.
+"""Collect every exercise file (exercises/*.hl and the examples of the rules,
+exercises/rules/*.hl) into exercises/bundle.js.
 
 The website loads bundle.js with a <script> tag. A page opened directly from
 the disk cannot read the .hl files itself, so they are bundled.
@@ -15,8 +16,8 @@ EXERCISES = ROOT / "exercises"
 
 
 def main():
-    files = sorted(EXERCISES.glob("*.hl"))
-    entries = [{"file": f.name, "text": f.read_text(encoding="utf-8")} for f in files]
+    files = sorted(EXERCISES.glob("*.hl")) + sorted((EXERCISES / "rules").glob("*.hl"))
+    entries = [{"file": str(f.relative_to(EXERCISES)), "text": f.read_text(encoding="utf-8")} for f in files]
     out = EXERCISES / "bundle.js"
     body = json.dumps(entries, ensure_ascii=False, indent=1)
     out.write_text(

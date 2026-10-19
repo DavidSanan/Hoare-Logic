@@ -1,5 +1,5 @@
-# Source: Exercise list "ICT3101 Exercises - Deductive Verification", problem 5 c), with its solution sheet
-# ("egypcian multiplication solved").
+# Source: Exercise list "ICT3101 Exercises - Deductive Verification" (HoareLogic Exercises.pdf), problem 5 c),
+# with its solution sheet ("egypcian multiplication solved").
 id: egyptian-multiplication
 title: Egyptian multiplication
 topic: Loop invariants
@@ -8,34 +8,41 @@ source: Exercise list "HoareLogic Exercises", problem 5 c
 tags: while, conditional, skip, div, mod, invariant
 
 task:
-  Give a proof outline for the loop, with the invariant
-  $x' * y' = x * y + z$.
+  Prove the triple with the loop invariant $x' * y' = x * y + z$. The
+  variables $x'$ and $y'$ hold the initial values of $x$ and $y$, and the
+  program does not change them.
 
-  Hint from the exercise list: $x = (x div 2) + (x div 2) + (x mod 2)$.
+hint:
+  $x = (x div 2) + (x div 2) + (x mod 2)$.
 
-  On this website $div$ and $mod$ are the mathematical integer division
-  and remainder, so $x mod 2$ is always $0$ or $1$ and the hint holds for
-  every integer $x$.
+  Here $div$ and $mod$ are the mathematical integer division and
+  remainder, so $x mod 2$ is always $0$ or $1$, and this equation holds
+  for every integer $x$.
+
+given:
+  Loop condition B: $!(x = 0)$
 
 pre: x = x' && y = y' && y' > 0
 post: z = x' * y'
 
 program:
   {P}
-  {R5}
+  {R1}
   z := 0;                  // i1
   {I}
   while (!(x = 0)) do {
     {I && !(x = 0)}
-    {R3}
+    {R6}
     if (x mod 2 = 1) then {
+      {R4}
       z := z + y           // then
     } else {
+      {R5}
       skip                 // else
     }
-    {R2}
+    {R3}
     y := y * 2;            // b2
-    {R1}
+    {R2}
     x := x div 2           // b3
     {I}
   }
@@ -44,73 +51,154 @@ program:
 
 verdict: valid
 
-step: The invariant
+step: The invariant I
 rule: WHILE-CONSEQUENCE
 focus: while
 text:
-  The product that is still to be computed is $x * y$, and the part
-  already computed is $z$. Halving $x$ and doubling $y$ keeps $x * y$ when
-  $x$ is even. When $x$ is odd, one copy of $y$ is lost by the division,
-  and the then branch adds it to $z$ first.
+  The invariant is given by the task. $z$ is the part of the product
+  already computed, and $x * y$ is the part still to compute. Halving $x$
+  and doubling $y$ keeps $x * y$ when $x$ is even. When $x$ is odd, the
+  division loses one copy of $y$, and the then branch adds it to $z$
+  first.
 set: I = x' * y' = x * y + z
+text:
+  The loop rule with consequence has three premises, with the loop
+  condition $B$ being $!(x = 0)$: initialisation, preservation and
+  conclusion.
 
-step: Establishment
+step: R1, the weakest precondition of z := 0 for I
+part: Initialisation
 rule: ASSIGN, WP
 focus: i1
+text:
+  The invariant must hold when the loop is reached. The loop is preceded
+  by `z := 0`, so initialisation is the triple
+  >>> {«P»} z := 0 {«I»}
+  We substitute $z$ with $0$ in the postcondition of `z := 0`, the
+  invariant $I$.
 calc:
   wp(z := 0, I)
-  = x' * y' = x * y + 0
-set: R5 = x' * y' = x * y + 0
-vc: x = x' && y = y' && y' > 0 ==> x' * y' = x * y + 0
+  = (x' * y' = x * y + z)[z <- 0]
+  = x' * y' = x * y + 0       // z is replaced by 0
+  = x' * y' = x * y           // A + 0 is A
+set: R1 = x' * y' = x * y
 
-step: Preservation, the last two statements
-rule: ASSIGN, SEQ, WP
-focus: b2, b3
+step: P implies R1
+part: Initialisation
+rule: CONSEQUENCE
+focus: P, R1
+text:
+  By the consequence rule, initialisation holds when the precondition $P$
+  implies $R1$.
+  >>> «P» ==> «R1»
+vc: x = x' && y = y' && y' > 0 ==> x' * y' = x * y
+why:
+  $P$ gives $x = x'$ and $y = y'$, so $x * y = x' * y'$.
+
+step: R2, the weakest precondition of x := x div 2 for I
+part: Preservation
+rule: ASSIGN, WP
+focus: b3
+text:
+  One iteration must keep the invariant:
+  >>> {«I» && «!(x = 0) : B»} if (x mod 2 = 1) then z := z + y else skip; y := y * 2; x := x div 2 {«I»}
+  We compute the weakest precondition of the body for $I$, from the last
+  statement. We substitute $x$ with $x div 2$ in $I$.
 calc:
   wp(x := x div 2, I)
-  = x' * y' = (x div 2) * y + z
-set: R1 = x' * y' = (x div 2) * y + z
-calc:
-  wp(y := y * 2, R1)
-  = x' * y' = (x div 2) * (y * 2) + z
-set: R2 = x' * y' = (x div 2) * (y * 2) + z
+  = (x' * y' = x * y + z)[x <- x div 2]
+  = x' * y' = (x div 2) * y + z      // x is replaced by x div 2
+set: R2 = x' * y' = (x div 2) * y + z
 
-step: Preservation, the conditional
-rule: IF, ASSIGN, SKIP, WP
-focus: then, else
+step: R3, the weakest precondition of y := y * 2 for R2
+part: Preservation
+rule: ASSIGN, WP
+focus: b2
+text:
+  We substitute $y$ with $y * 2$ in $R2$.
 calc:
-  wp(z := z + y, R2)
-  = x' * y' = (x div 2) * (y * 2) + (z + y)
-calc:
-  wp(if (x mod 2 = 1) then z := z + y else skip, R2)
-  = (x mod 2 = 1 ==> x' * y' = (x div 2) * (y * 2) + (z + y)) && (!(x mod 2 = 1) ==> x' * y' = (x div 2) * (y * 2) + z)
-set: R3 = (x mod 2 = 1 ==> x' * y' = (x div 2) * (y * 2) + (z + y)) && (!(x mod 2 = 1) ==> x' * y' = (x div 2) * (y * 2) + z)
+  wp(y := y * 2, R2)
+  = (x' * y' = (x div 2) * y + z)[y <- y * 2]
+  = x' * y' = (x div 2) * (y * 2) + z      // y is replaced by y * 2
+set: R3 = x' * y' = (x div 2) * (y * 2) + z
 
-step: Preservation, the verification condition
+step: R4, the weakest precondition of the then branch z := z + y
+part: Preservation
+rule: ASSIGN, WP
+focus: then
+text:
+  The postcondition of each branch is the postcondition of the
+  conditional, $R3$. In the then branch we substitute $z$ with $z + y$ in
+  $R3$.
+calc:
+  wp(z := z + y, R3)
+  = (x' * y' = (x div 2) * (y * 2) + z)[z <- z + y]
+  = x' * y' = (x div 2) * (y * 2) + (z + y)      // z is replaced by z + y
+set: R4 = x' * y' = (x div 2) * (y * 2) + (z + y)
+
+step: R5, the weakest precondition of the else branch skip
+part: Preservation
+rule: SKIP, WP
+focus: else
+text:
+  `skip` changes nothing, so its weakest precondition is its
+  postcondition $R3$.
+calc:
+  wp(skip, R3)
+  = x' * y' = (x div 2) * (y * 2) + z      // R3, since skip changes nothing
+set: R5 = x' * y' = (x div 2) * (y * 2) + z
+
+step: R6, the weakest precondition of the conditional
+part: Preservation
+rule: IF, WP
+focus: if
+text:
+  The weakest precondition of the conditional is: if the condition holds,
+  $R4$; if it does not hold, $R5$.
+calc:
+  wp(if (x mod 2 = 1) then z := z + y else skip, R3)
+  = (x mod 2 = 1 ==> R4) && (!(x mod 2 = 1) ==> R5)
+  = (x mod 2 = 1 ==> x' * y' = (x div 2) * (y * 2) + (z + y)) && (!(x mod 2 = 1) ==> x' * y' = (x div 2) * (y * 2) + z)     // R4 and R5 from the two previous steps
+set: R6 = (x mod 2 = 1 ==> x' * y' = (x div 2) * (y * 2) + (z + y)) && (!(x mod 2 = 1) ==> x' * y' = (x div 2) * (y * 2) + z)
+
+step: I and B imply R6
+part: Preservation
 rule: CONSEQUENCE, LOGIC
-vc: I && !(x = 0) ==> R3
+focus: I && !(x = 0), R6
+text:
+  $R6$ is the weakest precondition of the body for $I$. By the consequence
+  rule, preservation holds when $I$ and $B$ together imply $R6$.
+  >>> «I» && «!(x = 0) : B» ==> «R6»
+vc: x' * y' = x * y + z && !(x = 0) ==> (x mod 2 = 1 ==> x' * y' = (x div 2) * (y * 2) + (z + y)) && (!(x mod 2 = 1) ==> x' * y' = (x div 2) * (y * 2) + z)
 why:
-  We use $x = 2 * (x div 2) + (x mod 2)$.
+  The hint gives $x = 2 * (x div 2) + (x mod 2)$, so
+  $x * y = (x div 2) * (y * 2) + (x mod 2) * y$.
 
-  If $x mod 2 = 1$, then $x * y = (x div 2) * (y * 2) + y$, so
-  $x * y + z = (x div 2) * (y * 2) + (z + y)$.
+  If $x mod 2 = 1$, then $x * y + z = (x div 2) * (y * 2) + (z + y)$.
 
-  Otherwise $x mod 2 = 0$, then $x * y = (x div 2) * (y * 2)$, so
+  Otherwise $x mod 2 = 0$, since $x mod 2$ is $0$ or $1$. Then
   $x * y + z = (x div 2) * (y * 2) + z$.
 
-  In both cases the invariant $x' * y' = x * y + z$ gives the formula of
-  the branch.
+  In both cases $I$, $x' * y' = x * y + z$, gives the formula of the
+  case.
 
-step: The postcondition at the exit
+step: I and not B imply Q
+part: Conclusion
 rule: CONSEQUENCE, LOGIC
-vc: I && x = 0 ==> z = x' * y'
+focus: I && x = 0, Q
+text:
+  When the loop stops, $I$ holds and the loop condition $B$ is false.
+  $!B$ is $!(!(x = 0))$, which is $x = 0$. This must imply the
+  postcondition $Q$.
+  >>> «I» && «x = 0 : ¬B» ==> «Q»
+vc: x' * y' = x * y + z && x = 0 ==> z = x' * y'
 why:
-  With $x = 0$ the invariant becomes $x' * y' = 0 * y + z = z$.
+  With $x = 0$ the invariant becomes $x' * y' = 0 * y + z$, which is
+  $x' * y' = z$.
 result: The triple is valid (partial correctness).
 
 summary:
-  The proof is about partial correctness. For termination we need
-  $x' >= 0$: then $x$ is a variant, since $x div 2 < x$ when $x > 0$. With
-  the mathematical division, $-1 div 2 = -1$, so a negative initial $x$
-  makes the loop run for ever. The tests of this exercise skip those
-  states, since they do not terminate.
+  The proof is about partial correctness: if the loop stops, $Q$ holds.
+  The loop stops when $x' >= 0$, since $x div 2 < x$ when $x > 0$. With
+  the mathematical division $-1 div 2 = -1$, so a negative initial $x$
+  makes the loop run for ever.

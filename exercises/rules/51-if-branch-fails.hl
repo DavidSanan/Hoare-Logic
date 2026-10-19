@@ -1,0 +1,86 @@
+id: rule-if-branch-fails
+title: A branch fails
+topic: Conditional
+example-of: IF
+derived: false
+
+task:
+  Use the rule IF to try to derive this triple. Each branch is checked
+  with the rule ASSIGN and the consequence rule.
+
+given:
+  Condition B: $x > 0$
+
+pre: true
+post: y > 0
+
+scheme: IF
+  Then branch: {«P» && «x > 0 : B»} y := x {«Q»}
+  Else branch: {«P» && «!(x > 0) : ¬B»} y := 0 {«Q»}
+  ---
+  {«P»} if x > 0 then y := x else y := 0 {«Q»}
+
+program:
+  {P}
+  if x > 0 then {
+    {P && x > 0}
+    {R1}
+    y := x       // then
+    {Q}
+  } else {
+    {P && !(x > 0)}
+    {R2}
+    y := 0       // else
+    {Q}
+  }
+  {Q}
+
+verdict: invalid
+
+step: R1, the weakest precondition of y := x
+part: Then branch
+rule: ASSIGN
+focus: then
+text:
+  We substitute the variable $y$ with $x$ in $Q$.
+calc:
+  wp(y := x, Q)
+  = (y > 0)[y <- x]     // Q is y > 0
+  = x > 0               // y replaced by x
+set: R1 = x > 0
+
+step: P and B imply R1
+part: Then branch
+rule: CONSEQUENCE
+focus: P && x > 0, R1
+text:
+  >>> «P» && «x > 0 : B» ==> «R1»
+vc: true && x > 0 ==> x > 0
+why:
+  $R1$ is the condition $B$ itself.
+
+step: R2, the weakest precondition of y := 0
+part: Else branch
+rule: ASSIGN
+focus: else
+text:
+  We substitute the variable $y$ with $0$ in $Q$.
+calc:
+  wp(y := 0, Q)
+  = (y > 0)[y <- 0]     // Q is y > 0
+  = 0 > 0               // y replaced by 0
+  = false               // 0 > 0 is false
+set: R2 = false
+
+step: P and not B do not imply R2
+part: Else branch
+rule: CONSEQUENCE
+focus: P && !(x > 0), R2
+text:
+  >>> «P» && «!(x > 0) : ¬B» ==> «R2»
+vc: true && !(x > 0) ==> false
+status: fails
+counterexample: x = 0
+why:
+  The state $x = 0$ satisfies the left side. From it the else branch sets
+  $y$ to 0, so $Q$ is false at the end. The triple is not valid.

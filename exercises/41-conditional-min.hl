@@ -1,68 +1,102 @@
-# Source: Exercise list "ICT3101 Exercises - Deductive Verification", problem 3 c), with its solution sheet.
+# Source: Exercise list "ICT3101 Exercises - Deductive Verification" (file "HoareLogic Exercises.pdf"), problem 3 c), with its solution sheet.
+# The exercise asks for the precondition. The precondition given here is the answer, x = y.
 id: conditional-min
-title: Fill in the precondition of a conditional (c)
+title: A conditional with a minimum postcondition
 topic: Conditional
 level: 2
 source: Exercise list "HoareLogic Exercises", problem 3 c
 tags: conditional, wp
 
 task:
-  Fill in the weakest precondition of the following program.
+  Calculate the weakest precondition of the program for the postcondition
+  $Q$: first the weakest precondition of each branch, then the one of the
+  conditional. Then use the consequence rule to check that the
+  precondition $P$ implies it.
+
+given:
+  Condition B: $x - y > 0$
 
 pre: x = y
 post: z <= y && z <= x
 
 program:
+  {P}
   {R3}
   if (x - y > 0) then {
     {R1}
     z := x            // then
+    {Q}
   } else {
     {R2}
     z := y            // else
+    {Q}
   }
   {Q}
 
 verdict: valid
 
-step: The then branch
+step: R1, the weakest precondition of the then branch z := x
 rule: ASSIGN, WP
 focus: then
+text:
+  Each branch ends where the conditional ends, so its postcondition is
+  $Q$. We substitute the assigned variable ($z$) with the assignment
+  expression ($x$) in $Q$.
 calc:
   wp(z := x, Q)
   = (z <= y && z <= x)[z <- x]
-  = x <= y && x <= x
-  = x <= y
+  = x <= y && x <= x        // every z is replaced by x
+  = x <= y && true          // x <= x holds for every x
+  = x <= y                  // A && true is A
 set: R1 = x <= y
 
-step: The else branch
+step: R2, the weakest precondition of the else branch z := y
 rule: ASSIGN, WP
 focus: else
+text:
+  We substitute the assigned variable ($z$) with the assignment
+  expression ($y$) in the postcondition $Q$.
 calc:
   wp(z := y, Q)
   = (z <= y && z <= x)[z <- y]
-  = y <= y && y <= x
-  = y <= x
+  = y <= y && y <= x        // every z is replaced by y
+  = true && y <= x          // y <= y holds for every y
+  = y <= x                  // true && A is A
 set: R2 = y <= x
 
-step: Combine the branches
+step: R3, the weakest precondition of the conditional
 rule: IF, WP
-focus: if
+focus: if, R1, R2
+text:
+  The weakest precondition of `if B then c1 else c2` for $Q$ is
+  >> (B ==> wp(c1, Q)) && (!B ==> wp(c2, Q))
+  Here the condition $B$ is $x - y > 0$, $wp(c1, Q)$ is $R1$ and
+  $wp(c2, Q)$ is $R2$:
+  >>> («x - y > 0 : B» ==> «R1») && («!(x - y > 0) : ¬B» ==> «R2»)
 calc:
   wp(if (x - y > 0) then z := x else z := y, Q)
-  = (x - y > 0 ==> x <= y) && (!(x - y > 0) ==> y <= x)
-  = (x > y ==> x <= y) && (x <= y ==> y <= x)
-  = x <= y && (x <= y ==> y <= x)    // A ==> !A is the same as !A
-  = x <= y && y <= x                 // A && (A ==> B) is A && B
-  = x = y
+  = (x - y > 0 ==> x <= y) && (!(x - y > 0) ==> y <= x)   // B, R1 and R2 put in the formula
+  = (x > y ==> x <= y) && (!(x > y) ==> y <= x)           // x - y > 0 is x > y (add y to both sides)
+  = (x > y ==> x <= y) && (x <= y ==> y <= x)             // !(x > y) is x <= y
+  = x <= y && (x <= y ==> y <= x)                         // x <= y is !(x > y), and A ==> !A is !A
+  = x <= y && y <= x                                      // A && (A ==> B) is A && B
+  = x = y                                                 // x <= y and y <= x together say x = y
 set: R3 = x = y
+
+step: P implies R3
+rule: CONSEQUENCE
+focus: P, R3
 text:
-  The first implication says: if $x > y$ then $x <= y$. Its two sides
-  contradict each other, so it can only hold when $x > y$ is false, that
-  is, when $x <= y$.
-result: The weakest precondition is $x = y$.
+  $R3$ is the weakest precondition of the whole program for $Q$. By the
+  consequence rule, the triple is valid when the precondition $P$ implies
+  $R3$.
+  >>> «P» ==> «R3»
+vc: x = y ==> x = y
+why:
+  $P$ and $R3$ are the same formula, and every formula implies itself.
+result: The triple is valid, and $x = y$ is the weakest precondition.
 
 summary:
-  The program computes the maximum of $x$ and $y$, but the postcondition
-  describes the minimum. The two agree only when $x = y$, and this is what
-  the weakest precondition says.
+  The program stores in $z$ the larger of $x$ and $y$, but $Q$ asks for
+  a value that is at most $x$ and at most $y$. The larger value is also
+  the smaller one only when $x = y$.

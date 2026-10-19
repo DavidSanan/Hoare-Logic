@@ -7,9 +7,10 @@ source: Slides 3, Consequence Rule; HoareLogic.pdf, "Consequence rule"
 tags: consequence, assignment
 
 task:
-  Prove the triple with the full consequence rule: weaken the
-  precondition to $1 <= x <= 9$, and strengthen the postcondition to
-  $10 <= y <= 90$.
+  Prove the triple with the full consequence rule. Use the stronger
+  postcondition $Q' = (10 <= y <= 90)$, calculate the weakest precondition
+  $P'$ of the assignment for $Q'$, and check that it is the weaker
+  precondition $1 <= x <= 9$.
 
 pre: 2 <= x <= 8
 post: 0 <= y <= 100
@@ -17,47 +18,53 @@ post: 0 <= y <= 100
 program:
   {P}
   {P'}
-  y := x * 10
+  y := x * 10     // i1
   {Q'}
   {Q}
 
 verdict: valid
 
-step: Choose a stronger postcondition
+step: Q', the stronger postcondition
 rule: CONSEQUENCE
+focus: Q', Q
 text:
-  The program can only produce values of $y$ between $20$ and $80$, so the
-  bounds $0$ and $100$ of the postcondition are far from what happens. We
-  choose a simpler and stronger postcondition $Q'$, the multiples of ten
-  from $10$ to $90$ for the values $x = 1, ..., 9$.
+  The task gives $Q'$. The consequence rule accepts $Q'$ in place of the
+  postcondition $Q$ when $Q'$ implies $Q$.
 set: Q' = 10 <= y <= 90
+text:
+  >>> «Q'» ==> «Q»
 vc: 10 <= y <= 90 ==> 0 <= y <= 100
 why:
-  Every number between $10$ and $90$ is between $0$ and $100$. This is the
-  third premise of the consequence rule, $Q' ==> Q$.
+  Every number from $10$ to $90$ is between $0$ and $100$.
 
-step: Apply the assignment rule to the new postcondition
+step: P', the weakest precondition of y := x * 10 for Q'
 rule: ASSIGN, WP
-focus: y := x * 10
+focus: i1
+text:
+  The precondition of an assignment is obtained by substituting the
+  assigned variable ($y$) with the assignment expression ($x * 10$) in the
+  postcondition of the statement, which is $Q'$.
 calc:
   wp(y := x * 10, Q')
   = (10 <= y <= 90)[y <- x * 10]
-  = 10 <= x * 10 <= 90
-  = 1 <= x <= 9           // divide by 10
+  = 10 <= x * 10 <= 90    // y is replaced by x * 10
+  = 1 <= x <= 9           // divide the three parts by 10
 set: P' = 1 <= x <= 9
-instance: ASSIGN
-  ---
-  {1 <= x <= 9} y := x * 10 {10 <= y <= 90}
+text:
+  This is the weaker precondition $1 <= x <= 9$ given in the task.
 
-step: Weaken the precondition
-rule: CONSEQUENCE, LOGIC
+step: P implies P'
+rule: CONSEQUENCE
+focus: P, P'
+text:
+  $P'$ is the weakest precondition of the program for $Q'$. By the
+  consequence rule, the triple is valid when the precondition $P$ implies
+  $P'$, and $Q'$ implies $Q$. The second implication was proved in the
+  first step.
+  >>> «P» ==> «P'»
 vc: 2 <= x <= 8 ==> 1 <= x <= 9
 why:
-  The interval $[2, 8]$ is included in $[1, 9]$. So $P$ is stronger than
-  $P'$, which is the first premise of the consequence rule.
-
-step: Apply the consequence rule
-rule: CONSEQUENCE
+  The interval $[2, 8]$ is included in $[1, 9]$.
 instance: CONSEQUENCE
   2 <= x <= 8 ==> 1 <= x <= 9
   {1 <= x <= 9} y := x * 10 {10 <= y <= 90}
@@ -67,7 +74,8 @@ instance: CONSEQUENCE
 result: The triple is valid.
 
 summary:
-  The consequence rule lets us prove a triple through a different triple,
-  as long as the precondition gets stronger and the postcondition gets
-  weaker. The proof outline shows the two steps as the implications
-  $\{P\}$ to $\{P'\}$ and $\{Q'\}$ to $\{Q\}$.
+  The consequence rule proves a triple from another triple with a weaker
+  precondition and a stronger postcondition. Here the triple
+  $\{1 <= x <= 9\}$ `y := x * 10` $\{10 <= y <= 90\}$ is proved with the
+  assignment rule, and the two implications $P ==> P'$ and $Q' ==> Q$ link
+  it to the specification.

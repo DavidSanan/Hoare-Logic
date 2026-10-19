@@ -117,6 +117,61 @@
     return '<div class="disp">' + formulaSpan(src) + '</div>';
   }
 
+  // A line whose parts carry a label that says where they come from:
+  //   {«0 <= x <= 10 : I» && «x < 10 : B»} x := x + 1 {«0 <= x <= 10 : I»}
+  // Each «formula : label» is drawn with its label below it. The text
+  // between the labelled parts is drawn as braces, connectives and code.
+  // While a step is drawn, «X» stands for the current value of the
+  // assertion X of the annotated program, labelled X.
+  let activeSlots = null;
+
+  function labelPiece(body) {
+    const t = body.trim();
+    if (activeSlots && /^[A-Za-z][A-Za-z0-9_]*'*$/.test(t)) {
+      const v = activeSlots.get(t);
+      return '<span class="lab"><span class="lab-f">' + (v ? HL.toHTML(v.f) : HL.varHTML(t)) + '</span>' +
+        (v ? '<span class="lab-t">' + HL.varHTML(t) + '</span>' : '') + '</span>';
+    }
+    const k = body.lastIndexOf(':');
+    const f = k < 0 ? body : body.slice(0, k);
+    const label = k < 0 ? '' : body.slice(k + 1).trim();
+    return '<span class="lab"><span class="lab-f">' + HL.renderLine(f.trim()).html + '</span>' +
+      (label ? '<span class="lab-t">' + inline(label) + '</span>' : '') + '</span>';
+  }
+
+  function looseSegment(s) {
+    const t = s.trim();
+    if (!t) return '';
+    const ops = { '&&': '∧', '||': '∨', '==>': '⇒', '<=>': '⇔', '<==': '⇐' };
+    if (ops[t]) return '<span class="op">' + ops[t] + '</span>';
+    // A program is drawn as in the triples; anything else as a formula.
+    try {
+      const p = HL.parseProgram(t);
+      if (p.items.length && p.items.every((x) => x.k !== 'assert')) return '<span class="seg">' + HL.progInlineHTML(p) + '</span>';
+    } catch (e) { /* not a program */ }
+    return '<span class="seg">' + HL.renderLine(t).html + '</span>';
+  }
+
+  function labelledHTML(src) {
+    let out = '';
+    let rest = src;
+    while (rest.length) {
+      const a = rest.indexOf('«');
+      const b = a < 0 ? -1 : rest.indexOf('»', a);
+      const head = a < 0 || b < 0 ? rest : rest.slice(0, a);
+      // Braces in the text between labelled parts belong to triples.
+      head.split(/([{}])/).forEach((seg) => {
+        if (seg === '{' || seg === '}') out += '<span class="brace">' + seg + '</span>';
+        else if (seg) out += looseSegment(seg);
+      });
+      if (a < 0 || b < 0) break;
+      out += labelPiece(rest.slice(a + 1, b));
+      rest = rest.slice(b + 1);
+    }
+    return '<div class="disp"><span class="m labelled">' + out + '</span></div>';
+  }
+  HL.labelledHTML = labelledHTML;
+
   function codeBlock(body) {
     try {
       const prog = HL.parseProgram(body);
@@ -131,7 +186,7 @@
     }
   }
 
-  const BLOCK_START = /^(#{2,4} |>> |!! |::rule |\||[-*] |\d+\. |```)/;
+  const BLOCK_START = /^(#{2,4} |>>> |>> |!! |::rule |\||[-*] |\d+\. |```)/;
 
   function md(text) {
     if (!text) return '';
@@ -156,6 +211,12 @@
         const id = 'h-' + m[2].toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
         html += '<h' + level + ' id="' + id + '">' + inline(m[2]) + '</h' + level + '>';
         i++;
+        continue;
+      }
+      if (t.startsWith('>>> ')) {
+        let block = '';
+        while (i < lines.length && lines[i].trim().startsWith('>>> ')) block += labelledHTML(lines[i++].trim().slice(4));
+        html += '<div class="display stack">' + block + '</div>';
         continue;
       }
       if (t.startsWith('>> ')) {
@@ -225,7 +286,10 @@
   // Exercises
   // ------------------------------------------------------------------
 
-  const EXERCISES = (window.HL_EXERCISE_SOURCES || []).map((src) => HL.parseExercise(src.text, src.file));
+  // The exercise files hold the exercises and the examples of the rules.
+  const ALL_FILES = (window.HL_EXERCISE_SOURCES || []).map((src) => HL.parseExercise(src.text, src.file));
+  const EXERCISES = ALL_FILES.filter((e) => !e.exampleOf);
+  const RULE_EXAMPLE_LIST = ALL_FILES.filter((e) => e.exampleOf);
   const byId = new Map(EXERCISES.map((e) => [e.id, e]));
 
   function topicRank(t) {
@@ -249,28 +313,93 @@
     return slots;
   }
 
+  // The annotated program after step k. The statement of the step is
+  // highlighted; the assertion computed by the step is marked as new, and
+  // the assertions that the step uses are marked as used.
   function outlineHTML(ex, k) {
     if (!ex.program) return '<p class="muted">The program could not be read.</p>';
     const slots = slotValuesAt(ex, k);
     const step = k >= 1 && k <= ex.steps.length ? ex.steps[k - 1] : null;
     const focus = new Set(step ? step.focusIds || [] : []);
-    return '<div class="listing outline">' + HL.programLines(ex.program).map((l) => {
+    const used = new Set(step ? step.focusAsserts || [] : []);
+    const lines = HL.programLines(ex.program);
+    // The postcondition of a focused statement is used by the step: it is
+    // the assertion just after the statement (after its closing line).
+    lines.forEach((l, j) => {
+      if (l.type !== 'stmt' || !focus.has(l.node.id)) return;
+      let end = j;
+      if (l.node.k === 'if' || l.node.k === 'while') {
+        for (let i = j + 1; i < lines.length; i++) if (lines[i].node === l.node) end = i;
+      }
+      const next = lines[end + 1];
+      if (next && next.type === 'assert') used.add(next.node.aid);
+    });
+    return '<div class="listing outline">' + lines.map((l) => {
       const d = ' style="--d:' + l.depth + '"';
       if (l.type === 'assert') {
         const a = l.node;
+        const mark = used.has(a.aid) ? ' used' : '';
         if (a.slot && (slots.has(a.slot) || ex.slotNames.includes(a.slot))) {
           const v = slots.get(a.slot);
           const tag = '<span class="slot-tag">' + HL.varHTML(a.slot) + '</span>';
-          if (!v) return '<div class="ln assert pending"' + d + '>' + tag + '<span class="brace">{</span> <span class="q">?</span> <span class="brace">}</span></div>';
-          const fresh = v.step === k && k > 0 ? ' fresh' : '';
+          if (!v) return '<div class="ln assert pending' + mark + '"' + d + '>' + tag + '<span class="brace">{</span> <span class="q">?</span> <span class="brace">}</span></div>';
+          const fresh = v.step === k && k > 0 ? ' fresh' : mark;
           return '<div class="ln assert' + fresh + '"' + d + '>' + tag + '<span class="brace">{</span> ' + HL.toHTML(v.f) + ' <span class="brace">}</span></div>';
         }
-        return '<div class="ln assert"' + d + '><span class="brace">{</span> ' + HL.toHTML(a.f) + ' <span class="brace">}</span></div>';
+        // An assertion such as {I && x > 0}: the names of the assertions
+        // already computed are replaced by their values, and the original
+        // text stays in the tag.
+        const known = [...HL.freeVars(a.f)].filter((v) => slots.has(v) && ex.slotNames.includes(v) || (v === 'P' || v === 'Q') && slots.has(v));
+        if (known.length) {
+          let g = a.f;
+          for (const v of known) g = HL.substituteNode(g, v, HL.N.paren(slots.get(v).f));
+          const tag = '<span class="slot-tag">' + HL.toHTML(a.f) + '</span>';
+          return '<div class="ln assert' + mark + '"' + d + '>' + tag + '<span class="brace">{</span> ' + HL.toHTML(HL.simplifyParens(g)) + ' <span class="brace">}</span></div>';
+        }
+        return '<div class="ln assert' + mark + '"' + d + '><span class="brace">{</span> ' + HL.toHTML(a.f) + ' <span class="brace">}</span></div>';
       }
       const cls = focus.has(l.node.id) && l.type === 'stmt' ? ' focus' : '';
       const label = l.type === 'stmt' && l.node.label ? '<span class="label">' + esc(l.node.label) + '</span>' : '';
       return '<div class="ln ' + l.type + cls + '"' + d + '>' + l.html + label + '</div>';
     }).join('') + '</div>';
+  }
+
+  // The elements of the exercise, always shown above the annotated
+  // program: the variables of the program, the logical variables, the
+  // precondition and the postcondition, and the elements given by the file.
+  function givenHTML(ex) {
+    if (!ex.program) return '';
+    const progVars = [...HL.progVars(ex.program)];
+    const logical = [...new Set([...HL.freeVars(ex.pre || HL.N.bool(true)), ...HL.freeVars(ex.post || HL.N.bool(true))])]
+      .filter((v) => !progVars.includes(v));
+    const row = (label, html) => '<div><dt>' + label + '</dt><dd>' + html + '</dd></div>';
+    const vars = (list) => list.map((v) => '<span class="m">' + HL.varHTML(v) + '</span>').join(', ');
+    return '<dl class="given">' +
+      row('Variables', vars(progVars) || '<span class="muted">none</span>') +
+      (logical.length ? row('Logical variables', vars(logical)) : '') +
+      (ex.noPre ? '' : row('Precondition P', '<span class="m">' + (ex.pre ? HL.toHTML(ex.pre) : esc(ex.preSrc)) + '</span>')) +
+      row('Postcondition Q', '<span class="m">' + (ex.post ? HL.toHTML(ex.post) : esc(ex.postSrc)) + '</span>') +
+      ex.given.map(([label, value]) => row(inline(label), inline(value))).join('') +
+      '</dl>';
+  }
+
+  // The rule with the elements of the exercise. The premise that the
+  // current step proves is highlighted; a click goes to its first step.
+  function schemeHTML(ex, k) {
+    if (!ex.scheme) return '';
+    const step = k >= 1 && k <= ex.steps.length ? ex.steps[k - 1] : null;
+    activeSlots = slotValuesAt(ex, k);
+    const piece = (src) => labelledHTML(src).replace(/^<div class="disp">|<\/div>$/g, '');
+    const prem = ex.scheme.premises.map((p) =>
+      '<button type="button" class="rx-prem' + (step && p.part && step.part === p.part ? ' hl' : '') + '"' +
+      (p.part ? ' data-part="' + esc(p.part) + '"' : '') + '><span class="rx-prem-f">' + piece(p.src) + '</span>' +
+      (p.part ? '<span class="rx-prem-t">' + esc(p.part) + '</span>' : '') + '</button>').join('');
+    const concl = piece(ex.scheme.conclusion);
+    activeSlots = null;
+    return '<div class="rx-rule"><span class="kicker">The rule with the elements of the example</span>' +
+      '<div class="rulefig"><div class="rf-body"><div class="rf-prem">' + (prem || '<span class="rf-item rf-empty"></span>') +
+      '</div><div class="rf-bar"></div><div class="rf-concl"><span class="rf-item">' + concl + '</span></div></div>' +
+      (ex.scheme.name ? '<div class="rf-name">[' + esc(ex.scheme.name) + ']</div>' : '') + '</div></div>';
   }
 
   const REL_DISPLAY = { '<=>': '⇔', '⇔': '⇔', '≡': '≡', '===': '≡', '==>': '⇒', '⇒': '⇒', '=>': '⇒', '<==': '⇐', '⇐': '⇐', '==': '=', '=': '=' };
@@ -289,10 +418,11 @@
         return '<div class="setline"><span class="kicker">New assertion</span><span class="m">' + HL.varHTML(it.name) +
           ' <span class="op">≡</span> ' + (it.f ? HL.toHTML(it.f) : HL.looseHTML(it.src)) + '</span></div>';
       case 'calc':
-        return '<div class="calc table-wrap"><table>' + it.rows.map((r, j) => '<tr>' +
+        // The last line of a calculation is its result, and is highlighted.
+        return '<div class="calc table-wrap"><table>' + it.rows.map((r, j) => '<tr' + (j && j === it.rows.length - 1 ? ' class="last"' : '') + '>' +
           '<td class="rel">' + (j ? (REL_DISPLAY[r.sym] || '=') : '') + '</td>' +
           '<td class="fm"><span class="m">' + (r.f ? HL.toHTML(r.f) : HL.looseHTML(r.src)) + '</span></td>' +
-          '<td class="why">' + (r.why ? inline(r.why) : '') + '</td></tr>').join('') + '</table></div>';
+          '<td class="why">' + (r.why ? whyHTML(r.why) : '') + '</td></tr>').join('') + '</table></div>';
       case 'vc': {
         const body = it.node ? (it.node.k === 'triple' ? HL.tripleHTML(it.node) : HL.toHTML(it.node.f)) : HL.looseHTML(it.src);
         const holds = it.status !== 'fails';
@@ -313,6 +443,16 @@
     }
   }
 
+  // A justification is plain text in which the operators are drawn as
+  // symbols, so that "x >= x" reads as in the formulas.
+  function whyHTML(t) {
+    let s = inline(t);
+    const rep = [['&lt;=&gt;', '⇔'], ['==&gt;', '⇒'], ['|-&gt;', '↦'], ['&lt;-', '←'], ['&amp;&amp;', '∧'], ['||', '∨'],
+      ['!=', '≠'], ['&lt;=', '≤'], ['&gt;=', '≥'], [' * ', ' · '], ['!(', '¬(']];
+    for (const [a, b] of rep) s = s.split(a).join(b);
+    return s;
+  }
+
   function lineHTML(node) {
     return node.k === 'triple' ? HL.tripleHTML(node) : HL.toHTML(node.f);
   }
@@ -322,12 +462,15 @@
       (Array.isArray(v) ? '[' + v.join(', ') + ']' : esc(HL.valueText(v)).replace(/^-/, '−')) + '</span>').join(', ') + '</span>';
   }
 
-  function stepCardHTML(ex, step) {
-    return '<article class="step-card">' +
-      '<header><span class="kicker">Step ' + step.index + ' of ' + ex.steps.length + '</span>' +
+  function stepCardHTML(ex, step, final) {
+    activeSlots = slotValuesAt(ex, step.index);
+    const html = '<article class="step-card">' +
+      '<header><span class="kicker">Step ' + esc(step.number || String(step.index)) + (step.part ? ' · ' + esc(step.part) : '') + '</span>' +
       '<h3>' + inline(step.title) + '</h3>' +
       (step.rules.length ? '<div class="chips">' + step.rules.map(ruleChip).join('') + '</div>' : '') + '</header>' +
-      step.items.map((it) => itemHTML(it, step)).join('') + '</article>';
+      step.items.map((it) => itemHTML(it, step)).join('') + (final || '') + '</article>';
+    activeSlots = null;
+    return html;
   }
 
   function specHTML(ex) {
@@ -341,7 +484,7 @@
     const toFind = ex.slotNames.filter((n) => n !== 'P' && n !== 'Q');
     return '<article class="step-card">' +
       '<header><span class="kicker">The problem</span><h3>' + inline(ex.title) + '</h3></header>' +
-      '<div class="prose">' + md(ex.task) + '</div>' + specHTML(ex) +
+      '<div class="prose">' + md(ex.task) + '</div>' +
       (toFind.length ? '<p class="muted">The proof fills in ' + (toFind.length === 1 ? 'the assertion ' : 'the assertions ') +
         toFind.map((n) => '<span class="m">' + HL.varHTML(n) + '</span>').join(', ') + ' of the annotated program.</p>' : '') +
       (ex.hint ? '<details class="hint"><summary>Hint</summary><div class="prose">' + md(ex.hint) + '</div></details>' : '') +
@@ -428,27 +571,44 @@
   // The step viewer
   // ------------------------------------------------------------------
 
+  // The viewer shows an exercise one step at a time. With several choices
+  // (for example of invariant), it shows the steps of the chosen one.
+  // Options: compact (no header, no summary: used for the examples of the
+  // rules and for the wp calculator), onStep (called when the step changes).
   class Viewer {
     constructor(container, opts) {
       this.el = container;
       this.opts = opts || {};
       this.ex = null;
+      this.c = 0;
       this.k = 0;
       this.all = false;
       this.el.addEventListener('click', (e) => this.onClick(e));
     }
 
-    show(ex, k) {
+    // The exercise with the steps of the current choice.
+    view() {
+      const choice = this.ex.choices[this.c] || this.ex.choices[0];
+      return Object.assign({}, this.ex, { steps: choice.steps, choice });
+    }
+
+    last() {
+      return this.view().steps.length + (this.opts.compact ? 0 : 1);
+    }
+
+    show(ex, k, c) {
+      const same = this.ex === ex;
       this.ex = ex;
-      this.k = Math.max(0, Math.min(k || 0, ex.steps.length + 1));
+      this.c = Math.max(0, Math.min(c != null ? c : same ? this.c : 0, ex.choices.length - 1));
+      this.k = Math.max(0, Math.min(k || 0, this.last()));
       this.render();
     }
 
     go(k) {
       if (!this.ex) return;
-      this.k = Math.max(0, Math.min(k, this.ex.steps.length + 1));
+      this.k = Math.max(0, Math.min(k, this.last()));
       this.render();
-      if (this.opts.onStep) this.opts.onStep(this.ex, this.k);
+      if (this.opts.onStep) this.opts.onStep(this.ex, this.k, this.c);
       const nav = $('.stepper', this.el);
       if (nav && nav.getBoundingClientRect().top < 0) nav.scrollIntoView({ block: 'start' });
     }
@@ -456,7 +616,15 @@
     onClick(e) {
       const b = e.target.closest('button');
       if (!b || !this.el.contains(b)) return;
-      if (b.dataset.go != null) this.go(Number(b.dataset.go));
+      if (b.dataset.choice != null) {
+        this.c = Number(b.dataset.choice);
+        this.k = Math.min(this.k, this.last());
+        this.render();
+        if (this.opts.onStep) this.opts.onStep(this.ex, this.k, this.c);
+      } else if (b.dataset.part != null) {
+        const j = this.view().steps.findIndex((s) => s.part === b.dataset.part);
+        if (j >= 0) this.go(j + 1);
+      } else if (b.dataset.go != null) this.go(Number(b.dataset.go));
       else if (b.classList.contains('prev')) this.go(this.k - 1);
       else if (b.classList.contains('next')) this.go(this.k + 1);
       else if (b.classList.contains('toggle-all')) { this.all = !this.all; this.render(); }
@@ -478,29 +646,77 @@
       }, 30);
     }
 
-    render() {
+    // The buttons of the steps, grouped by part: 1, 2, 3.1, 3.2, 4, ...
+    stepperHTML(ex, k) {
+      const n = ex.steps.length;
+      const compact = this.opts.compact;
+      const btn = (j, label, title) => '<button type="button" data-go="' + j + '" class="sdot' + (label.length < 5 ? ' num' : '') +
+        (k === j ? ' cur' : '') + (j > 0 && j < k ? ' done' : '') + '" title="' + esc(title) + '">' + esc(label) + '</button>';
+      const parts = [btn(0, 'Problem', 'The problem')];
+      let j = 0;
+      while (j < n) {
+        const part = ex.steps[j].part;
+        let e = j + 1;
+        while (part && e < n && ex.steps[e].part === part) e++;
+        const buttons = [];
+        for (let i = j; i < e; i++) buttons.push(btn(i + 1, ex.steps[i].number || String(i + 1), ex.steps[i].title));
+        parts.push(part ? '<span class="sgroup' + (k > j && k <= e ? ' cur' : '') + '"><span class="sg-label">' + esc(part) + '</span>' +
+          '<span class="sg-btns">' + buttons.join('') + '</span></span>' : buttons.join(''));
+        j = e;
+      }
+      if (!compact) parts.push(btn(n + 1, 'Summary', 'Summary and tests'));
+      return '<nav class="stepper" aria-label="Steps of the solution">' +
+        '<button type="button" class="btn ghost prev"' + (k === 0 || this.all ? ' disabled' : '') + ' aria-label="Previous step">←</button>' +
+        '<div class="sdots">' + parts.join('') + '</div>' +
+        '<button type="button" class="btn ghost next"' + (k === this.last() || this.all ? ' disabled' : '') + ' aria-label="Next step">→</button>' +
+        (compact ? '' : '<button type="button" class="btn ghost toggle-all">' + (this.all ? 'One step at a time' : 'Show all steps') + '</button>') +
+        '</nav>';
+    }
+
+    choicesHTML() {
       const ex = this.ex;
+      if (ex.choices.length < 2) return '';
+      let loops = false;
+      if (ex.program) HL.walkStmts(ex.program, (s) => { if (s.k === 'while') loops = true; });
+      return '<div class="choice-bar"><span class="kicker">' + (loops ? 'Invariant' : 'Choice') + '</span>' +
+        ex.choices.map((c, j) => '<button type="button" class="choice' + (j === this.c ? ' active' : '') + '" data-choice="' + j + '"' +
+          (j === this.c ? ' aria-pressed="true"' : ' aria-pressed="false"') + '>' + inline(c.title) + (j === 0 ? ' <span class="muted">(default)</span>' : '') +
+          '</button>').join('') + '</div>';
+    }
+
+    // In compact mode the last step ends with the outcome, in green when
+    // the proof succeeds and in red when it does not.
+    finalHTML(ex) {
+      if (!this.opts.compact) return '';
+      let ok;
+      let text;
+      if (ex.outcome) {
+        ok = ex.outcome.ok;
+        text = ex.outcome.text;
+      } else if (ex.derived != null && ex.choices.length < 2) {
+        ok = ex.derived;
+        text = ok ? '✓ The rule derives the triple.' : '✗ The rule does not derive the triple.';
+      } else if (ex.choice.outcome === 'fails') {
+        ok = false;
+        text = '✗ The proof does not succeed with this choice.';
+      } else {
+        ok = ex.verdict !== 'invalid';
+        text = ok ? '✓ The triple is proved.' : '✗ The triple is not valid.';
+      }
+      return '<div class="final ' + (ok ? 'ok' : 'bad') + '">' + text + '</div>';
+    }
+
+    render() {
+      const ex = this.view();
       const n = ex.steps.length;
       const k = this.k;
-      const head = '<header class="ex-head">' +
+      const compact = this.opts.compact;
+      const head = compact ? '' : '<header class="ex-head">' +
         '<div class="ex-meta"><span class="topic">' + esc(ex.topic) + '</span>' + levelDots(ex.level) +
         (ex.source ? '<span class="source">' + esc(ex.source) + '</span>' : '') + '</div>' +
         '<h2>' + inline(ex.title) + '</h2>' +
         (ex.tags.length ? '<div class="tags">' + ex.tags.map((t) => '<span class="tag">' + esc(t) + '</span>').join('') + '</div>' : '') +
         '</header>';
-      const dots = [];
-      dots.push('<button type="button" data-go="0" class="sdot' + (k === 0 ? ' cur' : '') + '" title="The problem">Problem</button>');
-      for (let j = 1; j <= n; j++) {
-        dots.push('<button type="button" data-go="' + j + '" class="sdot num' + (k === j ? ' cur' : '') + (j < k ? ' done' : '') +
-          '" title="' + esc(ex.steps[j - 1].title) + '">' + j + '</button>');
-      }
-      dots.push('<button type="button" data-go="' + (n + 1) + '" class="sdot' + (k === n + 1 ? ' cur' : '') + '" title="Summary and tests">Summary</button>');
-      const stepper = '<nav class="stepper" aria-label="Steps of the solution">' +
-        '<button type="button" class="btn ghost prev"' + (k === 0 || this.all ? ' disabled' : '') + ' aria-label="Previous step">←</button>' +
-        '<div class="sdots">' + dots.join('') + '</div>' +
-        '<button type="button" class="btn ghost next"' + (k === n + 1 || this.all ? ' disabled' : '') + ' aria-label="Next step">→</button>' +
-        '<button type="button" class="btn ghost toggle-all">' + (this.all ? 'One step at a time' : 'Show all steps') + '</button>' +
-        '</nav>';
 
       let main;
       let outlineK = k;
@@ -508,17 +724,19 @@
         outlineK = n;
         main = problemHTML(ex) + ex.steps.map((s) => stepCardHTML(ex, s)).join('') + summaryHTML(ex);
       } else if (k === 0) main = problemHTML(ex);
-      else if (k <= n) main = stepCardHTML(ex, ex.steps[k - 1]);
+      else if (k <= n) main = stepCardHTML(ex, ex.steps[k - 1], k === n ? this.finalHTML(ex) : '');
       else { main = summaryHTML(ex); outlineK = n; }
 
-      const outline = '<aside class="outline-pane"><div class="pane-title"><span class="kicker">Annotated program</span>' +
-        '<span class="muted small">' + (outlineK === 0 ? 'before the proof' : outlineK > n || outlineK === n ? 'complete' : 'after step ' + outlineK) + '</span></div>' +
+      const outline = '<aside class="outline-pane">' + givenHTML(ex) +
+        '<div class="pane-title"><span class="kicker">Annotated program</span>' +
+        '<span class="muted small">' + (outlineK === 0 ? 'before the proof' : outlineK >= n ? 'complete' : 'after step ' + esc(ex.steps[outlineK - 1].number)) + '</span></div>' +
         outlineHTML(ex, outlineK) + '</aside>';
 
       const problems = ex.errors.length
         ? '<div class="errors"><strong>This exercise has errors:</strong><ul>' + ex.errors.map((e) => '<li>line ' + e.line + ': ' + esc(e.msg) + '</li>').join('') + '</ul></div>'
         : '';
-      this.el.innerHTML = head + problems + stepper + '<div class="ex-body">' + outline + '<div class="step-pane">' + main + '</div></div>';
+      this.el.innerHTML = head + problems + this.choicesHTML() + schemeHTML(ex, this.all ? 0 : Math.min(k, n)) +
+        this.stepperHTML(ex, k) + '<div class="ex-body">' + outline + '<div class="step-pane">' + main + '</div></div>';
     }
   }
 
@@ -556,18 +774,32 @@
   // ------------------------------------------------------------------
 
   // The Rules page shows one rule at a time, chosen in a scrollable list.
+  // A side panel chooses the section of the rule that is shown.
   let currentRule = null;
+  let currentSection = 'examples';
   const exampleState = {};
+
+  const RULE_SECTIONS = [
+    ['examples', 'Examples'],
+    ['semantics', 'Semantics'],
+    ['correctness', 'Correctness'],
+    ['wp', 'Weakest precondition'],
+    ['vcs', 'Verification conditions'],
+    ['note', 'Note']
+  ];
 
   function renderRulesPage() {
     $('#page-rules .page-body').innerHTML =
-      '<p class="lede">Choose a rule in the list. Each rule has a conclusion below the line and premises above it: to use the rule, you prove its premises. The examples go step by step from the triple to the end of the attempt, which is green when the rule derives the triple and red when it does not.</p>' +
       '<div class="rules-layout">' +
-      '<div class="rule-picker"><span class="kicker" id="rule-list-label">Rules</span>' +
+      '<aside class="rule-side">' +
+      '<div class="rule-picker"><span class="kicker" id="rule-list-label">Rule</span>' +
       '<div class="rule-list" role="listbox" aria-labelledby="rule-list-label">' +
       HL.RULES.map((r) => '<button type="button" role="option" class="rule-option" data-rule="' + esc(r.id) + '" aria-selected="false">' +
         '<span class="ro-name">' + esc(r.name) + '</span><span class="ro-id">' + esc(r.id) + '</span></button>').join('') +
-      '</div></div><div class="rule-view" id="rule-view"></div></div>';
+      '</div></div></aside>' +
+      '<div class="rule-view" id="rule-view"></div>' +
+      '<nav class="rule-sections" aria-label="Sections of the rule"><span class="kicker">Section</span>' +
+      '<div class="rs-list" id="rs-list"></div></nav></div>';
     const page = $('#page-rules');
     page.addEventListener('click', onRulesClick);
     $('.rule-list', page).addEventListener('keydown', (e) => {
@@ -584,22 +816,29 @@
   function onRulesClick(e) {
     const opt = e.target.closest('.rule-option');
     if (opt) { location.hash = '#rule-' + opt.dataset.rule; return; }
-    const st = exampleState[currentRule];
-    if (!st) return;
+    const sec = e.target.closest('.rs-item');
+    if (sec) { currentSection = sec.dataset.sec; showRule(currentRule); return; }
     const tab = e.target.closest('.rx-tab');
-    if (tab) { st.ex = Number(tab.dataset.ex); st.step = 0; renderExample(); return; }
-    const dot = e.target.closest('.rx-dot');
-    if (dot) { st.step = Number(dot.dataset.step); renderExample(); return; }
-    if (e.target.closest('.rx-prev')) { st.step = Math.max(0, st.step - 1); renderExample(); return; }
-    if (e.target.closest('.rx-next')) {
-      const n = HL.RULE_EXAMPLES[currentRule][st.ex].steps.length;
-      st.step = Math.min(n - 1, st.step + 1);
+    if (tab) {
+      exampleState[currentRule] = { ex: Number(tab.dataset.ex), k: 1, c: 0 };
       renderExample();
     }
   }
 
-  function ruleBlock(title, html) {
-    return '<div class="rg-block"><h4>' + title + '</h4>' + html + '</div>';
+  function sectionHTML(rule, sec) {
+    switch (sec) {
+      case 'examples': return '<div class="rx" id="rx"></div>';
+      case 'semantics': return '<div class="prose">' + md(rule.says) + '</div>';
+      case 'correctness': return '<div class="prose">' + md(rule.mechanism) + '</div>';
+      case 'wp': return '<div class="display">' + displayLine(rule.wp) + '</div>';
+      case 'vcs': return '<div class="prose">' + md(rule.check) + '</div>';
+      case 'note': return '<div class="prose">' + md(rule.note) + '</div>';
+      default: return '';
+    }
+  }
+
+  function ruleSections(rule) {
+    return RULE_SECTIONS.filter(([k]) => k !== 'wp' || rule.wp);
   }
 
   function showRule(id) {
@@ -615,56 +854,47 @@
         list.scrollTop = b.offsetTop - list.clientHeight / 2;
       }
     });
+    const sections = ruleSections(rule);
+    if (!sections.some(([k]) => k === currentSection)) currentSection = 'examples';
+    $('#rs-list').innerHTML = sections.map(([k, label]) =>
+      '<button type="button" class="rs-item' + (k === currentSection ? ' active' : '') + '" data-sec="' + k + '"' +
+      (k === currentSection ? ' aria-current="true"' : '') + '>' + esc(label) + '</button>').join('');
+    const title = sections.find(([k]) => k === currentSection)[1];
     const j = HL.RULES.indexOf(rule);
     const prev = HL.RULES[j - 1];
     const next = HL.RULES[j + 1];
     $('#rule-view').innerHTML = '<section class="rule-card">' +
       '<header><h2>' + esc(rule.name) + '</h2><span class="rule-id">' + esc(rule.id) + '</span></header>' +
       '<div class="display">' + ruleFigureFor(rule) + '</div>' +
-      '<div class="rule-grid">' +
-      ruleBlock('What the rule says', '<div class="prose">' + md(rule.says) + '</div>') +
-      ruleBlock('Why it is correct', '<div class="prose">' + md(rule.mechanism) + '</div>') +
-      ruleBlock('Examples', '<div class="rx" id="rx"></div>') +
-      (rule.wp ? ruleBlock('Weakest precondition', '<div class="display">' + displayLine(rule.wp) + '</div>') : '') +
-      ruleBlock('What you have to check', '<div class="prose">' + md(rule.check) + '</div>') +
-      ruleBlock('Note', '<div class="prose">' + md(rule.note) + '</div>') +
-      '</div>' +
+      '<div class="rg-block"><h3 class="rs-title">' + esc(title) + '</h3>' + sectionHTML(rule, currentSection) + '</div>' +
       '<nav class="rule-pager" aria-label="Other rules">' +
       (prev ? '<a href="#rule-' + esc(prev.id) + '">← ' + esc(prev.name) + '</a>' : '<span></span>') +
       (next ? '<a href="#rule-' + esc(next.id) + '">' + esc(next.name) + ' →</a>' : '<span></span>') +
       '</nav></section>';
-    renderExample();
+    if (currentSection === 'examples') renderExample();
   }
 
-  // An example starts from the triple, which always stays visible, and
-  // goes step by step to the end of the attempt.
+  // ------------------------------------------------------------------
+  // Examples of the rules: exercise files with "example-of: RULE", shown
+  // with the step viewer in compact mode.
+  // ------------------------------------------------------------------
+
   function renderExample() {
     const box = $('#rx');
-    const list = (HL.RULE_EXAMPLES || {})[currentRule] || [];
     if (!box) return;
+    const list = RULE_EXAMPLE_LIST.filter((e) => e.exampleOf === currentRule);
     if (!list.length) { box.innerHTML = '<p class="muted">There is no example for this rule yet.</p>'; return; }
-    const st = exampleState[currentRule] || (exampleState[currentRule] = { ex: 0, step: 0 });
-    const ex = list[st.ex];
-    const n = ex.steps.length;
-    const last = st.step === n - 1;
-    const status = last ? (ex.derived ? 'rx-ok' : 'rx-bad') : 'rx-open';
-    const badge = last ? (ex.derived ? '✓ Derived' : '✗ Not derived') : 'Step ' + (st.step + 1) + ' of ' + n;
-    let dots = '';
-    for (let k = 0; k < n; k++) {
-      dots += '<button type="button" class="rx-dot' + (k === st.step ? ' cur' : k < st.step ? ' done' : '') +
-        '" data-step="' + k + '" aria-label="Step ' + (k + 1) + '"' + (k === st.step ? ' aria-current="step"' : '') + '></button>';
-    }
+    const st = exampleState[currentRule] || (exampleState[currentRule] = { ex: 0, k: 1, c: 0 });
     box.innerHTML =
-      (list.length > 1 ? '<div class="rx-tabs" role="tablist" aria-label="Examples">' + list.map((e, k) =>
-        '<button type="button" role="tab" class="rx-tab' + (k === st.ex ? ' active' : '') + '" aria-selected="' + (k === st.ex) +
-        '" data-ex="' + k + '">' + esc(e.title) + '</button>').join('') + '</div>' : '') +
-      '<div class="rx-goal ' + status + '"><span class="kicker">Triple</span><span class="m">' + HL.renderLine(ex.goal).html + '</span>' +
-      '<span class="rx-badge">' + badge + '</span></div>' +
-      '<div class="rx-step prose" aria-live="polite">' + md(ex.steps[st.step]) +
-      (last ? '<div class="rx-result ' + status + '">' + inline(ex.result) + '</div>' : '') + '</div>' +
-      '<div class="rx-nav"><button type="button" class="btn ghost rx-prev"' + (st.step === 0 ? ' disabled' : '') + '>← Back</button>' +
-      '<div class="rx-dots">' + dots + '</div>' +
-      '<button type="button" class="btn ghost rx-next"' + (last ? ' disabled' : '') + '>Forward →</button></div>';
+      (list.length > 1 ? '<div class="rx-tabs" role="tablist" aria-label="Examples">' + list.map((e, j) =>
+        '<button type="button" role="tab" class="rx-tab' + (j === st.ex ? ' active' : '') + '" aria-selected="' + (j === st.ex) +
+        '" data-ex="' + j + '">' + inline(e.title) + '</button>').join('') + '</div>' : '') +
+      '<div class="rx-viewer"></div>';
+    const viewer = new Viewer($('.rx-viewer', box), {
+      compact: true,
+      onStep: (ex, k, c) => { st.k = k; st.c = c; }
+    });
+    viewer.show(list[st.ex], st.k, st.c);
   }
 
   function renderProse(id) {
@@ -711,7 +941,7 @@
     const n = EXERCISES.length;
     const topics = [...new Set(EXERCISES.map((e) => e.topic))].sort((a, b) => topicRank(a) - topicRank(b));
     $('#ex-view').innerHTML = '<div class="empty prose">' +
-      '<h2>Exercises</h2><p>There are ' + n + ' solved exercises, taken from the exercise lists and quizzes of the module, the slides and the reference document. Choose one in the list.</p>' +
+      '<h2>Exercises</h2><p>There are ' + n + ' solved exercises, taken from the exercise lists and quizzes of the module, the slides and the reference HoareLogic.pdf. Each one states everything you need to solve it. Choose one in the list.</p>' +
       '<p>Each solution is shown one step at a time. On the left, the annotated program shows the assertions that are known so far: the named assertions such as $R1$ or $I$ appear when a step computes them, and the statement that the step works on is highlighted. On the right, the step shows the rule that it applies, the calculation, and the verification conditions with their justification.</p>' +
       '<p>The summary of every exercise has a button that tests the solution on sample states.</p>' +
       '<div class="topic-grid">' + topics.map((t) => '<button type="button" class="topic-btn" data-topic="' + esc(t) + '"><span>' + esc(t) + '</span><span class="muted">' +
@@ -728,7 +958,10 @@
     { name: 'A series of assignments', prog: 'y := y + 10;\nx := x - 5;\nres := x + y', post: '-10 <= res <= 10', pre: '-10 <= x <= 0 && 0 <= y <= 5' },
     { name: 'Two conditionals', prog: 'if x < 0 then x := 0;\nif y < 0 then x := x + 5 else x := x - 5;\nres := x - y', post: '-15 <= res <= 25', pre: '-5 <= y <= 5 && -5 <= x <= 5' },
     { name: 'Writing into an array', prog: 'a[i] := 2 * a[j]', post: 'a[i] = a[j]', pre: '' },
-    { name: 'An invalid triple', prog: 'z := z + y;\nx := 3 * z + y', post: 'x = 4 * y', pre: 'y >= z && z >= y' }
+    { name: 'An invalid triple', prog: 'z := z + y;\nx := 3 * z + y', post: 'x = 4 * y', pre: 'y >= z && z >= y' },
+    { name: 'A loop that counts down', prog: 'while x > 0 do\n  x := x - 1', post: 'x = 0', pre: 'x = N && N >= 0', inv: 'x >= 0' },
+    { name: 'A loop that adds two', prog: 'i := 0;\ns := 0;\nwhile i < n do {\n  s := s + 2;\n  i := i + 1\n}', post: 's = 2 * n', pre: 'n >= 0', inv: 's = 2 * i && 0 <= i <= n' },
+    { name: 'A loop with a weak invariant', prog: 'i := 0;\ns := 0;\nwhile i < n do {\n  s := s + 2;\n  i := i + 1\n}', post: 's = 2 * n', pre: 'n >= 0', inv: 's = 2 * i' }
   ];
 
   function initWp() {
@@ -739,6 +972,7 @@
       $('#wp-prog').value = e.prog;
       $('#wp-post').value = e.post;
       $('#wp-pre').value = e.pre;
+      $('#wp-inv').value = e.inv || '';
       computeWp();
     };
     sel.addEventListener('change', () => load(Number(sel.value)));
@@ -746,58 +980,23 @@
     load(0);
   }
 
+  // The calculator builds the proof with the method of the exercises and
+  // shows it with the step viewer.
+  let wpViewer = null;
+
   function computeWp() {
     const out = $('#wp-out');
-    let prog, post, pre = null;
-    try {
-      prog = HL.parseProgram($('#wp-prog').value);
-    } catch (e) {
-      out.innerHTML = '<p class="error-msg">The program could not be read: ' + esc(e.message) + '</p>';
+    const invs = $('#wp-inv').value.split('\n').map((l) => l.trim()).filter(Boolean);
+    const r = HL.generateProof($('#wp-prog').value, $('#wp-pre').value, $('#wp-post').value, invs);
+    if (r.error) {
+      out.innerHTML = '<p class="error-msg">' + esc(r.error) + '</p>';
+      wpViewer = null;
       return;
     }
-    try {
-      post = HL.parseFormula($('#wp-post').value);
-    } catch (e) {
-      out.innerHTML = '<p class="error-msg">The postcondition could not be read: ' + esc(e.message) + '</p>';
-      return;
-    }
-    if ($('#wp-pre').value.trim()) {
-      try {
-        pre = HL.parseFormula($('#wp-pre').value);
-      } catch (e) {
-        out.innerHTML = '<p class="error-msg">The precondition could not be read: ' + esc(e.message) + '</p>';
-        return;
-      }
-    }
-    let trace;
-    try {
-      trace = HL.wpTrace(prog, post);
-    } catch (e) {
-      out.innerHTML = '<p class="error-msg">' + esc(e.message) + '. Loops need an invariant; see the exercises on loops.</p>';
-      return;
-    }
-    let s = '<ol class="wp-steps">';
-    for (const st of trace.steps) {
-      const simp = HL.simplify(st.pre);
-      const same = HL.toText(simp) === HL.toText(st.pre);
-      s += '<li><div class="wp-rule">' + ruleChip(st.rule) + '</div>' +
-        '<div class="m">' + HL.toHTML({ k: 'wp', prog: { k: 'seq', items: [st.stmt] }, post: st.post }) + '</div>' +
-        '<div class="m">= ' + HL.toHTML(st.pre) + '</div>' +
-        (same ? '' : '<div class="m simp">≡ ' + HL.toHTML(simp) + ' <span class="muted small">(after the simplifications of the calculator)</span></div>') + '</li>';
-    }
-    s += '</ol>';
-    const final = HL.simplify(trace.pre);
-    s += '<div class="wp-final"><span class="kicker">Weakest precondition of the program</span><div class="m large">' + HL.toHTML(final) + '</div></div>';
-    if (pre) {
-      const r = HL.Checker.checkImplication(pre, trace.pre, { range: 5 });
-      let msg;
-      if (r.status === 'pass') msg = '<span class="badge ok">no counterexample</span> ' + inline('The implication $P ==> wp$ was true in all ' + r.sat + ' tested states that satisfy $P$. This is evidence that the triple is valid. The proof is the implication itself, which you still have to prove.');
-      else if (r.status === 'fail') msg = '<span class="badge bad">counterexample</span> In the state ' + stateHTML(r.cex) + ' the precondition is true and the weakest precondition is false. Running the program from this state does not reach the postcondition, so the triple is not valid.';
-      else msg = '<span class="badge warn">not conclusive</span> No tested state satisfied the precondition.';
-      s += '<div class="wp-check"><span class="kicker">Verification condition</span><div class="m">' + HL.toHTML(HL.N.bin('==>', pre, final)) + '</div><p>' + msg + '</p></div>';
-    }
-    s += '<p class="muted small">' + inline('The calculator only applies the laws $(true && A) <=> A$, $(false || A) <=> A$, $(A ==> true) <=> true$, the arithmetic on constants, and the select-store axiom when the two indices are written the same way. The other simplifications are left to you, as in the exercises.') + '</p>';
-    out.innerHTML = s;
+    out.innerHTML = '<div class="wp-viewer"></div>' +
+      '<p class="muted small">' + inline('The calculator simplifies only with the laws $(true && A) <=> A$, $(false || A) <=> A$, $(A ==> true) <=> true$ and the arithmetic on constants. The implications are tested on sample states; a passing test is evidence, not a proof.') + '</p>';
+    wpViewer = new Viewer($('.wp-viewer', out), { compact: true });
+    wpViewer.show(r.ex, 1);
   }
 
   // ------------------------------------------------------------------

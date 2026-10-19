@@ -1,0 +1,94 @@
+id: rule-while-bad
+title: A bad invariant
+topic: Loop
+example-of: WHILE
+derived: false
+
+task:
+  Use the rule WHILE to try to derive this triple. The conclusion of the
+  rule has the invariant $I$ as precondition, so the candidate invariant
+  is the precondition $x > 0$.
+
+given:
+  Loop condition B: $x > 0$
+
+pre: x > 0
+post: x > 0 && !(x > 0)
+
+scheme: WHILE
+  Preservation: {«I» && «x > 0 : B»} x := x - 1 {«I»}
+  ---
+  {«I»} while x > 0 do x := x - 1 {«I» && «!(x > 0) : ¬B»}
+
+program:
+  {P}
+  {I}
+  while x > 0 do {
+    {I && x > 0}
+    {R1}
+    x := x - 1     // b
+    {I}
+  }
+  {I && !(x > 0)}
+  {Q}
+
+verdict: invalid
+
+step: The candidate invariant I
+rule: WHILE
+focus: while
+text:
+  The rule WHILE uses the precondition of its conclusion as the
+  invariant.
+set: I = x > 0
+
+step: P implies I
+part: Initialisation
+rule: CONSEQUENCE
+focus: P, I
+text:
+  >>> «P» ==> «I»
+vc: x > 0 ==> x > 0
+why:
+  $P$ and $I$ are the same formula.
+
+step: R1, the weakest precondition of the body for I
+part: Preservation
+rule: ASSIGN
+focus: b
+text:
+  One iteration must keep the invariant:
+  >>> {«I» && «x > 0 : B»} x := x - 1 {«I»}
+  We substitute the variable $x$ with $x - 1$ in $I$.
+calc:
+  wp(x := x - 1, I)
+  = (x > 0)[x <- x - 1]     // I is x > 0
+  = x - 1 > 0               // x replaced by x - 1
+  = x > 1                   // add 1 to both sides
+set: R1 = x > 1
+
+step: I and B do not imply R1
+part: Preservation
+rule: CONSEQUENCE
+focus: I && x > 0, R1
+text:
+  >>> «I» && «x > 0 : B» ==> «R1»
+vc: x > 0 && x > 0 ==> x > 1
+status: fails
+counterexample: x = 1
+why:
+  In the state $x = 1$ the body gives $x = 0$, which does not satisfy $I$.
+  The last iteration always leaves the candidate, so it is not an
+  invariant, and the rule cannot be applied.
+
+step: I and not B imply Q
+part: Conclusion
+rule: CONSEQUENCE
+focus: I && !(x > 0), Q
+text:
+  >>> «I» && «!(x > 0) : ¬B» ==> «Q»
+vc: x > 0 && !(x > 0) ==> x > 0 && !(x > 0)
+why:
+  This premise holds, since $Q$ is $I && !B$, but preservation failed.
+  The postcondition is $false$, and the loop does stop, so the triple is
+  not valid.

@@ -1,4 +1,4 @@
-# Source: Exercise list "ICT3101 Exercises - Deductive Verification", problem 5 f), with its solution sheet.
+# Source: Exercise list "ICT3101 Exercises - Deductive Verification" (HoareLogic Exercises.pdf), problem 5 f) (labelled a second "e)" in the list), with its solution sheet.
 id: fibonacci
 title: Fibonacci numbers
 topic: Loops
@@ -10,6 +10,9 @@ task:
   Give a proof outline and a loop invariant. The function $fib$ is defined
   by $fib(0) = 0$, $fib(1) = 1$ and $fib(n) = fib(n - 1) + fib(n - 2)$ for
   $n > 1$.
+
+given:
+  Loop condition B: $z < n$
 
 pre: x = 0 && y = 1 && z = 1 && 1 <= n
 post: y = fib(n)
@@ -32,9 +35,12 @@ program:
 
 verdict: valid
 
-step: Trace the loop
-rule: LOGIC
+step: The invariant I
+rule: WHILE-CONSEQUENCE
+focus: while
 text:
+  The values at the loop head:
+
   | Iteration | $x$ | $y$ | $z$ |
   |---|---|---|---|
   | 0 | $0$ | $1$ | $1$ |
@@ -43,50 +49,100 @@ text:
   | 3 | $2$ | $3$ | $4$ |
   | 4 | $3$ | $5$ | $5$ |
 
-  The values are consecutive Fibonacci numbers: $y = fib(z)$ and
-  $x = fib(z - 1)$.
-
-step: The invariant
-rule: WHILE-CONSEQUENCE
-focus: while
-text:
-  The solution sheet uses $x = fib(z - 1) && y = fib(z) && z <= n && 1 <= n$.
-  We write the bounds of $z$ as $1 <= z <= n$. The lower bound matters:
-  $fib(z - 1)$ is only defined when $z >= 1$, and the step
-  $fib(z + 1) = fib(z) + fib(z - 1)$ needs it.
+  They are consecutive Fibonacci numbers: $x = fib(z - 1)$ and
+  $y = fib(z)$. The counter $z$ starts at $1$ and the loop stops when it
+  reaches $n$, which gives the bounds $1 <= z <= n$. The bound $z <= n$ is
+  needed at the exit. The bound $1 <= z$ is needed in preservation, where
+  $fib(z + 1) = fib(z) + fib(z - 1)$ holds only for $z >= 1$.
 set: I = x = fib(z - 1) && y = fib(z) && 1 <= z <= n
+text:
+  The loop rule with consequence has three premises, with the loop
+  condition $B$ being $z < n$: initialisation $P ==> I$, preservation of
+  $I$ by the body, and conclusion $I && !B ==> Q$.
 
-step: Establishment
+step: P implies I
+part: Initialisation
 rule: CONSEQUENCE, LOGIC
+focus: P, I
+text:
+  The invariant must hold when the loop is reached. No statement comes
+  before the loop, so the precondition $P$ must imply $I$.
+  >>> «P» ==> «I»
 vc: x = 0 && y = 1 && z = 1 && 1 <= n ==> x = fib(z - 1) && y = fib(z) && 1 <= z <= n
 why:
-  With $z = 1$: $fib(0) = 0 = x$ and $fib(1) = 1 = y$, and $1 <= 1 <= n$.
+  With $z = 1$: $fib(0) = 0 = x$ and $fib(1) = 1 = y$. The bounds
+  $1 <= 1 <= n$ follow from $1 <= n$.
 
-step: Preservation
-rule: ASSIGN, SEQ, CONSEQUENCE
-focus: b1, b2, b3
+step: R1, the weakest precondition of z := z + 1 for I
+part: Preservation
+rule: ASSIGN, WP
+focus: b3
+text:
+  One iteration must keep the invariant:
+  >>> {«I» && «z < n : B»} y := x + y; x := y - x; z := z + 1 {«I»}
+  We calculate the weakest precondition of the body for $I$, from the last
+  statement. We substitute $z$ with $z + 1$ in $I$.
 calc:
   wp(z := z + 1, I)
-  = x = fib(z + 1 - 1) && y = fib(z + 1) && 1 <= z + 1 <= n
-set: R1 = x = fib(z + 1 - 1) && y = fib(z + 1) && 1 <= z + 1 <= n
+  = (x = fib(z - 1) && y = fib(z) && 1 <= z <= n)[z <- z + 1]     // I
+  = x = fib(z + 1 - 1) && y = fib(z + 1) && 1 <= z + 1 <= n    // z is replaced by z + 1
+  = x = fib(z) && y = fib(z + 1) && 1 <= z + 1 <= n            // z + 1 - 1 is z
+  = x = fib(z) && y = fib(z + 1) && 0 <= z <= n - 1            // subtract 1 from each part of the bounds
+set: R1 = x = fib(z) && y = fib(z + 1) && 0 <= z <= n - 1
+
+step: R2, the weakest precondition of x := y - x for R1
+part: Preservation
+rule: ASSIGN, WP
+focus: b2
+text:
+  We substitute $x$ with $y - x$ in $R1$, computed in the previous step.
 calc:
   wp(x := y - x, R1)
-  = y - x = fib(z + 1 - 1) && y = fib(z + 1) && 1 <= z + 1 <= n
-set: R2 = y - x = fib(z + 1 - 1) && y = fib(z + 1) && 1 <= z + 1 <= n
+  = (x = fib(z) && y = fib(z + 1) && 0 <= z <= n - 1)[x <- y - x]     // R1
+  = y - x = fib(z) && y = fib(z + 1) && 0 <= z <= n - 1    // x is replaced by y - x
+set: R2 = y - x = fib(z) && y = fib(z + 1) && 0 <= z <= n - 1
+
+step: R3, the weakest precondition of y := x + y for R2
+part: Preservation
+rule: ASSIGN, WP
+focus: b1
+text:
+  We substitute $y$ with $x + y$ in $R2$, computed in the previous step.
 calc:
   wp(y := x + y, R2)
-  = (x + y) - x = fib(z + 1 - 1) && x + y = fib(z + 1) && 1 <= z + 1 <= n
-  = y = fib(z) && x + y = fib(z + 1) && 0 <= z <= n - 1
+  = (y - x = fib(z) && y = fib(z + 1) && 0 <= z <= n - 1)[y <- x + y]     // R2
+  = (x + y) - x = fib(z) && x + y = fib(z + 1) && 0 <= z <= n - 1    // y is replaced by x + y
+  = y = fib(z) && x + y = fib(z + 1) && 0 <= z <= n - 1              // (x + y) - x is y
 set: R3 = y = fib(z) && x + y = fib(z + 1) && 0 <= z <= n - 1
+
+step: I and B imply R3
+part: Preservation
+rule: CONSEQUENCE, LOGIC
+focus: I && z < n, R3
+text:
+  By the consequence rule, the triple holds when $I && B$ implies $R3$.
+  >>> «I» && «z < n : B» ==> «R3»
 vc: x = fib(z - 1) && y = fib(z) && 1 <= z <= n && z < n ==> y = fib(z) && x + y = fib(z + 1) && 0 <= z <= n - 1
 why:
-  The first conjunct is in the invariant. For the second, since $z >= 1$,
-  $fib(z + 1) = fib(z) + fib(z - 1) = y + x$. The bounds follow from
-  $1 <= z$ and $z < n$.
+  $y = fib(z)$ is part of $I$. Since $z >= 1$, the definition gives
+  $fib(z + 1) = fib(z) + fib(z - 1)$, which is $y + x$ by $I$. From
+  $1 <= z$ we get $0 <= z$, and for integers $z < n$ is $z <= n - 1$.
 
-step: The postcondition at the exit
+step: I and not B imply Q
+part: Conclusion
 rule: CONSEQUENCE, LOGIC
+focus: I && !(z < n), Q
+text:
+  When the loop stops, $I$ holds and $B$ is false. This must imply the
+  postcondition $Q$.
+  >>> «I» && «!(z < n) : ¬B» ==> «Q»
 vc: x = fib(z - 1) && y = fib(z) && 1 <= z <= n && !(z < n) ==> y = fib(n)
 why:
-  $z <= n$ and $z >= n$ give $z = n$, so $y = fib(n)$.
-result: The triple is valid. A variant for termination is $n - z$.
+  $!(z < n)$ is $z >= n$. Together with $z <= n$ it gives $z = n$, so
+  $y = fib(z)$ becomes $y = fib(n)$.
+result: The triple is valid.
+
+summary:
+  The loop also terminates: $n - z$ decreases by one in every iteration,
+  and it is positive whenever the body runs, since then $z < n$. So
+  $n - z$ is a variant.

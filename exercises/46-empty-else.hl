@@ -4,77 +4,116 @@ title: A conditional with a skip branch
 topic: Conditional
 level: 2
 source: Exercise sheet "Hoare Logic 2", 2 d; HoareLogic.pdf, "Empty else-branch"
-tags: conditional, skip, sequence
+tags: conditional, skip, sequence, wp, consequence
 
 task:
-  Prove that the program sets $z$ to $0$ when $x = 0$, and to $1$
-  otherwise.
+  The program sets $z$ to $0$ when $x = 0$, and to $1$ otherwise.
+  Calculate the weakest precondition of the program for the postcondition
+  $Q$, from the last statement back: first the two branches, then the
+  conditional, then the first assignment. Then use the consequence rule
+  to decide whether the triple is valid.
+
+given:
+  Condition B: $x = 0$
 
 pre: true
 post: (x = 0 && z = 0) || (x != 0 && z = 1)
 
 program:
   {P}
-  {R2}
+  {R4}
   z := 1;             // i1
-  {R1}
+  {R3}
   if (x = 0) then {
+    {R1}
     z := 0            // then
+    {Q}
   } else {
+    {R2}
     skip              // else
+    {Q}
   }
   {Q}
 
 verdict: valid
 
-step: The then branch, `z := 0`
+step: R1, the weakest precondition of the then branch z := 0
 rule: ASSIGN, WP
 focus: then
+text:
+  Each branch ends where the conditional ends, so its postcondition is
+  $Q$. We substitute the assigned variable ($z$) with the assignment
+  expression ($0$) in $Q$.
 calc:
   wp(z := 0, Q)
-  = (x = 0 && 0 = 0) || (x != 0 && 0 = 1)
-  = x = 0 || false
-  = x = 0
+  = ((x = 0 && z = 0) || (x != 0 && z = 1))[z <- 0]
+  = (x = 0 && 0 = 0) || (x != 0 && 0 = 1)     // every z is replaced by 0
+  = (x = 0 && true) || (x != 0 && false)      // 0 = 0 is true and 0 = 1 is false
+  = x = 0 || false                            // A && true is A, and A && false is false
+  = x = 0                                     // A || false is A
+set: R1 = x = 0
 
-step: The else branch, `skip`
+step: R2, the weakest precondition of the else branch skip
 rule: SKIP, WP
 focus: else
+text:
+  `skip` does not change the state, so its weakest precondition is its
+  postcondition $Q$.
 calc:
   wp(skip, Q)
-  = Q
-text:
-  The branch does nothing, so whatever must hold after the conditional
-  must already hold before it.
+  = (x = 0 && z = 0) || (x != 0 && z = 1)     // skip changes nothing
+set: R2 = (x = 0 && z = 0) || (x != 0 && z = 1)
 
-step: Combine the branches
+step: R3, the weakest precondition of the conditional
 rule: IF, WP
-focus: if
+focus: if, R1, R2
+text:
+  The weakest precondition of `if B then c1 else c2` for $Q$ is
+  >> (B ==> wp(c1, Q)) && (!B ==> wp(c2, Q))
+  Here the condition $B$ is $x = 0$, $wp(c1, Q)$ is $R1$ and
+  $wp(c2, Q)$ is $R2$:
+  >>> («x = 0 : B» ==> «R1») && («!(x = 0) : ¬B» ==> «R2»)
 calc:
   wp(if (x = 0) then z := 0 else skip, Q)
-  = (x = 0 ==> x = 0) && (!(x = 0) ==> (x = 0 && z = 0) || (x != 0 && z = 1))
-  = true && (x != 0 ==> z = 1)       // when x != 0, only the second disjunct can hold
-  = x != 0 ==> z = 1
-set: R1 = x != 0 ==> z = 1
+  = (x = 0 ==> x = 0) && (!(x = 0) ==> (x = 0 && z = 0) || (x != 0 && z = 1))   // B, R1 and R2 put in the formula
+  = true && (!(x = 0) ==> (x = 0 && z = 0) || (x != 0 && z = 1))                 // A ==> A is true
+  = !(x = 0) ==> (x = 0 && z = 0) || (x != 0 && z = 1)                           // true && A is A
+  = x != 0 ==> (x = 0 && z = 0) || (x != 0 && z = 1)                             // !(x = 0) is x != 0
+  = x != 0 ==> x != 0 && z = 1         // when x != 0, x = 0 && z = 0 is false, and false || A is A
+  = x != 0 ==> z = 1                   // when x != 0, x != 0 && z = 1 is z = 1
+set: R3 = x != 0 ==> z = 1
 text:
-  This is the condition of the empty branch that the reference document
-  writes as $P && !B ==> Q$: when the condition is false, the
-  postcondition must already be true.
+  When the condition is false, the skip branch does nothing, so $z = 1$
+  must already hold before the conditional.
 
-step: The first statement, `z := 1`
+step: R4, the weakest precondition of z := 1
 rule: ASSIGN, WP
 focus: i1
+text:
+  We substitute the assigned variable ($z$) with the assignment
+  expression ($1$) in the postcondition of this statement, which is $R3$.
 calc:
-  wp(z := 1, R1)
+  wp(z := 1, R3)
   = (x != 0 ==> z = 1)[z <- 1]
-  = x != 0 ==> 1 = 1
-  = true
-set: R2 = true
+  = x != 0 ==> 1 = 1       // z is replaced by 1
+  = x != 0 ==> true        // 1 = 1 is true
+  = true                   // A ==> true is true
+set: R4 = true
+
+step: P implies R4
+rule: CONSEQUENCE
+focus: P, R4
+text:
+  $R4$ is the weakest precondition of the whole program for $Q$. By the
+  consequence rule, the triple is valid when the precondition $P$ implies
+  $R4$.
+  >>> «P» ==> «R4»
 vc: true ==> true
 why:
-  The precondition is $true$ and the weakest precondition is $true$.
+  $R4$ is $true$, and every formula implies $true$.
 result: The triple is valid.
 
 summary:
-  The assignment `z := 1` before the conditional is what the empty else
-  branch relies on: when $x != 0$ nothing changes $z$ any more, so it must
+  The skip branch relies on the assignment `z := 1` before the
+  conditional: when $x != 0$, nothing changes $z$ any more, so it must
   already be $1$.

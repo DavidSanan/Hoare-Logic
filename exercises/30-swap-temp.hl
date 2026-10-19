@@ -7,15 +7,20 @@ source: HoareLogic.pdf, Exercises, "Swapping two variables"
 tags: assignment, sequence, wp, consequence
 
 task:
-  Compute by hand the weakest precondition of the following program, which
-  swaps the values of $x$ and $y$ using a temporary variable $t$.
-  Deduce that the program is correct with respect to its contract.
+  The program swaps the values of $x$ and $y$ with a temporary variable
+  $t$. $A$ and $B$ are logical variables: the program does not change
+  them, and they name the initial values of $x$ and $y$.
+
+  Calculate the weakest precondition of the program for the postcondition
+  $Q$, statement by statement from the last one. Then use the consequence
+  rule to show that the triple is valid.
 
 pre: x = A && y = B
 post: x = B && y = A
 
 program:
   {P}
+  {R3}
   t := x;      // i1
   {R2}
   x := y;      // i2
@@ -25,103 +30,58 @@ program:
 
 verdict: valid
 
-step: Read the specification
-rule: SEQ
-text:
-  The precondition says that $x$ starts with some value $A$ and that $y$
-  starts with some value $B$. The names $A$ and $B$ are logical variables.
-  The program never assigns them, so they keep their values during the
-  whole execution. They let the postcondition talk about the initial values
-  of $x$ and $y$.
-
-  The program is a sequence of three assignments. The rule SEQ needs one
-  intermediate assertion between every two statements. We call them
-  $R1$ and $R2$ in the annotated program.
-
-  We reason backwards. We start from the postcondition $Q$, we compute
-  $R1$ from the last statement, then $R2$, and then the weakest
-  precondition of the whole program. Finally we compare it with $P$.
-
-step: The last statement, y := t
+step: R1, the weakest precondition of y := t
 rule: ASSIGN, WP
 focus: i3
 text:
-  The assignment rule says that the precondition of `y := t` is the
-  postcondition with every occurrence of $y$ replaced by $t$.
+  The precondition of an assignment is obtained by substituting the
+  assigned variable ($y$) with the assignment expression ($t$) in the
+  postcondition $Q$.
 calc:
   wp(y := t, Q)
-  = Q[y <- t]
   = (x = B && y = A)[y <- t]
-  = x = B && t = A        // only the y of y = A is replaced
+  = x = B && t = A        // y is replaced by t; x = B has no y
 set: R1 = x = B && t = A
-instance: ASSIGN
-  ---
-  {x = B && t = A} y := t {x = B && y = A}
-text:
-  The variable $x$ does not change, so the conjunct $x = B$ stays as it is.
-  The conjunct $y = A$ becomes $t = A$: after the assignment $y$ holds the
-  value of $t$, so $y = A$ holds after it exactly when $t = A$ holds before it.
 
-step: The second statement, x := y
+step: R2, the weakest precondition of x := y
 rule: ASSIGN, WP
 focus: i2
 text:
-  We now use $R1$ as the postcondition of `x := y`.
+  We substitute the assigned variable ($x$) with the assignment expression
+  ($y$) in the postcondition of this statement, which is $R1$.
 calc:
   wp(x := y, R1)
   = (x = B && t = A)[x <- y]
-  = y = B && t = A
+  = y = B && t = A        // x is replaced by y; t = A has no x
 set: R2 = y = B && t = A
-instance: ASSIGN
-  ---
-  {y = B && t = A} x := y {x = B && t = A}
 
-step: The first statement, t := x
+step: R3, the weakest precondition of t := x
 rule: ASSIGN, WP
 focus: i1
+text:
+  We substitute the assigned variable ($t$) with the assignment expression
+  ($x$) in the postcondition of this statement, which is $R2$.
 calc:
   wp(t := x, R2)
   = (y = B && t = A)[t <- x]
-  = y = B && x = A
-instance: ASSIGN
-  ---
-  {y = B && x = A} t := x {y = B && t = A}
-text:
-  This is the weakest precondition of the whole program:
-  $wp(t := x; x := y; y := t, Q) = (y = B && x = A)$.
+  = y = B && x = A        // t is replaced by x; y = B has no t
+set: R3 = y = B && x = A
 
-step: Compare the precondition with the weakest precondition
+step: P implies R3
 rule: CONSEQUENCE
+focus: P, R3
+text:
+  $R3$ is the weakest precondition of the whole program for $Q$. By the
+  consequence rule, the triple is valid when the precondition $P$ implies
+  $R3$.
+  >>> «P» ==> «R3»
 vc: x = A && y = B ==> y = B && x = A
 why:
-  Both sides contain the same two conjuncts, in a different order.
-  A conjunction does not depend on the order of its conjuncts, so the
-  implication holds.
-instance: CONSEQUENCE
-  x = A && y = B ==> y = B && x = A
-  {y = B && x = A} t := x; x := y; y := t {x = B && y = A}
-  x = B && y = A ==> x = B && y = A
-  ---
-  {x = A && y = B} t := x; x := y; y := t {x = B && y = A}
-text:
-  The postcondition did not change, since we started the computation from
-  $Q$ itself. So the third premise of the consequence rule, $Q ⇒ Q$, is
-  trivially true.
-
-step: Put the proof together
-rule: SEQ
-instance: SEQ
-  {x = A && y = B} t := x {y = B && t = A}
-  {y = B && t = A} x := y; y := t {x = B && y = A}
-  ---
-  {x = A && y = B} t := x; x := y; y := t {x = B && y = A}
-text:
-  The first premise follows from the triple of the first statement and the
-  implication of the previous step. The second premise follows from the
-  triples of the second and third statements, again with the rule SEQ.
+  $P$ and $R3$ have the same two conjuncts in a different order, and the
+  order of the conjuncts of $&&$ does not matter.
 result: The triple is valid.
 
 summary:
-  We computed the intermediate assertions backwards, one assignment at a
-  time, and the weakest precondition was the precondition itself, with the
-  conjuncts in a different order.
+  Going backwards, each assignment renames one variable in the assertion.
+  The weakest precondition is $P$ itself with its conjuncts in a different
+  order.

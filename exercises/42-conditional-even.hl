@@ -1,61 +1,98 @@
-# Source: Exercise list "ICT3101 Exercises - Deductive Verification", problem 3 d), with its solution sheet.
+# Source: Exercise list "ICT3101 Exercises - Deductive Verification" (file "HoareLogic Exercises.pdf"), problem 3 d), with its solution sheet.
+# The exercise asks for the precondition. The precondition given here is the answer.
 id: conditional-even
-title: Fill in the precondition of a conditional (d)
+title: A conditional that makes x even
 topic: Conditional
 level: 2
 source: Exercise list "HoareLogic Exercises", problem 3 d
 tags: conditional, wp, even, odd
 
 task:
-  Fill in the weakest precondition of the following program.
+  Calculate the weakest precondition of the program for the postcondition
+  $Q$: first the weakest precondition of each branch, then the one of the
+  conditional. Then use the consequence rule to check that the
+  precondition $P$ implies it.
+
+given:
+  Condition B: $x > 0$
 
 pre: (x > 0 ==> odd(x)) && (x <= 0 ==> even(z))
 post: even(x)
 
 program:
+  {P}
   {R3}
   if (x > 0) then {
     {R1}
     x := x + 1        // then
+    {Q}
   } else {
     {R2}
     x := z            // else
+    {Q}
   }
   {Q}
 
 verdict: valid
 
-step: The then branch
+step: R1, the weakest precondition of the then branch x := x + 1
 rule: ASSIGN, WP
 focus: then
+text:
+  Each branch ends where the conditional ends, so its postcondition is
+  $Q$. We substitute the assigned variable ($x$) with the assignment
+  expression ($x + 1$) in $Q$.
 calc:
   wp(x := x + 1, Q)
   = even(x)[x <- x + 1]
-  = even(x + 1)
+  = even(x + 1)         // x is replaced by x + 1
   = odd(x)              // x + 1 is even exactly when x is odd
 set: R1 = odd(x)
 
-step: The else branch
+step: R2, the weakest precondition of the else branch x := z
 rule: ASSIGN, WP
 focus: else
+text:
+  We substitute the assigned variable ($x$) with the assignment
+  expression ($z$) in the postcondition $Q$.
 calc:
   wp(x := z, Q)
   = even(x)[x <- z]
-  = even(z)
+  = even(z)             // x is replaced by z
 set: R2 = even(z)
 
-step: Combine the branches
+step: R3, the weakest precondition of the conditional
 rule: IF, WP
-focus: if
+focus: if, R1, R2
+text:
+  The weakest precondition of `if B then c1 else c2` for $Q$ is
+  >> (B ==> wp(c1, Q)) && (!B ==> wp(c2, Q))
+  Here the condition $B$ is $x > 0$, $wp(c1, Q)$ is $R1$ and
+  $wp(c2, Q)$ is $R2$:
+  >>> («x > 0 : B» ==> «R1») && («!(x > 0) : ¬B» ==> «R2»)
 calc:
   wp(if (x > 0) then x := x + 1 else x := z, Q)
-  = (x > 0 ==> odd(x)) && (!(x > 0) ==> even(z))
-  = (x > 0 ==> odd(x)) && (x <= 0 ==> even(z))
+  = (x > 0 ==> odd(x)) && (!(x > 0) ==> even(z))    // B, R1 and R2 put in the formula
+  = (x > 0 ==> odd(x)) && (x <= 0 ==> even(z))      // !(x > 0) is x <= 0
 set: R3 = (x > 0 ==> odd(x)) && (x <= 0 ==> even(z))
-result: The weakest precondition is $(x > 0 ==> odd(x)) && (x <= 0 ==> even(z))$.
+text:
+  We stop here. The formula reads as two cases: if $x > 0$, then $x$ must
+  be odd; otherwise $z$ must be even.
+
+step: P implies R3
+rule: CONSEQUENCE
+focus: P, R3
+text:
+  $R3$ is the weakest precondition of the whole program for $Q$. By the
+  consequence rule, the triple is valid when the precondition $P$ implies
+  $R3$.
+  >>> «P» ==> «R3»
+vc: (x > 0 ==> odd(x)) && (x <= 0 ==> even(z)) ==> (x > 0 ==> odd(x)) && (x <= 0 ==> even(z))
+why:
+  $P$ and $R3$ are the same formula, and every formula implies itself.
+result: The triple is valid, and $P$ is the weakest precondition.
 
 summary:
-  The formula reads as a case analysis: if $x$ is positive it must be odd,
-  so that adding one makes it even; otherwise $z$ must be even, since its
-  value is copied into $x$. It could be rewritten with the distributive
-  laws, but the case analysis is the clearest form.
+  When $x > 0$, the program adds $1$ to $x$, so $x$ must be odd for the
+  result to be even. Otherwise it copies $z$ into $x$, so $z$ must be
+  even.

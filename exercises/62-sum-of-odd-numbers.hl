@@ -4,27 +4,37 @@ title: Sum of the first n odd numbers
 topic: Loop invariants
 level: 2
 source: Slides 7, Recipe exercises, Exercises 3 and 5 b
-tags: recipe, invariant, failed candidate
+tags: recipe, invariant, failed candidate, variant
 
 task:
-  Find the invariant by generalising the postcondition, give a variant,
-  and check establishment and preservation. A trace with a few rows helps.
+  The loop adds the odd numbers $1, 3, 5, ...$, one per iteration. Find a
+  loop invariant $I$ by generalising the postcondition. Prove
+  initialisation, preservation and conclusion. Then give a variant and
+  show that the loop terminates. Choose the invariant above the steps:
+  the proof succeeds with the first one, and the second one, which keeps
+  $Q$ unchanged, fails.
+
+hint:
+  Trace the values of $i$ and $s$ at the loop head for a few iterations.
+
+given:
+  Loop condition B: $i < n$
 
 pre: n >= 0
 post: s = n^2
 
 program:
   {P}
-  {R4}
+  {R2}
   i := 0;                  // i1
-  {R3}
+  {R1}
   s := 0;                  // i2
   {I}
   while (i < n) do {
     {I && i < n}
-    {R2}
+    {R4}
     s := s + (2 * i + 1);  // b1
-    {R1}
+    {R3}
     i := i + 1             // b2
     {I}
   }
@@ -33,20 +43,10 @@ program:
 
 verdict: valid
 
-step: A candidate that keeps n
-rule: LOGIC
-text:
-  Exercise 5 (b) of the slides proposes the candidate $s = n^2 && 0 <= i <= n$,
-  which only adds the bounds to the postcondition. Establishment fails:
-vc: {n >= 0} i := 0; s := 0 {s = n^2 && 0 <= i <= n}
-status: fails
-counterexample: n = 2, i = 0, s = 0
-why:
-  Right after the initialisation $i = 0$ and $s = 0$. With $n = 2$ the
-  candidate asks for $s = 4$. The candidate rejects a real state, so it is
-  too strong. The fix is to replace $n$ by $i$.
+choice: I = s = i² ∧ 0 ≤ i ≤ n
+outcome: proves
 
-step: Trace and generalise
+step: The invariant I
 rule: WHILE-CONSEQUENCE
 focus: while
 text:
@@ -56,44 +56,270 @@ text:
   | before iteration 2 | $1$ | $1$ |
   | before iteration 3 | $2$ | $4$ |
   | before iteration 4 | $3$ | $9$ |
-set: I = s = i^2 && 0 <= i <= n
 
-step: Establishment
-rule: ASSIGN, SEQ, WP
-focus: i1, i2
+  Keeping $Q$ and only adding the bounds, $s = n^2 && 0 <= i <= n$, does
+  not work: in the first row $s = 0$, and with $n = 2$ this candidate
+  asks for $s = 4$. The second choice above the steps follows this
+  candidate. The trace gives $s = i^2$ instead, which is $Q$ with $n$
+  replaced by the counter $i$. We add the bounds of $i$, which the exit
+  needs.
+set: I = s = i^2 && 0 <= i <= n
+text:
+  The loop rule with consequence has three premises, with the loop
+  condition $B$ being $i < n$: initialisation, preservation and
+  conclusion.
+
+step: R1, the weakest precondition of s := 0 for I
+part: Initialisation
+rule: ASSIGN, WP
+focus: i2
+text:
+  The invariant must hold when the loop is reached. The loop is preceded
+  by `i := 0; s := 0`, so initialisation is the triple
+  >>> {«P»} i := 0; s := 0 {«I»}
+  We compute its weakest precondition from the last statement. We
+  substitute $s$ with $0$ in the postcondition of `s := 0`, the invariant
+  $I$.
 calc:
   wp(s := 0, I)
-  = 0 = i^2 && 0 <= i <= n
-set: R3 = 0 = i^2 && 0 <= i <= n
-calc:
-  wp(i := 0, R3)
-  = 0 = 0^2 && 0 <= 0 <= n
-  = 0 <= n
-set: R4 = 0 <= n
-vc: n >= 0 ==> 0 <= n
+  = (s = i^2 && 0 <= i <= n)[s <- 0]
+  = 0 = i^2 && 0 <= i <= n       // every s is replaced by 0
+set: R1 = 0 = i^2 && 0 <= i <= n
 
-step: Preservation
-rule: ASSIGN, SEQ, CONSEQUENCE
-focus: b1, b2
+step: R2, the weakest precondition of i := 0 for R1
+part: Initialisation
+rule: ASSIGN, WP
+focus: i1
+text:
+  We substitute $i$ with $0$ in $R1$.
+calc:
+  wp(i := 0, R1)
+  = (0 = i^2 && 0 <= i <= n)[i <- 0]
+  = 0 = 0^2 && 0 <= 0 <= n       // every i is replaced by 0
+  = 0 = 0 && 0 <= 0 <= n         // 0^2 = 0
+  = 0 <= n                       // 0 = 0 and 0 <= 0 are true
+set: R2 = 0 <= n
+
+step: P implies R2
+part: Initialisation
+rule: CONSEQUENCE
+focus: P, R2
+text:
+  $R2$ is the weakest precondition of `i := 0; s := 0` for $I$. By the
+  consequence rule, initialisation holds when the precondition $P$ implies
+  $R2$.
+  >>> «P» ==> «R2»
+vc: n >= 0 ==> 0 <= n
+why:
+  Both sides say the same thing.
+
+step: R3, the weakest precondition of i := i + 1 for I
+part: Preservation
+rule: ASSIGN, WP
+focus: b2
+text:
+  One iteration must keep the invariant:
+  >>> {«I» && «i < n : B»} s := s + (2 * i + 1); i := i + 1 {«I»}
+  We compute the weakest precondition of the body for $I$, from the last
+  statement. We substitute $i$ with $i + 1$ in $I$.
 calc:
   wp(i := i + 1, I)
-  = s = (i + 1)^2 && 0 <= i + 1 <= n
-set: R1 = s = (i + 1)^2 && 0 <= i + 1 <= n
+  = (s = i^2 && 0 <= i <= n)[i <- i + 1]
+  = s = (i + 1)^2 && 0 <= i + 1 <= n     // every i is replaced by i + 1
+set: R3 = s = (i + 1)^2 && 0 <= i + 1 <= n
+
+step: R4, the weakest precondition of s := s + (2 * i + 1) for R3
+part: Preservation
+rule: ASSIGN, WP
+focus: b1
+text:
+  We substitute $s$ with $s + (2 * i + 1)$ in $R3$.
 calc:
-  wp(s := s + (2 * i + 1), R1)
-  = s + (2 * i + 1) = (i + 1)^2 && 0 <= i + 1 <= n
-set: R2 = s + (2 * i + 1) = (i + 1)^2 && 0 <= i + 1 <= n
+  wp(s := s + (2 * i + 1), R3)
+  = (s = (i + 1)^2 && 0 <= i + 1 <= n)[s <- s + (2 * i + 1)]
+  = s + (2 * i + 1) = (i + 1)^2 && 0 <= i + 1 <= n     // every s is replaced by s + (2 * i + 1)
+set: R4 = s + (2 * i + 1) = (i + 1)^2 && 0 <= i + 1 <= n
+
+step: I and B imply R4
+part: Preservation
+rule: CONSEQUENCE
+focus: I && i < n, R4
+text:
+  $R4$ is the weakest precondition of the body for $I$. By the consequence
+  rule, preservation holds when $I$ and $B$ together imply $R4$.
+  >>> «I» && «i < n : B» ==> «R4»
 vc: s = i^2 && 0 <= i <= n && i < n ==> s + (2 * i + 1) = (i + 1)^2 && 0 <= i + 1 <= n
 why:
-  $(i + 1)^2 = i^2 + 2 * i + 1$, and $s = i^2$.
+  First conjunct: $(i + 1)^2 = i^2 + 2 * i + 1$, and $s = i^2$ by $I$, so
+  $s + (2 * i + 1) = (i + 1)^2$.
 
-step: Exit and termination
-rule: CONSEQUENCE, WHILE-TOTAL
+  Second conjunct: $0 <= i$ gives $0 <= i + 1$, and $i < n$ gives
+  $i + 1 <= n$.
+
+step: I and not B imply Q
+part: Conclusion
+rule: CONSEQUENCE, LOGIC
+focus: I && !(i < n), Q
+text:
+  When the loop stops, $I$ holds and the loop condition $B$ is false. This
+  must imply the postcondition $Q$.
+  >>> «I» && «!(i < n) : ¬B» ==> «Q»
 vc: s = i^2 && 0 <= i <= n && !(i < n) ==> s = n^2
 why:
-  At the exit $i = n$, so $s = n^2$.
-vc: {s = i^2 && 0 <= i <= n && i < n && n - i = E0} s := s + (2 * i + 1); i := i + 1 {n - i < E0}
+  $!(i < n)$ is $i >= n$. With $i <= n$ from $I$ it gives $i = n$, so
+  $s = i^2$ becomes $s = n^2$.
+
+step: The variant is not negative
+part: Termination
+rule: WHILE-TOTAL
+focus: I && i < n
+text:
+  The counter $i$ goes up to $n$, so $n - i$ is the number of iterations
+  left. We take the variant $E = n - i$. The rule WHILE-TOTAL has two
+  premises. The first one: $E$ is not negative when an iteration starts.
+  >>> «I» && «i < n : B» ==> «n - i >= 0 : E >= 0»
+vc: s = i^2 && 0 <= i <= n && i < n ==> n - i >= 0
 why:
-  The variant $n - i$ decreases by one in every iteration, and it is
-  positive when an iteration starts.
-result: The triple is valid.
+  $i < n$ from $B$ gives $n - i > 0$.
+
+step: The variant after i := i + 1
+part: Termination
+rule: WHILE-TOTAL, ASSIGN, WP
+focus: b2
+text:
+  The second premise: the body makes $E$ smaller. $E0$ is a logical
+  variable for the value of $E$ when the iteration starts.
+  >>> {«I» && «i < n : B» && «n - i = E0 : E = E0»} s := s + (2 * i + 1); i := i + 1 {«n - i < E0 : E < E0»}
+  We compute the weakest precondition of the body for $n - i < E0$, from
+  the last statement. We substitute $i$ with $i + 1$.
+calc:
+  wp(i := i + 1, n - i < E0)
+  = (n - i < E0)[i <- i + 1]
+  = n - (i + 1) < E0          // i is replaced by i + 1
+
+step: The variant after s := s + (2 * i + 1)
+part: Termination
+rule: WHILE-TOTAL, ASSIGN, WP
+focus: b1
+text:
+  We substitute $s$ with $s + (2 * i + 1)$ in the result of the previous
+  step.
+calc:
+  wp(s := s + (2 * i + 1), n - (i + 1) < E0)
+  = (n - (i + 1) < E0)[s <- s + (2 * i + 1)]
+  = n - (i + 1) < E0          // s does not occur, so nothing changes
+
+step: The body decreases the variant
+part: Termination
+rule: WHILE-TOTAL, CONSEQUENCE
+focus: I && i < n
+text:
+  By the consequence rule, the second premise holds when $I$, $B$ and
+  $E = E0$ imply the weakest precondition just computed.
+  >>> «I» && «i < n : B» && «n - i = E0 : E = E0» ==> «n - (i + 1) < E0 : wp»
+vc: s = i^2 && 0 <= i <= n && i < n && n - i = E0 ==> n - (i + 1) < E0
+why:
+  $n - (i + 1) = (n - i) - 1 = E0 - 1$, which is smaller than $E0$.
+result: The triple is valid, and the loop terminates.
+
+choice: I = s = n² ∧ 0 ≤ i ≤ n
+outcome: fails
+
+step: The candidate invariant I
+rule: WHILE-CONSEQUENCE
+focus: while
+text:
+  We try the candidate that keeps the postcondition $Q$ unchanged and only
+  adds the bounds $0 <= i <= n$ of the counter.
+set: I = s = n^2 && 0 <= i <= n
+
+step: R1, the weakest precondition of s := 0 for I
+part: Initialisation
+rule: ASSIGN, WP
+focus: i2
+text:
+  Initialisation is the triple
+  >>> {«P»} i := 0; s := 0 {«I»}
+  We substitute $s$ with $0$ in $I$.
+calc:
+  wp(s := 0, I)
+  = (s = n^2 && 0 <= i <= n)[s <- 0]
+  = 0 = n^2 && 0 <= i <= n       // every s is replaced by 0
+set: R1 = 0 = n^2 && 0 <= i <= n
+
+step: R2, the weakest precondition of i := 0 for R1
+part: Initialisation
+rule: ASSIGN, WP
+focus: i1
+text:
+  We substitute $i$ with $0$ in $R1$.
+calc:
+  wp(i := 0, R1)
+  = (0 = n^2 && 0 <= i <= n)[i <- 0]
+  = 0 = n^2 && 0 <= 0 <= n       // every i is replaced by 0
+  = 0 = n^2 && 0 <= n            // 0 <= 0 is true
+set: R2 = 0 = n^2 && 0 <= n
+
+step: P does not imply R2
+part: Initialisation
+rule: CONSEQUENCE
+focus: P, R2
+text:
+  >>> «P» ==> «R2»
+vc: n >= 0 ==> 0 = n^2 && 0 <= n
+status: fails
+counterexample: n = 2
+why:
+  With $n = 2$ the precondition holds, but $0 = n^2$ is $0 = 4$, which is
+  false. After `i := 0; s := 0` the sum is $0$, not $n^2$: the candidate
+  does not hold when the loop is reached.
+
+step: R3, the weakest precondition of i := i + 1 for I
+part: Preservation
+rule: ASSIGN, WP
+focus: b2
+text:
+  >>> {«I» && «i < n : B»} s := s + (2 * i + 1); i := i + 1 {«I»}
+  We substitute $i$ with $i + 1$ in $I$.
+calc:
+  wp(i := i + 1, I)
+  = (s = n^2 && 0 <= i <= n)[i <- i + 1]
+  = s = n^2 && 0 <= i + 1 <= n     // every i is replaced by i + 1
+set: R3 = s = n^2 && 0 <= i + 1 <= n
+
+step: R4, the weakest precondition of s := s + (2 * i + 1) for R3
+part: Preservation
+rule: ASSIGN, WP
+focus: b1
+text:
+  We substitute $s$ with $s + (2 * i + 1)$ in $R3$.
+calc:
+  wp(s := s + (2 * i + 1), R3)
+  = (s = n^2 && 0 <= i + 1 <= n)[s <- s + (2 * i + 1)]
+  = s + (2 * i + 1) = n^2 && 0 <= i + 1 <= n     // every s is replaced by s + (2 * i + 1)
+set: R4 = s + (2 * i + 1) = n^2 && 0 <= i + 1 <= n
+
+step: I and B do not imply R4
+part: Preservation
+rule: CONSEQUENCE
+focus: I && i < n, R4
+text:
+  >>> «I» && «i < n : B» ==> «R4»
+vc: s = n^2 && 0 <= i <= n && i < n ==> s + (2 * i + 1) = n^2 && 0 <= i + 1 <= n
+status: fails
+counterexample: n = 1, i = 0, s = 1
+why:
+  $I$ says $s = n^2$, and the body adds $2 * i + 1$, which is at least
+  $1$ since $0 <= i$. So $s + (2 * i + 1) = n^2$ is false in every state
+  of $I && B$, for example $n = 1$, $i = 0$, $s = 1$.
+
+step: I and not B imply Q
+part: Conclusion
+rule: CONSEQUENCE, LOGIC
+focus: I && !(i < n), Q
+text:
+  >>> «I» && «!(i < n) : ¬B» ==> «Q»
+vc: s = n^2 && 0 <= i <= n && !(i < n) ==> s = n^2
+why:
+  $Q$ is a conjunct of $I$, so this premise holds. But initialisation and
+  preservation fail: the candidate is not an invariant of this loop.

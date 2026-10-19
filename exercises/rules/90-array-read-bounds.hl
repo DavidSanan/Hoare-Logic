@@ -1,0 +1,53 @@
+id: rule-array-read-bounds
+title: With the bounds
+topic: Arrays
+example-of: ARRAY-READ
+derived: true
+
+task:
+  Use the rule ARRAY-READ to decide whether this triple can be derived.
+
+given:
+  Assignment expression: $a[i]$
+
+pre: a[i] > 0 && 0 <= i < sizeof(a)
+post: x > 0
+
+program:
+  {P}
+  {R1}
+  x := a[i]      // r
+  {Q}
+
+verdict: valid
+
+step: The substitution
+rule: ARRAY-READ
+focus: r
+text:
+  As with the rule ASSIGN, we substitute the variable $x$ with the
+  assignment expression $a[i]$ in $Q$.
+calc:
+  (x > 0)[x <- a[i]]     // Q is x > 0
+  = a[i] > 0             // x replaced by a[i]
+set: R1 = a[i] > 0
+
+step: The read must be defined
+rule: ARRAY-READ
+focus: r
+text:
+  The expression reads the array at position $i$, so the rule adds
+  $def(a[i])$: position $i$ must exist.
+calc:
+  def(a[i])
+  = 0 <= i < sizeof(a)   // the positions of a are 0, ..., sizeof(a) - 1
+set: R1 = a[i] > 0 && 0 <= i < sizeof(a)
+
+step: P implies R1
+rule: CONSEQUENCE
+focus: P, R1
+text:
+  >>> «P» ==> «R1»
+vc: a[i] > 0 && 0 <= i < sizeof(a) ==> a[i] > 0 && 0 <= i < sizeof(a)
+why:
+  The two formulas are the same, so the rule derives the triple.

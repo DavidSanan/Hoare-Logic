@@ -1,0 +1,67 @@
+id: rule-assign-wrong
+title: Wrong precondition
+topic: Assignment
+example-of: ASSIGN
+derived: false
+
+task:
+  Use the rule ASSIGN to decide whether this triple can be derived.
+
+given:
+  Assignment expression: $y + 1$
+
+pre: y = 2
+post: y = 2
+
+program:
+  {P}
+  {R1}
+  y := y + 1     // i1
+  {Q}
+
+verdict: invalid
+
+step: The substitution
+rule: ASSIGN
+focus: i1
+text:
+  The precondition is obtained by substituting the variable $y$ with the
+  assignment expression $y + 1$ in the postcondition $Q$.
+calc:
+  wp(y := y + 1, Q)
+  = (y = 2)[y <- y + 1]     // Q is y = 2
+set: R1 = (y = 2)[y <- y + 1]
+
+step: Apply the substitution
+rule: ASSIGN
+focus: i1
+text:
+  Every $y$ in $y = 2$ becomes $y + 1$.
+calc:
+  (y = 2)[y <- y + 1]
+  = y + 1 = 2               // y replaced by y + 1
+set: R1 = y + 1 = 2
+
+step: Simplify
+rule: LOGIC
+focus: R1
+text:
+  We subtract 1 from both sides of the equation.
+calc:
+  y + 1 = 2
+  = y = 1                   // subtract 1 from both sides
+set: R1 = y = 1
+
+step: P does not imply R1
+rule: CONSEQUENCE
+focus: P, R1
+text:
+  The precondition $P$ is a different formula. The consequence rule would
+  need $P$ to imply $R1$.
+  >>> «P» ==> «R1»
+vc: y = 2 ==> y = 1
+status: fails
+counterexample: y = 2
+why:
+  From the state $y = 2$ the assignment gives $y = 3$, so $Q$ is false at
+  the end. The triple is not valid.

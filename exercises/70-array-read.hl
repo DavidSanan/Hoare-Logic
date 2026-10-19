@@ -7,10 +7,11 @@ source: HoareLogic.pdf, Exercises, "Reading from arrays" 2
 tags: arrays, array read, definedness
 
 task:
-  Compute the weakest precondition with the rule ARRAY-READ. Unfold the
-  definedness conditions and simplify the result. Show that the two
-  definedness conditions can be written as the single condition
-  $0 <= i && i + 1 < sizeof(a)$.
+  Calculate the weakest precondition of the statement for the
+  postcondition $Q$ with the rule ARRAY-READ. Unfold the definedness
+  conditions and show that they can be written as the single condition
+  $0 <= i && i + 1 < sizeof(a)$. Then use the consequence rule to decide
+  whether the triple is valid.
 
 pre: a[i] >= a[i + 1] && 0 <= i && i + 1 < sizeof(a)
 post: x >= 0
@@ -18,44 +19,42 @@ post: x >= 0
 program:
   {P}
   {R1}
-  x := a[i] - a[i + 1]
+  x := a[i] - a[i + 1]     // i1
   {Q}
 
 verdict: valid
 
-step: Substitute, as in the assignment rule
+step: R1, the weakest precondition of x := a[i] - a[i + 1]
 rule: ARRAY-READ, WP
-focus: x :=
-calc:
-  (x >= 0)[x <- a[i] - a[i + 1]]
-  = a[i] - a[i + 1] >= 0
-  = a[i] >= a[i + 1]            // add a[i + 1] to both sides
-
-step: Add one definedness condition per read
-rule: ARRAY-READ
+focus: i1
 text:
-  The expression reads the array twice, at $i$ and at $i + 1$. Each read
-  gets its condition, and each condition is about the whole index
-  expression.
+  As for an assignment, we substitute the assigned variable ($x$) with the
+  assignment expression ($a[i] - a[i + 1]$) in the postcondition $Q$. The
+  expression reads the array twice, so ARRAY-READ adds one definedness
+  condition per read: $def(a[i])$ and $def(a[i + 1])$.
 calc:
   wp(x := a[i] - a[i + 1], Q)
-  = a[i] - a[i + 1] >= 0 && def(a[i]) && def(a[i + 1])
-  = a[i] >= a[i + 1] && 0 <= i < sizeof(a) && 0 <= i + 1 < sizeof(a)
-set: R1 = a[i] >= a[i + 1] && 0 <= i < sizeof(a) && 0 <= i + 1 < sizeof(a)
+  = (x >= 0)[x <- a[i] - a[i + 1]] && def(a[i]) && def(a[i + 1])
+  = a[i] - a[i + 1] >= 0 && def(a[i]) && def(a[i + 1])     // x is replaced by a[i] - a[i + 1]
+  = a[i] >= a[i + 1] && def(a[i]) && def(a[i + 1])         // add a[i + 1] to both sides
+  = a[i] >= a[i + 1] && 0 <= i < sizeof(a) && 0 <= i + 1 < sizeof(a)     // def(a[J]) is 0 <= J < sizeof(a)
+  = a[i] >= a[i + 1] && 0 <= i && i + 1 < sizeof(a)        // 0 <= i gives 0 <= i + 1, and i + 1 < sizeof(a) gives i < sizeof(a)
+set: R1 = a[i] >= a[i + 1] && 0 <= i && i + 1 < sizeof(a)
 
-step: Merge the two definedness conditions
-rule: LOGIC
-calc:
-  0 <= i < sizeof(a) && 0 <= i + 1 < sizeof(a)
-  = 0 <= i && i + 1 < sizeof(a)
+step: P implies R1
+rule: CONSEQUENCE
+focus: P, R1
 text:
-  From left to right: $0 <= i$ is in the first condition and
-  $i + 1 < sizeof(a)$ in the second. From right to left: $0 <= i$ gives
-  $0 <= i + 1$, and $i + 1 < sizeof(a)$ gives $i < sizeof(a)$.
-vc: a[i] >= a[i + 1] && 0 <= i && i + 1 < sizeof(a) ==> R1
-result: The weakest precondition is $a[i] >= a[i + 1] && 0 <= i && i + 1 < sizeof(a)$.
+  $R1$ is the weakest precondition of the statement for $Q$. By the
+  consequence rule, the triple is valid when the precondition $P$ implies
+  $R1$.
+  >>> «P» ==> «R1»
+vc: a[i] >= a[i + 1] && 0 <= i && i + 1 < sizeof(a) ==> a[i] >= a[i + 1] && 0 <= i && i + 1 < sizeof(a)
+why:
+  $P$ and $R1$ are the same formula.
+result: The triple is valid.
 
 summary:
-  The two reads $a[i]$ and $a[i + 1]$ must both be inside the array. Since
-  $i + 1$ is the larger index, it decides the upper bound, and $i$ decides
-  the lower bound.
+  Both reads, $a[i]$ and $a[i + 1]$, must be inside the array. The larger
+  index $i + 1$ gives the upper bound, and the smaller index $i$ gives the
+  lower bound.

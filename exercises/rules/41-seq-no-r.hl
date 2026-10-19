@@ -1,0 +1,68 @@
+id: rule-seq-no-r
+title: No possible R1
+topic: Sequential composition
+example-of: SEQ
+derived: false
+
+task:
+  Use the rule SEQ to try to derive this triple. The intermediate
+  assertion $R1$ is computed backwards from $Q$.
+
+pre: x = 0
+post: x = 3
+
+scheme: SEQ
+  First premise: {«P»} x := x + 1 {«R1»}
+  Second premise: {«R1»} x := x * 2 {«Q»}
+  ---
+  {«P»} x := x + 1; x := x * 2 {«Q»}
+
+program:
+  {P}
+  {R2}
+  x := x + 1;    // i1
+  {R1}
+  x := x * 2     // i2
+  {Q}
+
+verdict: invalid
+
+step: R1, the weakest precondition of x := x * 2
+part: Second premise
+rule: ASSIGN
+focus: i2
+text:
+  We substitute the variable $x$ with the assignment expression $x * 2$ in
+  $Q$.
+calc:
+  wp(x := x * 2, Q)
+  = (x = 3)[x <- x * 2]     // Q is x = 3
+  = x * 2 = 3               // x replaced by x * 2
+  = false                   // x * 2 is even and 3 is odd
+set: R1 = false
+
+step: R2, the weakest precondition of x := x + 1
+part: First premise
+rule: ASSIGN
+focus: i1
+text:
+  We substitute the variable $x$ with $x + 1$ in $R1$. The formula
+  $false$ contains no $x$.
+calc:
+  wp(x := x + 1, R1)
+  = (false)[x <- x + 1]     // R1 is false
+  = false                   // false contains no x
+set: R2 = false
+
+step: P does not imply R2
+part: First premise
+rule: CONSEQUENCE
+focus: P, R2
+text:
+  >>> «P» ==> «R2»
+vc: x = 0 ==> false
+status: fails
+counterexample: x = 0
+why:
+  From $x = 0$ the program computes $x = 1$ and then $x = 2$, so $Q$ is
+  false at the end. The triple is not valid.

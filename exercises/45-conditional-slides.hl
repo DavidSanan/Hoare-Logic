@@ -1,14 +1,19 @@
 # Source: Slides "ICT3112 - 5 - Conditional Rule", worked example.
 id: conditional-slides
-title: The conditional rule with a precondition
+title: A conditional with precondition x + y = 0
 topic: Conditional
 level: 2
-source: Slides 5, Conditional Rule
+source: Slides "ICT3112 - 5 - Conditional Rule", worked example
 tags: conditional, wp, consequence
 
 task:
-  Prove the following triple, first with the rule IF and then with the
-  weakest precondition of the conditional.
+  Calculate the weakest precondition of the program for the postcondition
+  $Q$: first the weakest precondition of each branch, then the one of the
+  conditional. Then use the consequence rule to decide whether the triple
+  is valid.
+
+given:
+  Condition B: $x = y$
 
 pre: x + y = 0
 post: x = y + 1
@@ -19,58 +24,75 @@ program:
   if (x = y) then {
     {R1}
     x := y + 1        // then
+    {Q}
   } else {
     {R2}
     x := 1 - x        // else
+    {Q}
   }
   {Q}
 
 verdict: valid
 
-step: The two premises of the rule IF
-rule: IF
-instance: IF
-  {x + y = 0 && x = y} x := y + 1 {x = y + 1}
-  {x + y = 0 && !(x = y)} x := 1 - x {x = y + 1}
-  ---
-  {x + y = 0} if x = y then x := y + 1 else x := 1 - x {x = y + 1}
-text:
-  $P$ is $x + y = 0$ and $B$ is $x = y$. We now prove each premise.
-
-step: The then branch
+step: R1, the weakest precondition of the then branch x := y + 1
 rule: ASSIGN, WP
 focus: then
+text:
+  Each branch ends where the conditional ends, so its postcondition is
+  $Q$. We substitute the assigned variable ($x$) with the assignment
+  expression ($y + 1$) in $Q$.
 calc:
   wp(x := y + 1, Q)
   = (x = y + 1)[x <- y + 1]
-  = y + 1 = y + 1
-  = true
+  = y + 1 = y + 1          // x is replaced by y + 1
+  = true                   // both sides are the same
 set: R1 = true
-text:
-  Whatever the state, assigning $y + 1$ to $x$ makes $x = y + 1$ true.
 
-step: The else branch
+step: R2, the weakest precondition of the else branch x := 1 - x
 rule: ASSIGN, WP
 focus: else
+text:
+  We substitute the assigned variable ($x$) with the assignment
+  expression ($1 - x$) in the postcondition $Q$.
 calc:
   wp(x := 1 - x, Q)
   = (x = y + 1)[x <- 1 - x]
-  = 1 - x = y + 1
-  = x = -y                    // subtract 1 and change the signs
-set: R2 = x = -y
-vc: x + y = 0 && !(x = y) ==> x = -y
-why:
-  $x + y = 0$ is the same as $x = -y$, so the implication holds.
+  = 1 - x = y + 1          // x is replaced by 1 - x
+  = -x = y                 // subtract 1 from both sides
+  = x + y = 0              // add x to both sides
+set: R2 = x + y = 0
 
-step: The weakest precondition of the conditional
-rule: WP, CONSEQUENCE
+step: R3, the weakest precondition of the conditional
+rule: IF, WP
+focus: if, R1, R2
+text:
+  The weakest precondition of `if B then c1 else c2` for $Q$ is
+  >> (B ==> wp(c1, Q)) && (!B ==> wp(c2, Q))
+  Here the condition $B$ is $x = y$, $wp(c1, Q)$ is $R1$ and
+  $wp(c2, Q)$ is $R2$:
+  >>> («x = y : B» ==> «R1») && («!(x = y) : ¬B» ==> «R2»)
 calc:
   wp(if (x = y) then x := y + 1 else x := 1 - x, Q)
-  = (x = y ==> true) && (!(x = y) ==> 1 - x = y + 1)
-set: R3 = (x = y ==> true) && (x != y ==> 1 - x = y + 1)
-vc: x + y = 0 ==> (x = y ==> true) && (x != y ==> 1 - x = y + 1)
+  = (x = y ==> true) && (!(x = y) ==> x + y = 0)   // B, R1 and R2 put in the formula
+  = true && (!(x = y) ==> x + y = 0)               // A ==> true is true
+  = !(x = y) ==> x + y = 0                         // true && A is A
+  = x != y ==> x + y = 0                           // !(x = y) is x != y
+set: R3 = x != y ==> x + y = 0
+
+step: P implies R3
+rule: CONSEQUENCE
+focus: P, R3
+text:
+  $R3$ is the weakest precondition of the whole program for $Q$. By the
+  consequence rule, the triple is valid when the precondition $P$ implies
+  $R3$.
+  >>> «P» ==> «R3»
+vc: x + y = 0 ==> (x != y ==> x + y = 0)
 why:
-  The first implication is true since its right side is $true$. For the
-  second, assume $x + y = 0$ and $x != y$. From $x = -y$ we get
-  $1 - x = 1 + y$, which is $y + 1$.
+  Assume $P$, that is $x + y = 0$. This is the right side of the
+  implication $R3$, so $R3$ holds.
 result: The triple is valid.
+
+summary:
+  The then branch establishes $Q$ from any state. The else branch needs
+  $x + y = 0$, which is exactly the precondition $P$.

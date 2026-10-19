@@ -1,4 +1,4 @@
-# Source: Exercise list "ICT3101 Exercises - Deductive Verification", problem 5 b), with its solution sheet.
+# Source: Exercise list "ICT3101 Exercises - Deductive Verification" (HoareLogic Exercises.pdf), problem 5 b), with its solution sheet.
 id: multiply-by-adding
 title: Multiplication by repeated addition
 topic: Loops
@@ -7,7 +7,11 @@ source: Exercise list "HoareLogic Exercises", problem 5 b
 tags: while, invariant, bounds
 
 task:
-  Give a proof outline and a loop invariant.
+  Give a proof outline and a loop invariant. The variables $x'$ and $y'$
+  are logical variables: they keep the initial values of $x$ and $y$.
+
+given:
+  Loop condition B: $a <= y$
 
 pre: x = x' && y = y' && y >= 0
 post: z = x * y
@@ -32,50 +36,120 @@ program:
 
 verdict: valid
 
-step: Find a candidate invariant
+step: The invariant I
 rule: WHILE-CONSEQUENCE
 focus: while
 text:
-  The counter $a$ starts at $1$, so after $a - 1$ iterations $z$ holds
-  $a - 1$ copies of $x$. The loop stops when $a = y + 1$. The solution
-  sheet also keeps $x = x'$, which is true but not needed, since $x$ is
-  never assigned.
+  The counter $a$ starts at $1$, and each iteration adds one copy of $x$ to
+  $z$. So after $a - 1$ iterations, $z$ is $x * (a - 1)$. The loop stops
+  when $a$ reaches $y + 1$, which gives the bounds of $a$.
 set: I = z = x * (a - 1) && 1 <= a <= y + 1
+text:
+  The loop rule with consequence has three premises, with the loop
+  condition $B$ being $a <= y$: initialisation, preservation of $I$ by the
+  body, and conclusion $I && !B ==> Q$.
 
-step: Establishment
-rule: ASSIGN, SEQ, WP
-focus: i1, i2
+step: R3, the weakest precondition of a := 1 for I
+part: Initialisation
+rule: ASSIGN, WP
+focus: i2
+text:
+  The loop comes after two assignments, so initialisation is the triple
+  $\{P\}$ `z := 0; a := 1` $\{I\}$. We calculate the weakest precondition
+  of these two statements for $I$, from the last one. We substitute the
+  assigned variable ($a$) with the assignment expression ($1$) in $I$.
 calc:
   wp(a := 1, I)
-  = z = x * (1 - 1) && 1 <= 1 <= y + 1
-set: R3 = z = x * (1 - 1) && 1 <= 1 <= y + 1
+  = (z = x * (a - 1) && 1 <= a <= y + 1)[a <- 1]     // I
+  = z = x * (1 - 1) && 1 <= 1 <= y + 1     // a is replaced by 1
+  = z = 0 && 1 <= 1 <= y + 1               // x * (1 - 1) is x * 0, which is 0
+  = z = 0 && 0 <= y                        // 1 <= 1 is true; subtract 1 from both sides of 1 <= y + 1
+set: R3 = z = 0 && 0 <= y
+
+step: R4, the weakest precondition of z := 0 for R3
+part: Initialisation
+rule: ASSIGN, WP
+focus: i1
+text:
+  We substitute $z$ with $0$ in $R3$, computed in the previous step.
 calc:
   wp(z := 0, R3)
-  = 0 = x * (1 - 1) && 1 <= 1 <= y + 1
-  = 0 <= y
+  = (z = 0 && 0 <= y)[z <- 0]     // R3
+  = 0 = 0 && 0 <= y      // z is replaced by 0
+  = 0 <= y               // 0 = 0 is true, and true && A is A
 set: R4 = 0 <= y
-vc: x = x' && y = y' && y >= 0 ==> 0 <= y
 
-step: Preservation
-rule: ASSIGN, SEQ, CONSEQUENCE
-focus: b1, b2
+step: P implies R4
+part: Initialisation
+rule: CONSEQUENCE, LOGIC
+focus: P, R4
+text:
+  $R4$ is the weakest precondition of the two assignments for $I$. By the
+  consequence rule, initialisation holds when the precondition $P$ implies
+  $R4$.
+  >>> «P» ==> «R4»
+vc: x = x' && y = y' && y >= 0 ==> 0 <= y
+why:
+  $y >= 0$ is part of $P$.
+
+step: R1, the weakest precondition of a := a + 1 for I
+part: Preservation
+rule: ASSIGN, WP
+focus: b2
+text:
+  One iteration must keep the invariant:
+  >>> {«I» && «a <= y : B»} z := z + x; a := a + 1 {«I»}
+  We calculate the weakest precondition of the body for $I$, from the last
+  statement. We substitute $a$ with $a + 1$ in $I$.
 calc:
   wp(a := a + 1, I)
-  = z = x * (a + 1 - 1) && 1 <= a + 1 <= y + 1
-  = z = x * a && 0 <= a <= y
+  = (z = x * (a - 1) && 1 <= a <= y + 1)[a <- a + 1]     // I
+  = z = x * (a + 1 - 1) && 1 <= a + 1 <= y + 1    // a is replaced by a + 1
+  = z = x * a && 1 <= a + 1 <= y + 1              // a + 1 - 1 is a
+  = z = x * a && 0 <= a <= y                      // subtract 1 from each part of the bounds
 set: R1 = z = x * a && 0 <= a <= y
+
+step: R2, the weakest precondition of z := z + x for R1
+part: Preservation
+rule: ASSIGN, WP
+focus: b1
+text:
+  We substitute $z$ with $z + x$ in $R1$, computed in the previous step.
 calc:
   wp(z := z + x, R1)
-  = z + x = x * a && 0 <= a <= y
-set: R2 = z + x = x * a && 0 <= a <= y
-vc: z = x * (a - 1) && 1 <= a <= y + 1 && a <= y ==> z + x = x * a && 0 <= a <= y
-why:
-  $z + x = x * (a - 1) + x = x * a$. The bounds $1 <= a$ and $a <= y$ give
-  $0 <= a <= y$.
+  = (z = x * a && 0 <= a <= y)[z <- z + x]     // R1
+  = z + x = x * a && 0 <= a <= y          // z is replaced by z + x
+  = z = x * a - x && 0 <= a <= y          // subtract x from both sides
+  = z = x * (a - 1) && 0 <= a <= y        // x * a - x is x * (a - 1)
+set: R2 = z = x * (a - 1) && 0 <= a <= y
 
-step: The postcondition at the exit
+step: I and B imply R2
+part: Preservation
 rule: CONSEQUENCE, LOGIC
+focus: I && a <= y, R2
+text:
+  By the consequence rule, the triple holds when $I && B$ implies $R2$.
+  >>> «I» && «a <= y : B» ==> «R2»
+vc: z = x * (a - 1) && 1 <= a <= y + 1 && a <= y ==> z = x * (a - 1) && 0 <= a <= y
+why:
+  $z = x * (a - 1)$ is part of $I$. From $1 <= a$ we get $0 <= a$, and
+  $a <= y$ is $B$.
+
+step: I and not B imply Q
+part: Conclusion
+rule: CONSEQUENCE, LOGIC
+focus: I && !(a <= y), Q
+text:
+  When the loop stops, $I$ holds and $B$ is false. This must imply the
+  postcondition $Q$.
+  >>> «I» && «!(a <= y) : ¬B» ==> «Q»
 vc: z = x * (a - 1) && 1 <= a <= y + 1 && !(a <= y) ==> z = x * y
 why:
-  $a > y$ and $a <= y + 1$ give $a = y + 1$, so $z = x * (y + 1 - 1) = x * y$.
-result: The triple is valid. A variant for termination is $y + 1 - a$.
+  $!(a <= y)$ is $a > y$, that is $a >= y + 1$. Together with
+  $a <= y + 1$ it gives $a = y + 1$, so $z = x * (y + 1 - 1) = x * y$.
+result: The triple is valid.
+
+summary:
+  The loop also terminates: $y + 1 - a$ decreases by one in every
+  iteration, and it is positive whenever the body runs, since then
+  $a <= y$. So $y + 1 - a$ is a variant.

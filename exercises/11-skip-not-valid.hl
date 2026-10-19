@@ -15,55 +15,42 @@ post: x > 5
 
 program:
   {P}
-  skip
+  {R1}
+  skip        // i1
   {Q}
 
 verdict: invalid
 
-step: Apply the Skip rule to the postcondition
-rule: SKIP
-focus: skip
+step: R1, the weakest precondition of skip
+rule: SKIP, WP
+focus: i1
+text:
+  `skip` does not change the state. By the Skip rule, its weakest
+  precondition is its postcondition, here the postcondition $Q$.
 calc:
   wp(skip, Q)
-  = x > 5
-text:
-  As in the previous exercise, the Skip rule gives $\{x > 5\}$ `skip`
-  $\{x > 5\}$. To obtain the precondition $x > 0$ we would need the
-  consequence rule.
+  = x > 5       // wp(skip, Q) is Q
+set: R1 = x > 5
 
-step: Try the consequence rule
-rule: CONSEQUENCE, LOGIC
+step: P implies R1
+rule: CONSEQUENCE
+focus: P, R1
 text:
-  The consequence rule needs the implication from the precondition of the
-  specification to the precondition that we computed.
+  $R1$ is the weakest precondition of the program for $Q$. By the
+  consequence rule, the triple is valid when the precondition $P$ implies
+  $R1$.
+  >>> «P» ==> «R1»
 vc: x > 0 ==> x > 5
 status: fails
 counterexample: x = 1
 why:
-  The implication is false. The state $x = 1$ satisfies $x > 0$, but not
-  $x > 5$. The set $\{1, 2, 3, ...\}$ is not included in $\{6, 7, 8, ...\}$:
-  the precondition is weaker than what the Skip rule needs, and the
-  consequence rule only allows a stronger precondition.
-
-step: Show that the triple is not valid
-rule: LOGIC
-text:
-  A failed implication only shows that this proof does not work. To show
-  that the triple itself is not valid, we run the program from the state
-  of the counterexample.
-
-  - The precondition holds in $x = 1$, since $1 > 0$.
-  - `skip` does not change the state, so the final state is $x = 1$.
-  - The postcondition $x > 5$ is false in the final state.
-
-  The precondition held, the program terminated, and the postcondition is
-  false. This is exactly what a valid triple forbids.
-vc: {x > 0} skip {x > 5}
-status: fails
-counterexample: x = 1
+  The state $x = 1$ satisfies $P$, since $1 > 0$, but not $R1$, since
+  $1 > 5$ is false. So the consequence rule cannot be applied, and the
+  triple cannot be proved. The triple is also not valid: `skip` does not
+  change the state, so the program ends with $x = 1$, and $Q$ is false.
 result: The triple is not valid. The state $x = 1$ is a counterexample.
 
 summary:
   For `skip`, the weakest precondition of $Q$ is $Q$ itself, so the
   triple is valid exactly when $P ==> Q$. Here $x > 0$ does not imply
-  $x > 5$, and any value of $x$ between $1$ and $5$ is a counterexample.
+  $x > 5$, and every value of $x$ from $1$ to $5$ is a counterexample.

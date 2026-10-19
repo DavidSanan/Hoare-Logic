@@ -7,12 +7,11 @@ source: HoareLogic.pdf, Exercises, "A Series of Assignments"
 tags: assignment, sequence, wp, intervals
 
 task:
-  The reference document gives this exercise as a C function that
-  returns `res`. We write it in the language of the course: the result is
-  the value of the variable $res$ at the end.
+  The program computes a result in the variable $res$ from $x$ and $y$.
 
-  Compute by hand the weakest precondition of the program and deduce that
-  it is correct with respect to its contract.
+  Calculate the weakest precondition of the program for the postcondition
+  $Q$, statement by statement from the last one. Then use the consequence
+  rule to show that the triple is valid.
 
 pre: -10 <= x <= 0 && 0 <= y <= 5
 post: -10 <= res <= 10
@@ -29,46 +28,63 @@ program:
 
 verdict: valid
 
-step: The last statement, `res := x + y`
+step: R1, the weakest precondition of res := x + y
 rule: ASSIGN, WP
 focus: i3
+text:
+  The precondition of an assignment is obtained by substituting the
+  assigned variable ($res$) with the assignment expression ($x + y$) in
+  the postcondition $Q$.
 calc:
   wp(res := x + y, Q)
   = (-10 <= res <= 10)[res <- x + y]
-  = -10 <= x + y <= 10
+  = -10 <= x + y <= 10         // res is replaced by x + y
 set: R1 = -10 <= x + y <= 10
 
-step: The second statement, `x := x - 5`
+step: R2, the weakest precondition of x := x - 5
 rule: ASSIGN, WP
 focus: i2
+text:
+  We substitute the assigned variable ($x$) with the assignment expression
+  ($x - 5$) in the postcondition of this statement, which is $R1$.
 calc:
   wp(x := x - 5, R1)
   = (-10 <= x + y <= 10)[x <- x - 5]
-  = -10 <= (x - 5) + y <= 10
+  = -10 <= (x - 5) + y <= 10   // x is replaced by x - 5
+  = -10 <= x + y - 5 <= 10     // remove the parentheses and reorder the sum
   = -5 <= x + y <= 15          // add 5 to the three parts
 set: R2 = -5 <= x + y <= 15
 
-step: The first statement, `y := y + 10`
+step: R3, the weakest precondition of y := y + 10
 rule: ASSIGN, WP
 focus: i1
+text:
+  We substitute the assigned variable ($y$) with the assignment expression
+  ($y + 10$) in the postcondition of this statement, which is $R2$.
 calc:
   wp(y := y + 10, R2)
   = (-5 <= x + y <= 15)[y <- y + 10]
-  = -5 <= x + (y + 10) <= 15
+  = -5 <= x + (y + 10) <= 15   // y is replaced by y + 10
+  = -5 <= x + y + 10 <= 15     // remove the parentheses
   = -15 <= x + y <= 5          // subtract 10 from the three parts
 set: R3 = -15 <= x + y <= 5
 
-step: Compare with the precondition
-rule: CONSEQUENCE, LOGIC
+step: P implies R3
+rule: CONSEQUENCE
+focus: P, R3
+text:
+  $R3$ is the weakest precondition of the whole program for $Q$. By the
+  consequence rule, the triple is valid when the precondition $P$ implies
+  $R3$.
+  >>> «P» ==> «R3»
 vc: -10 <= x <= 0 && 0 <= y <= 5 ==> -15 <= x + y <= 5
 why:
-  We add the bounds of $x$ and $y$. The smallest possible value of
+  We add the bounds that $P$ gives for $x$ and $y$. The smallest value of
   $x + y$ is $-10 + 0 = -10$ and the largest is $0 + 5 = 5$. So
-  $-10 <= x + y <= 5$, which is inside the interval from $-15$ to $5$.
+  $-10 <= x + y <= 5$, and $[-10, 5]$ is included in $[-15, 5]$.
 result: The triple is valid.
 
 summary:
-  The three assignments shift the interval of $x + y$. Going backwards, we
-  undo each shift: $res = x + y$ must be in $[-10, 10]$ at the end, so
-  $x + y$ must be in $[-15, 5]$ at the start. The precondition gives
-  $x + y$ in $[-10, 5]$.
+  Going backwards, each assignment shifts the interval of $x + y$:
+  $[-10, 10]$, then $[-5, 15]$, then $[-15, 5]$. The precondition keeps
+  $x + y$ in $[-10, 5]$, which is inside $[-15, 5]$.

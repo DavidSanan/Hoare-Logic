@@ -8,6 +8,8 @@
  *   $formula$        a formula, typeset with the notation of the slides
  *   `program`        a piece of program
  *   >> line          a displayed formula or triple, centred
+ *   >>> line         a displayed line whose parts «formula : label» show
+ *                    their label (I, B, Q, ...) under them
  *   !! text          a note
  *   - item           a list item
  *   | a | b |        a table row (the first row is the header)
@@ -445,6 +447,10 @@ The file has two parts. The first part describes the exercise: the task, the spe
 | \`\`verdict\`\` | no | \`\`valid\`\` or \`\`invalid\`\`: the answer to "is the triple valid?" |
 | \`\`summary\`\` | no | text shown at the end of the solution |
 | \`\`range\`\` | no | the largest absolute value used by the tests (4 by default) |
+| \`\`given\`\` | no | more elements shown with the variables above the program, one \`\`Label: value\`\` per line, such as \`\`Loop condition B: $x > 0$\`\`. The variables of the program, the logical variables, $P$ and $Q$ are shown automatically |
+| \`\`scheme\`\` | no | the rule with the elements of the exercise, always shown above the steps (see below) |
+| \`\`example-of\`\` | no | for the examples of the Rules page: the rule that the example illustrates. Such files go in \`\`exercises/rules/\`\` and are not listed with the exercises |
+| \`\`derived\`\` | no | with \`\`example-of\`\`: \`\`true\`\` when the rule derives the triple, which shows the last step in green, \`\`false\`\` otherwise |
 
 ## The annotated program
 
@@ -474,8 +480,9 @@ Blocks of more than one statement need braces. Both \`\`if B then ... else ...\`
 | Field | Content |
 |---|---|
 | \`\`step\`\` | the title of the step |
+| \`\`part\`\` | the part of the proof that the step belongs to, such as \`\`Initialisation\`\`, \`\`Preservation\`\` or \`\`Conclusion\`\`. Consecutive steps of the same part are numbered 3.1, 3.2, ... and grouped under its name |
 | \`\`rule\`\` | the rules that the step applies, separated by commas: SKIP, ASSIGN, CONSEQUENCE, SEQ, IF, WHILE, WHILE-CONSEQUENCE, WHILE-TOTAL, ARRAY-READ, ARRAY-ASSIGN, and WP or LOGIC for a calculation or a proof in logic |
-| \`\`focus\`\` | the statement that the step works on: its label, or the beginning of its text, such as \`\`x := y\`\` or \`\`while\`\`. Several statements are separated by commas |
+| \`\`focus\`\` | what the step works on, separated by commas: a statement (its label, or the beginning of its text, such as \`\`x := y\`\` or \`\`while\`\`), or an assertion line of the program (the name of a slot, such as \`\`P\`\`, \`\`I\`\` or \`\`R1\`\`, or the text of an assertion, such as \`\`I && x > 0\`\`). The statement is shown in yellow and the assertions in blue; the assertion just after a focused statement, which is its postcondition, is shown in blue as well, and the assertion that the step computes with \`\`set\`\` in green |
 | \`\`set\`\` | gives a value to a named slot of the program: \`\`set: R1 = x = B && t = A\`\`. The first \`\`=\`\` separates the name from the formula |
 | \`\`text\`\` | an explanation |
 | \`\`note\`\` | an explanation shown in a box |
@@ -504,6 +511,36 @@ calc:
 
 The calculation may use the names of the slots, such as \`\`Q\`\` or \`\`R1\`\`, and the notations \`\`Q[x <- E]\`\` and \`\`wp(c, Q)\`\`. The tests compute them.
 
+## Choices
+
+An exercise can offer several proofs, for example with different invariants. A line \`\`choice: TITLE\`\` starts a choice, and the steps after it belong to it. A line \`\`outcome: fails\`\` right after \`\`choice:\`\` says that this choice does not lead to a proof; the default is \`\`outcome: proves\`\`. The first choice is shown first, so it should be the one that works. When an exercise has choices, every step must come after a \`\`choice:\`\` line.
+
+\`\`\`text
+choice: I = 0 ≤ x ≤ 10
+outcome: proves
+step: The invariant I
+set: I = 0 <= x <= 10
+...
+choice: I = 0 ≤ x
+outcome: fails
+step: The candidate invariant I
+set: I = 0 <= x
+...
+\`\`\`
+
+## The scheme of the rule
+
+A \`\`scheme\`\` block draws the rule with the elements of the exercise above the steps. Each premise is written \`\`Part: premise\`\`; the premise whose part is the part of the current step is highlighted, and a click on it goes to its first step. In the premises, \`\`«I»\`\` stands for the current value of the slot \`\`I\`\`, labelled \`\`I\`\`, and \`\`«x < 10 : B»\`\` shows a formula with a label.
+
+\`\`\`text
+scheme: WHILE-CONSEQUENCE
+  Initialisation: «P» ==> «I»
+  Preservation: {«I» && «x < 10 : B»} x := x + 1 {«I»}
+  Conclusion: «I» && «!(x < 10) : ¬B» ==> «Q»
+  ---
+  {«P»} while x < 10 do x := x + 1 {«Q»}
+\`\`\`
+
 ## Rule instances
 
 An \`\`instance\`\` block draws a rule with its premises, one per line, a line of dashes, and the conclusion. The name of the rule can follow \`\`instance:\`\`.
@@ -518,7 +555,7 @@ instance: CONSEQUENCE
 
 ## Text
 
-In \`\`task\`\`, \`\`text\`\`, \`\`note\`\`, \`\`why\`\` and \`\`summary\`\`, write formulas between dollar signs, as in \`\`$x >= 0$\`\`, and program fragments between backquotes, as in \`\`\`x := x + 1\`\`\`. A blank line starts a new paragraph, a line that starts with \`\`- \`\` is a list item, and a line that starts with \`\`>> \`\` is a displayed formula or triple. Write \`\`**text**\`\` for bold text.
+In \`\`task\`\`, \`\`text\`\`, \`\`note\`\`, \`\`why\`\` and \`\`summary\`\`, write formulas between dollar signs, as in \`\`$x >= 0$\`\`, and program fragments between backquotes, as in \`\`\`x := x + 1\`\`\`. A blank line starts a new paragraph, a line that starts with \`\`- \`\` is a list item, and a line that starts with \`\`>> \`\` is a displayed formula or triple. A line that starts with \`\`>>> \`\` is a display in which each part written \`\`«formula : label»\`\` is shown with its label under it, to say where it comes from, as in \`\`>>> {«0 <= x <= 10 : I» && «x < 10 : B»} x := x + 1 {«0 <= x <= 10 : I»}\`\`. A part written with a slot name alone, as \`\`«I»\`\`, shows the current value of the slot with its name as label. Write \`\`**text**\`\` for bold text.
 
 ## Testing an exercise
 

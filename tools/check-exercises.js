@@ -5,7 +5,7 @@
  *
  * Usage:
  *   node tools/check-exercises.js              check every exercise
- *   node tools/check-exercises.js swap.hl      check some files
+ *   node tools/check-exercises.js swap.hl      check some files (rules/x.hl for an example of a rule)
  *   node tools/check-exercises.js -v           also list the passing tests
  *
  * The exit code is 1 when an exercise has an error or a failing test.
@@ -28,7 +28,10 @@ const args = process.argv.slice(2);
 const verbose = args.includes('-v');
 const names = args.filter((a) => !a.startsWith('-'));
 const dir = path.join(root, 'exercises');
-const files = names.length ? names.map((n) => path.basename(n)) : fs.readdirSync(dir).filter((f) => f.endsWith('.hl')).sort();
+// The exercises, then the examples of the rules (exercises/rules/*.hl).
+const list = (sub) => fs.existsSync(path.join(dir, sub))
+  ? fs.readdirSync(path.join(dir, sub)).filter((f) => f.endsWith('.hl')).sort().map((f) => path.join(sub, f)) : [];
+const files = names.length ? names.map((n) => (fs.existsSync(path.join(dir, n)) ? n : path.relative(dir, path.resolve(n)))) : list('.').concat(list('rules'));
 
 const stateText = (env) => Object.entries(env).map(([k, v]) => k + ' = ' + HL.valueText(v)).join(', ');
 
@@ -44,6 +47,8 @@ for (const file of files) {
     if (ids.has(ex.id)) problems.push('  ERROR   the id "' + ex.id + '" is also used by ' + ids.get(ex.id));
     ids.set(ex.id, file);
   }
+  if (ex.exampleOf && !HL.RULE_NAMES.includes(ex.exampleOf)) problems.push('  ERROR   "example-of: ' + ex.exampleOf + '" is not a rule');
+  if (ex.exampleOf && ex.derived == null) problems.push('  ERROR   an example of a rule needs "derived: true" or "derived: false"');
   const results = HL.Checker.checkExercise(ex);
   let pass = 0, fail = 0, other = 0;
   const lines = [];

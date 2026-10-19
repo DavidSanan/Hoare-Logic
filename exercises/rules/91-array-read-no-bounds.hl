@@ -1,0 +1,55 @@
+id: rule-array-read-no-bounds
+title: Without the bounds
+topic: Arrays
+example-of: ARRAY-READ
+derived: false
+
+task:
+  Use the rule ARRAY-READ to decide whether this triple can be derived.
+
+given:
+  Assignment expression: $a[i]$
+
+pre: a[i] > 0
+post: x > 0
+
+program:
+  {P}
+  {R1}
+  x := a[i]      // r
+  {Q}
+
+verdict: valid
+
+step: The substitution
+rule: ARRAY-READ
+focus: r
+text:
+  As with the rule ASSIGN, we substitute the variable $x$ with the
+  assignment expression $a[i]$ in $Q$.
+calc:
+  (x > 0)[x <- a[i]]     // Q is x > 0
+  = a[i] > 0             // x replaced by a[i]
+set: R1 = a[i] > 0
+
+step: The read must be defined
+rule: ARRAY-READ
+focus: r
+text:
+  The expression reads the array at position $i$, so the rule adds
+  $def(a[i])$: position $i$ must exist.
+calc:
+  def(a[i])
+  = 0 <= i < sizeof(a)   // the positions of a are 0, ..., sizeof(a) - 1
+set: R1 = a[i] > 0 && 0 <= i < sizeof(a)
+
+step: P does not imply R1
+rule: CONSEQUENCE
+focus: P, R1
+text:
+  >>> «P» ==> «R1»
+  Nothing in $P$ says that position $i$ exists. Take the array $a$ with
+  the values 4, 0, 9 and $i = 7$: position 7 does not exist, so the read
+  $a[7]$ has no value. In Java it raises an exception, and in C its
+  behaviour is undefined. The rule cannot derive the triple; adding
+  $0 <= i < sizeof(a)$ to $P$ repairs it.

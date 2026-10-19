@@ -1,0 +1,84 @@
+id: rule-if-maximum
+title: Maximum
+topic: Conditional
+example-of: IF
+derived: true
+
+task:
+  Use the rule IF to derive this triple. Each branch is proved with the
+  rule ASSIGN and the consequence rule.
+
+given:
+  Condition B: $x >= y$
+
+pre: true
+post: m >= x && m >= y
+
+scheme: IF
+  Then branch: {«P» && «x >= y : B»} m := x {«Q»}
+  Else branch: {«P» && «!(x >= y) : ¬B»} m := y {«Q»}
+  ---
+  {«P»} if x >= y then m := x else m := y {«Q»}
+
+program:
+  {P}
+  if x >= y then {
+    {P && x >= y}
+    {R1}
+    m := x       // then
+    {Q}
+  } else {
+    {P && !(x >= y)}
+    {R2}
+    m := y       // else
+    {Q}
+  }
+  {Q}
+
+verdict: valid
+
+step: R1, the weakest precondition of m := x
+part: Then branch
+rule: ASSIGN
+focus: then
+text:
+  We substitute the variable $m$ with $x$ in $Q$.
+calc:
+  wp(m := x, Q)
+  = (m >= x && m >= y)[m <- x]    // Q
+  = x >= x && x >= y              // m replaced by x
+  = x >= y                        // x >= x is true, and true && A is A
+set: R1 = x >= y
+
+step: P and B imply R1
+part: Then branch
+rule: CONSEQUENCE
+focus: P && x >= y, R1
+text:
+  >>> «P» && «x >= y : B» ==> «R1»
+vc: true && x >= y ==> x >= y
+why:
+  $R1$ is the condition $B$ itself.
+
+step: R2, the weakest precondition of m := y
+part: Else branch
+rule: ASSIGN
+focus: else
+text:
+  We substitute the variable $m$ with $y$ in $Q$.
+calc:
+  wp(m := y, Q)
+  = (m >= x && m >= y)[m <- y]    // Q
+  = y >= x && y >= y              // m replaced by y
+  = y >= x                        // y >= y is true, and A && true is A
+set: R2 = y >= x
+
+step: P and not B imply R2
+part: Else branch
+rule: CONSEQUENCE
+focus: P && !(x >= y), R2
+text:
+  >>> «P» && «!(x >= y) : ¬B» ==> «R2»
+vc: true && !(x >= y) ==> y >= x
+why:
+  $!(x >= y)$ means $x < y$, which gives $y >= x$. Both premises hold.

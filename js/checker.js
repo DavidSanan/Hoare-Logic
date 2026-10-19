@@ -403,13 +403,12 @@
       return results;
     }
     const opts = { range: ex.range || 4 };
-    const slots = new Map([['P', ex.pre], ['Q', ex.post]]);
-    const res = resolver(ex, slots);
     const add = (r) => {
       if (r.status === 'skip' || r.status === 'vacuous' || r.status === 'expected') r.ok = null;
       else r.ok = (r.expect === 'fails') ? r.status === 'fail' : r.status === 'pass';
       results.push(r);
     };
+    add.raw = (r) => results.push(r);
 
     // 1. The specification itself, by running the program.
     {
@@ -418,9 +417,20 @@
       add(Object.assign(r, { group: 'Specification', item: 'The triple {pre} program {post}', kind: 'triple', expect, line: ex.programLine }));
     }
 
+    // 2. and 3. for every choice of the proof.
+    const choices = ex.choices && ex.choices.length ? ex.choices : [{ title: '', outcome: 'proves', steps: ex.steps }];
+    for (const choice of choices) {
+      checkChoice(ex, choice, choices.length > 1 ? choice.title + ', ' : '', opts, add);
+    }
+    return results;
+  }
+
+  function checkChoice(ex, choice, prefix, opts, add) {
+    const slots = new Map([['P', ex.pre], ['Q', ex.post]]);
+    const res = resolver(ex, slots);
     // 2. Every step.
-    for (const step of ex.steps) {
-      const group = 'Step ' + step.index + ': ' + step.title;
+    for (const step of choice.steps) {
+      const group = prefix + 'Step ' + (step.number || step.index) + ': ' + step.title;
       for (const it of step.items) {
         if (it.kind === 'set' && it.f) slots.set(it.name, it.f);
       }
@@ -466,7 +476,7 @@
           add(Object.assign(r, where));
           if (it.counterexample) {
             const c = checkCounterexample(p.node, it.counterexample);
-            results.push({
+            add.raw({
               group, item: 'Counterexample of verification condition ' + vcNo, line: it.line, kind: 'counterexample',
               status: c.ok ? 'pass' : 'fail', ok: c.ok, expect: 'holds', reason: c.message, cex: it.counterexample, final: c.final
             });
@@ -513,7 +523,7 @@
     walk(ex.program);
     for (const o of outline) {
       const label = o.stmt ? '{' + o.a.src + '} ' + HL.progInlineText(o.stmt) + ' {' + o.b.src + '}' : '{' + o.a.src + '} implies {' + o.b.src + '}';
-      const where = { group: 'Annotated program', item: label, line: ex.programLine, expect: 'holds' };
+      const where = { group: prefix + 'Annotated program', item: label, line: ex.programLine, expect: 'holds' };
       const pa = prepare(o.a.f, res);
       const pb = prepare(o.b.f, res);
       if (pa.skip || pb.skip) {
@@ -523,14 +533,16 @@
       const r = o.stmt ? Object.assign({ kind: 'triple' }, checkTriple(pa.f, { k: 'seq', items: [o.stmt] }, pb.f, opts))
         : Object.assign({ kind: 'implication' }, checkImplication(pa.f, pb.f, opts));
       Object.assign(r, where);
-      if (r.status === 'fail' && ex.verdict === 'invalid') {
-        // The triple is not valid, so some link of the outline must break.
+      if (r.status === 'fail' && (ex.verdict === 'invalid' || choice.outcome === 'fails')) {
+        // The triple is not valid, or this choice does not lead to a proof,
+        // so some link of the outline must break.
         r.status = 'expected';
-        r.reason = 'This link breaks, which is expected: the exercise states that the triple is not valid.';
+        r.reason = ex.verdict === 'invalid'
+          ? 'This link breaks, which is expected: the exercise states that the triple is not valid.'
+          : 'This link breaks, which is expected: this choice does not lead to a proof.';
       }
       add(r);
     }
-    return results;
   }
 
   HL.Checker = { checkExercise, checkImplication, checkEquiv, checkTriple, checkCounterexample, collectVars, arrayVarsOf };

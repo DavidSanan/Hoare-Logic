@@ -7,8 +7,8 @@ source: HoareLogic.pdf, Exercises, "Single assignments" 1
 tags: assignment, wp, consequence
 
 task:
-  Compute the weakest precondition with the assignment rule. Then check
-  whether the given precondition implies it, and decide whether the
+  Calculate the weakest precondition of the assignment for the
+  postcondition $Q$. Then use the consequence rule to decide whether the
   triple is valid.
 
 pre: x > 5
@@ -17,31 +17,34 @@ post: x > 10
 program:
   {P}
   {R1}
-  x := x * 2
+  x := x * 2      // i1
   {Q}
 
 verdict: valid
 
-step: Apply the assignment rule
+step: R1, the weakest precondition of x := x * 2
 rule: ASSIGN, WP
-focus: x := x * 2
+focus: i1
 text:
-  The assignment rule replaces every occurrence of the assigned variable
-  $x$ in the postcondition by the expression $x * 2$.
+  The precondition of an assignment is obtained by substituting the
+  assigned variable ($x$) with the assignment expression ($x * 2$) in the
+  postcondition $Q$.
 calc:
   wp(x := x * 2, Q)
   = (x > 10)[x <- x * 2]
-  = x * 2 > 10
+  = x * 2 > 10            // x is replaced by x * 2
   = x > 5                 // divide both sides by 2
 set: R1 = x > 5
-text:
-  The last line is an equivalence for integers: $2 * x > 10$ holds exactly
-  when $x > 5$.
 
-step: Compare with the precondition
-rule: CONSEQUENCE, LOGIC
+step: P implies R1
+rule: CONSEQUENCE
+focus: P, R1
+text:
+  $R1$ is the weakest precondition of the program for $Q$. By the
+  consequence rule, the triple is valid when the precondition $P$ implies
+  $R1$.
+  >>> «P» ==> «R1»
 vc: x > 5 ==> x > 5
 why:
-  The weakest precondition is the precondition itself, and every formula
-  implies itself.
+  $P$ and $R1$ are the same formula, and every formula implies itself.
 result: The triple is valid.

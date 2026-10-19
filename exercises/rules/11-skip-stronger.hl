@@ -1,0 +1,44 @@
+id: rule-skip-stronger
+title: Stronger precondition
+topic: Skip
+example-of: SKIP
+derived: false
+
+task:
+  Use the rule SKIP to decide whether this triple can be derived.
+
+pre: x > 5
+post: x > 0
+
+program:
+  {P}
+  {R1}
+  skip       // s
+  {Q}
+
+verdict: valid
+
+step: R1, the precondition given by the rule SKIP
+rule: SKIP
+focus: s
+text:
+  The rule SKIP gives the triple whose precondition is the postcondition:
+  `skip` does not change the state.
+calc:
+  wp(skip, Q)
+  = Q           // wp(skip, Q) = Q
+  = x > 0       // Q is x > 0
+set: R1 = x > 0
+
+step: P implies R1, with the consequence rule
+rule: CONSEQUENCE
+focus: P, R1
+text:
+  The precondition $P$ is not the formula $R1$, so the rule SKIP alone
+  does not give the triple. The consequence rule gives it if $P$ implies
+  $R1$.
+  >>> «P» ==> «R1»
+vc: x > 5 ==> x > 0
+why:
+  Every integer greater than 5 is greater than 0. So the triple is valid,
+  but it needs the consequence rule as well as SKIP.

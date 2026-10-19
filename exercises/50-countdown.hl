@@ -28,62 +28,101 @@ program:
 
 verdict: valid
 
-step: Find a candidate invariant
+step: The invariant I
 rule: WHILE-CONSEQUENCE
 focus: while
 text:
-  The invariant must hold every time the condition $x > 0$ is evaluated.
-  From $x = N$ the loop takes the values $N$, $N - 1$, ..., $1$, $0$, and it
-  stops at $0$. Every one of these values is at least $0$, including the
-  last one, which is reached after the final iteration.
+  The invariant must hold each time the loop condition $x > 0$ is
+  evaluated. From $x = N$ the variable $x$ takes the values $N$, $N - 1$,
+  ..., $1$, $0$ there, and the loop stops at $0$. All these values are at
+  least $0$.
 set: I = x >= 0
 text:
-  The rule WHILE-CONSEQUENCE needs three checks: establishment,
-  preservation, and the postcondition at the exit.
-instance: WHILE-CONSEQUENCE
-  P ==> I
-  {I && x > 0} x := x - 1 {I}
-  I && !(x > 0) ==> Q
-  ---
-  {P} while x > 0 do x := x - 1 {Q}
+  The loop rule with consequence has three premises, with the loop
+  condition $B$ being $x > 0$: initialisation $P ==> I$, preservation
+  $\{I && B\}$ `x := x - 1` $\{I\}$, and conclusion $I && !B ==> Q$.
 
-step: Establishment
+step: P implies I
+part: Initialisation
 rule: CONSEQUENCE, LOGIC
+focus: P, I
+text:
+  The invariant must hold when the loop is reached. No statement comes
+  before the loop, so the precondition $P$ must imply $I$.
+  >>> «P» ==> «I»
 vc: x = N && N >= 0 ==> x >= 0
 why:
-  Replace $x$ by $N$: we need $N >= 0$, which is part of the precondition.
+  Replace $x$ by $N$, using $x = N$. Then $x >= 0$ becomes $N >= 0$, which
+  is part of $P$.
 
-step: Preservation
-rule: ASSIGN, CONSEQUENCE
+step: R1, the weakest precondition of x := x - 1 for I
+part: Preservation
+rule: ASSIGN, WP
 focus: x := x - 1
+text:
+  One iteration must keep the invariant:
+  >>> {«I» && «x > 0 : B»} x := x - 1 {«I»}
+  We calculate the weakest precondition of the body for $I$. We substitute
+  the variable $x$ with the assignment expression $x - 1$ in $I$.
 calc:
   wp(x := x - 1, I)
   = (x >= 0)[x <- x - 1]
-  = x - 1 >= 0
-  = x >= 1
+  = x - 1 >= 0      // x is replaced by x - 1
+  = x >= 1          // add 1 to both sides
 set: R1 = x >= 1
+
+step: I and B imply R1
+part: Preservation
+rule: CONSEQUENCE, LOGIC
+focus: I && x > 0, R1
+text:
+  By the consequence rule, the triple holds when $I && B$ implies $R1$.
+  >>> «I» && «x > 0 : B» ==> «R1»
 vc: x >= 0 && x > 0 ==> x >= 1
 why:
   For integers, $x > 0$ is the same as $x >= 1$.
 
-step: The postcondition at the exit
+step: I and not B imply Q
+part: Conclusion
 rule: CONSEQUENCE, LOGIC
+focus: I && !(x > 0), Q
+text:
+  When the loop stops, $I$ holds and the loop condition $B$ is false. This
+  must imply the postcondition $Q$.
+  >>> «I» && «!(x > 0) : ¬B» ==> «Q»
 vc: x >= 0 && !(x > 0) ==> x = 0
 why:
   $!(x > 0)$ is $x <= 0$. Together with $x >= 0$ it gives $x = 0$.
 
-step: Termination
+step: The variant is not negative
+part: Termination
 rule: WHILE-TOTAL
+focus: I && x > 0
 text:
-  The loop decreases $x$ by one in every iteration, so we take the variant
-  $E = x$. $E0$ is a logical variable for the value of $E$ at the start of
-  an iteration.
+  The body decreases $x$ by one, and the loop runs only while $x > 0$. So
+  we take the variant $E = x$. The rule WHILE-TOTAL has two premises. The
+  first one: $E$ is not negative when an iteration starts.
+  >>> «I» && «x > 0 : B» ==> «x >= 0 : E >= 0»
 vc: x >= 0 && x > 0 ==> x >= 0
 why:
-  The variant is not negative when an iteration starts.
-vc: {x >= 0 && x > 0 && x = E0} x := x - 1 {x >= 0 && x < E0}
+  $x >= 0$ is the invariant itself.
+
+step: The body decreases the variant
+part: Termination
+rule: WHILE-TOTAL, ASSIGN, WP
+focus: x := x - 1
+text:
+  The second premise: the body keeps $I$ and makes $E$ smaller. $E0$ is a
+  logical variable for the value of $E$ when the iteration starts.
+  >>> {«I» && «x > 0 : B» && «x = E0 : E = E0»} x := x - 1 {«I» && «x < E0 : E < E0»}
+  We calculate the weakest precondition of the body for the
+  postcondition of this triple. We substitute $x$ with $x - 1$.
+calc:
+  wp(x := x - 1, x >= 0 && x < E0)
+  = (x >= 0 && x < E0)[x <- x - 1]
+  = x - 1 >= 0 && x - 1 < E0     // x is replaced by x - 1
+vc: x >= 0 && x > 0 && x = E0 ==> x - 1 >= 0 && x - 1 < E0
 why:
-  The weakest precondition of the postcondition is $x - 1 >= 0 && x - 1 < E0$.
-  From $x > 0$ we get $x - 1 >= 0$, and from $x = E0$ we get
+  From $x > 0$ we get $x - 1 >= 0$. From $x = E0$ we get
   $x - 1 = E0 - 1 < E0$.
 result: The triple is valid, and the loop terminates.

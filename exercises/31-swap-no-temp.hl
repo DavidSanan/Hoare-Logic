@@ -7,10 +7,14 @@ source: HoareLogic.pdf, Exercises, "Swapping two variables", question
 tags: assignment, sequence, wp, counterexample
 
 task:
-  Suppose that we remove the temporary variable and write the swap as
-  `x := y; y := x`. Compute the weakest precondition for the same
-  postcondition. For which values of $A$ and $B$ does this shorter program
-  still work?
+  We try to swap $x$ and $y$ without a temporary variable, with
+  `x := y; y := x`. $A$ and $B$ are logical variables: the program does
+  not change them, and they name the initial values of $x$ and $y$.
+
+  Calculate the weakest precondition of the program for the postcondition
+  $Q$, statement by statement from the last one. Then use the consequence
+  rule to decide whether the triple is valid. For which values of $A$ and
+  $B$ does the program still work?
 
 pre: x = A && y = B
 post: x = B && y = A
@@ -25,43 +29,50 @@ program:
 
 verdict: invalid
 
-step: The last statement, `y := x`
+step: R1, the weakest precondition of y := x
 rule: ASSIGN, WP
 focus: i2
+text:
+  The precondition of an assignment is obtained by substituting the
+  assigned variable ($y$) with the assignment expression ($x$) in the
+  postcondition $Q$.
 calc:
   wp(y := x, Q)
   = (x = B && y = A)[y <- x]
-  = x = B && x = A
+  = x = B && x = A        // y is replaced by x; x = B has no y
 set: R1 = x = B && x = A
-text:
-  After `y := x`, the variable $y$ holds the value of $x$. So for
-  $y = A$ to hold afterwards, $x = A$ must hold before.
 
-step: The first statement, `x := y`
+step: R2, the weakest precondition of x := y
 rule: ASSIGN, WP
 focus: i1
+text:
+  We substitute the assigned variable ($x$) with the assignment expression
+  ($y$) in the postcondition of this statement, which is $R1$.
 calc:
   wp(x := y, R1)
   = (x = B && x = A)[x <- y]
-  = y = B && y = A
+  = y = B && y = A        // both x are replaced by y
 set: R2 = y = B && y = A
-text:
-  This is the weakest precondition of the program. It says that $y$ is
-  equal to both $A$ and $B$, which is only possible when $A = B$.
 
-step: Compare with the precondition
-rule: CONSEQUENCE, LOGIC
+step: P implies R2
+rule: CONSEQUENCE
+focus: P, R2
+text:
+  $R2$ is the weakest precondition of the whole program for $Q$. By the
+  consequence rule, the triple is valid when the precondition $P$ implies
+  $R2$.
+  >>> «P» ==> «R2»
 vc: x = A && y = B ==> y = B && y = A
 status: fails
 counterexample: x = 1, y = 2, A = 1, B = 2
 why:
-  The precondition gives $y = B$, but nothing gives $y = A$ unless
-  $A = B$. With $A = 1$ and $B = 2$ the implication is false.
-text:
-  Running the program from $x = 1$, $y = 2$: the first assignment gives
-  $x = 2$, and the second gives $y = 2$. The original value $1$ of $x$ is
+  $P$ gives $y = B$, but $y = A$ also needs $A = B$. With $A = 1$ and
+  $B = 2$ the implication is false. From $x = 1$, $y = 2$ the program
+  first sets $x$ to $2$, then $y$ to $2$. The initial value $1$ of $x$ is
   lost, so $y = A$ is false at the end.
-vc: {x = A && y = B} x := y; y := x {x = B && y = A}
-status: fails
-counterexample: x = 1, y = 2, A = 1, B = 2
-result: The triple is not valid. The program only works when $A = B$, that is, when the two values are already equal.
+result: The triple is not valid. The program works only when $A = B$, that is, when $x$ and $y$ start with the same value.
+
+summary:
+  $R2$ says that $y$ is equal to both $A$ and $B$. $P$ implies it only
+  when $A = B$. The first assignment overwrites $x$ before its value is
+  copied, which is why the temporary variable is needed.

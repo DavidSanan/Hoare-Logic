@@ -1,16 +1,23 @@
-# Source: Exercise sheet "Hoare Logic 2" (solved), 3 c).
+# Source: Exercise sheet "Hoare Logic 2" (solved), 3 c). The invariant proposed by the solved sheet is the
+# candidate of the second choice; it fails initialisation, so the exercise repairs it.
 id: integer-square-root
-title: Integer square root: refining a candidate
+title: Integer square root: repairing a candidate invariant
 topic: Loop invariants
 level: 3
 source: Exercise sheet "Hoare Logic 2", 3 c
 tags: invariant, failed candidate, refine, disjunction
 
 task:
-  The loop finds the smallest $i$ whose square is larger than $n$. The
-  solution sheet proposes the invariant
-  $s = i * i && i >= 0 && (i - 1) * (i - 1) <= n$. Check it, and repair it
-  if a check fails.
+  The loop finds the smallest $i$ whose square is larger than $n$. A
+  first candidate for the loop invariant is
+  $s = i * i && i >= 0 && (i - 1) * (i - 1) <= n$. Check it, repair it if
+  a check fails, and prove the triple with the repaired invariant. Choose
+  the invariant above the steps: the proof succeeds with the repaired
+  invariant, the first one, and fails with the first candidate, the
+  second one.
+
+given:
+  Loop condition B: $s <= n$
 
 pre: n >= 0 && s = 0 && i = 0
 post: i >= 0 && (i - 1) * (i - 1) <= n < i * i
@@ -31,60 +38,181 @@ program:
 
 verdict: valid
 
-step: Check establishment of the proposed candidate
-rule: LOGIC
+choice: Repaired invariant, with i = 0 ∨ (i − 1)² ≤ n
+outcome: proves
+
+step: The invariant I
+rule: WHILE-CONSEQUENCE
+focus: while
+text:
+  The first candidate $s = i * i && i >= 0 && (i - 1) * (i - 1) <= n$
+  fails initialisation: at the start $i = 0$, so $(i - 1) * (i - 1) = 1$,
+  and with $n = 0$ the conjunct $1 <= 0$ is false. The second choice
+  above the steps shows this check.
+
+  The conjunct $(i - 1) * (i - 1) <= n$ says that the previous value of
+  $i$ was small enough. Before the first iteration there is no previous
+  value, so we require it only when $i != 0$. We also keep $0 <= n$ from
+  $P$: the loop does not change $n$, and the exit needs this fact.
+set: I = s = i * i && 0 <= i && 0 <= n && (i = 0 || (i - 1) * (i - 1) <= n)
+text:
+  The loop rule with consequence has three premises, with the loop
+  condition $B$ being $s <= n$: initialisation, preservation and
+  conclusion.
+
+step: P implies I
+part: Initialisation
+rule: CONSEQUENCE
+focus: P, I
+text:
+  The invariant must hold when the loop is reached. No statement comes
+  before the loop, so the precondition $P$ must imply $I$.
+  >>> «P» ==> «I»
+vc: n >= 0 && s = 0 && i = 0 ==> s = i * i && 0 <= i && 0 <= n && (i = 0 || (i - 1) * (i - 1) <= n)
+why:
+  With $s = 0$ and $i = 0$: $0 = 0 * 0$ and $0 <= 0$ hold, $0 <= n$ is in
+  $P$, and the disjunction holds by its first part $i = 0$.
+
+step: R1, the weakest precondition of s := i * i for I
+part: Preservation
+rule: ASSIGN, WP
+focus: b2
+text:
+  One iteration must keep the invariant:
+  >>> {«I» && «s <= n : B»} i := i + 1; s := i * i {«I»}
+  We compute the weakest precondition of the body for $I$, from the last
+  statement. We substitute $s$ with $i * i$ in $I$.
+calc:
+  wp(s := i * i, I)
+  = (s = i * i && 0 <= i && 0 <= n && (i = 0 || (i - 1) * (i - 1) <= n))[s <- i * i]
+  = i * i = i * i && 0 <= i && 0 <= n && (i = 0 || (i - 1) * (i - 1) <= n)     // every s is replaced by i * i
+  = 0 <= i && 0 <= n && (i = 0 || (i - 1) * (i - 1) <= n)     // i * i = i * i is true, and true && A is A
+set: R1 = 0 <= i && 0 <= n && (i = 0 || (i - 1) * (i - 1) <= n)
+
+step: R2, the weakest precondition of i := i + 1 for R1
+part: Preservation
+rule: ASSIGN, WP
+focus: b1
+text:
+  We substitute $i$ with $i + 1$ in $R1$.
+calc:
+  wp(i := i + 1, R1)
+  = (0 <= i && 0 <= n && (i = 0 || (i - 1) * (i - 1) <= n))[i <- i + 1]
+  = 0 <= i + 1 && 0 <= n && (i + 1 = 0 || (i + 1 - 1) * (i + 1 - 1) <= n)     // every i is replaced by i + 1
+  = 0 <= i + 1 && 0 <= n && (i + 1 = 0 || i * i <= n)     // i + 1 - 1 is i
+  = 0 <= i + 1 && 0 <= n && (i = -1 || i * i <= n)        // subtract 1 from both sides of i + 1 = 0
+set: R2 = 0 <= i + 1 && 0 <= n && (i = -1 || i * i <= n)
+
+step: I and B imply R2
+part: Preservation
+rule: CONSEQUENCE
+focus: I && s <= n, R2
+text:
+  $R2$ is the weakest precondition of the body for $I$. By the consequence
+  rule, preservation holds when $I$ and $B$ together imply $R2$.
+  >>> «I» && «s <= n : B» ==> «R2»
+vc: s = i * i && 0 <= i && 0 <= n && (i = 0 || (i - 1) * (i - 1) <= n) && s <= n ==> 0 <= i + 1 && 0 <= n && (i = -1 || i * i <= n)
+why:
+  $0 <= i$ gives $0 <= i + 1$, and $0 <= n$ is in $I$. The second
+  disjunct $i * i <= n$ holds: $i * i = s$ by $I$, and $s <= n$ by $B$.
+
+step: I and not B imply Q
+part: Conclusion
+rule: CONSEQUENCE, LOGIC
+focus: I && !(s <= n), Q
+text:
+  When the loop stops, $I$ holds and the loop condition $B$ is false. This
+  must imply the postcondition $Q$.
+  >>> «I» && «!(s <= n) : ¬B» ==> «Q»
+vc: s = i * i && 0 <= i && 0 <= n && (i = 0 || (i - 1) * (i - 1) <= n) && !(s <= n) ==> i >= 0 && (i - 1) * (i - 1) <= n < i * i
+why:
+  $i >= 0$ is in $I$. $!(s <= n)$ is $n < s$, and $s = i * i$, so
+  $n < i * i$.
+
+  For $(i - 1) * (i - 1) <= n$ we look at the disjunction of $I$. If
+  $i = 0$, then $s = 0$, and $n < 0$ contradicts $0 <= n$. So $i != 0$,
+  and the second disjunct $(i - 1) * (i - 1) <= n$ holds.
+result: The triple is valid.
+
+choice: First candidate, with (i − 1)² ≤ n
+outcome: fails
+
+step: The candidate invariant I
+rule: WHILE-CONSEQUENCE
+focus: while
+text:
+  We check the first candidate. It says that $s$ is the square of $i$,
+  and that the previous value $i - 1$ has a square not larger than $n$.
+set: I = s = i * i && i >= 0 && (i - 1) * (i - 1) <= n
+
+step: P does not imply I
+part: Initialisation
+rule: CONSEQUENCE
+focus: P, I
+text:
+  No statement comes before the loop, so the precondition $P$ must imply
+  $I$.
+  >>> «P» ==> «I»
 vc: n >= 0 && s = 0 && i = 0 ==> s = i * i && i >= 0 && (i - 1) * (i - 1) <= n
 status: fails
 counterexample: n = 0, s = 0, i = 0
 why:
   At the start $i = 0$, so $(i - 1) * (i - 1) = 1$. With $n = 0$ the
-  conjunct $1 <= 0$ is false. The candidate rejects a real start state, so
-  it is too strong.
+  conjunct $1 <= 0$ is false. The candidate rejects a start state, so it
+  is too strong.
 
-step: Repair the candidate
-rule: WHILE-CONSEQUENCE
-focus: while
+step: R1, the weakest precondition of s := i * i for I
+part: Preservation
+rule: ASSIGN, WP
+focus: b2
 text:
-  The conjunct $(i - 1)^2 <= n$ says that the previous value of $i$ was
-  small enough. Before the first iteration there is no previous value, so
-  we only require it when $i != 0$. We also keep $n >= 0$, which the exit
-  check will need.
-set: I = s = i * i && 0 <= i && 0 <= n && (i = 0 || (i - 1) * (i - 1) <= n)
-vc: n >= 0 && s = 0 && i = 0 ==> I
-why:
-  $s = 0 = 0 * 0$, $0 <= 0$, $0 <= n$, and the disjunction holds by its
-  first part $i = 0$.
-
-step: Preservation
-rule: ASSIGN, SEQ, CONSEQUENCE
-focus: b1, b2
+  >>> {«I» && «s <= n : B»} i := i + 1; s := i * i {«I»}
+  We substitute $s$ with $i * i$ in $I$.
 calc:
   wp(s := i * i, I)
-  = i * i = i * i && 0 <= i && 0 <= n && (i = 0 || (i - 1) * (i - 1) <= n)
-  = 0 <= i && 0 <= n && (i = 0 || (i - 1) * (i - 1) <= n)
-set: R1 = 0 <= i && 0 <= n && (i = 0 || (i - 1) * (i - 1) <= n)
+  = (s = i * i && i >= 0 && (i - 1) * (i - 1) <= n)[s <- i * i]
+  = i * i = i * i && i >= 0 && (i - 1) * (i - 1) <= n     // every s is replaced by i * i
+  = i >= 0 && (i - 1) * (i - 1) <= n                      // i * i = i * i is true, and true && A is A
+set: R1 = i >= 0 && (i - 1) * (i - 1) <= n
+
+step: R2, the weakest precondition of i := i + 1 for R1
+part: Preservation
+rule: ASSIGN, WP
+focus: b1
+text:
+  We substitute $i$ with $i + 1$ in $R1$.
 calc:
   wp(i := i + 1, R1)
-  = 0 <= i + 1 && 0 <= n && (i + 1 = 0 || (i + 1 - 1) * (i + 1 - 1) <= n)
-  = 0 <= i + 1 && 0 <= n && (i = -1 || i * i <= n)
-set: R2 = 0 <= i + 1 && 0 <= n && (i = -1 || i * i <= n)
-vc: I && s <= n ==> R2
-why:
-  From $0 <= i$ we get $0 <= i + 1$. The second disjunct holds:
-  $i * i = s$ by the invariant, and $s <= n$ by the condition of the loop.
+  = (i >= 0 && (i - 1) * (i - 1) <= n)[i <- i + 1]
+  = i + 1 >= 0 && (i + 1 - 1) * (i + 1 - 1) <= n     // every i is replaced by i + 1
+  = i + 1 >= 0 && i * i <= n                         // i + 1 - 1 is i
+set: R2 = i + 1 >= 0 && i * i <= n
 
-step: The postcondition at the exit
-rule: CONSEQUENCE, LOGIC
-vc: I && !(s <= n) ==> i >= 0 && (i - 1) * (i - 1) <= n < i * i
+step: I and B imply R2
+part: Preservation
+rule: CONSEQUENCE
+focus: I && s <= n, R2
+text:
+  >>> «I» && «s <= n : B» ==> «R2»
+vc: s = i * i && i >= 0 && (i - 1) * (i - 1) <= n && s <= n ==> i + 1 >= 0 && i * i <= n
 why:
-  $!(s <= n)$ gives $n < s = i * i$. For $(i - 1)^2 <= n$, we look at the
-  disjunction of the invariant. If $i = 0$ then $s = 0$, and $n < 0$
-  contradicts $0 <= n$; so this case cannot happen at the exit, and the
-  other disjunct $(i - 1)^2 <= n$ holds.
-result: The triple is valid.
+  $i >= 0$ gives $i + 1 >= 0$. $i * i = s$ by $I$, and $s <= n$ by $B$.
+
+step: I and not B imply Q
+part: Conclusion
+rule: CONSEQUENCE, LOGIC
+focus: I && !(s <= n), Q
+text:
+  >>> «I» && «!(s <= n) : ¬B» ==> «Q»
+vc: s = i * i && i >= 0 && (i - 1) * (i - 1) <= n && !(s <= n) ==> i >= 0 && (i - 1) * (i - 1) <= n < i * i
+why:
+  $i >= 0$ and $(i - 1) * (i - 1) <= n$ are in $I$, and $!(s <= n)$ with
+  $s = i * i$ gives $n < i * i$. Preservation and conclusion hold, but
+  initialisation fails, so this candidate cannot be used. The repaired
+  invariant, the first choice, weakens it on the start state.
 
 summary:
-  The failed establishment check gave a concrete state, $n = 0$, $i = 0$,
-  $s = 0$, that the candidate wrongly rejected. The repair weakens the
-  candidate exactly on that state, with the disjunct $i = 0$. A variant for
-  termination is $n - i$: inside the loop $i <= i * i = s <= n$.
+  The failed initialisation check gave the start state $n = 0$, $i = 0$,
+  $s = 0$, which the first candidate rejected. The repair weakens the
+  candidate on that state with the disjunct $i = 0$. The conjunct
+  $0 <= n$ is needed at the exit to rule out $i = 0$.
